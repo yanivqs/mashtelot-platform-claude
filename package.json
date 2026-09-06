@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:seed:plants": "npx prisma db seed",
+    "db:seed:demo": "node seed.js",
+    "db:seed:supplies": "node seed-supplies.js",
+    "db:seed:print": "node seed-print.js",
+    "db:seed:admin": "node seed-admin.js",
+    "db:seed:all": "npm run db:seed:plants && npm run db:seed:supplies && npm run db:seed:print && npm run db:seed:demo && npm run db:seed:admin"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

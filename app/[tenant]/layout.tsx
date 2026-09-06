@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getNurseryByTenant } from '@/lib/tenant';
+import { getActivePromotion } from '@/lib/marketing';
 import { tenantOrigin } from '@/lib/seo';
 import { CartProvider } from '@/components/cart/cart-provider';
 import { SiteHeader } from '@/components/storefront/site-header';
 import { SiteFooter } from '@/components/storefront/site-footer';
+import { PromoPopup } from '@/components/storefront/promo-popup';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -37,6 +39,7 @@ export default async function TenantLayout({ children, params }: LayoutProps) {
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) notFound();
 
+  const promotion = await getActivePromotion(nursery.id);
   const brand = nursery.primaryColor || '#16a34a';
 
   return (
@@ -49,6 +52,9 @@ export default async function TenantLayout({ children, params }: LayoutProps) {
         <SiteHeader nursery={nursery} basePath="" />
         <main className="flex-1">{children}</main>
         <SiteFooter nursery={nursery} />
+        {promotion?.popupText && (
+          <PromoPopup id={promotion.id} title={promotion.title} text={promotion.popupText} />
+        )}
       </div>
     </CartProvider>
   );

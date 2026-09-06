@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { LayoutDashboard, Package, PlusSquare, ShoppingBag, Sprout, Store, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, PlusSquare, ShoppingBag, Megaphone, Printer, Sprout, Store, LogOut } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { logout } from './actions';
 
@@ -14,11 +14,14 @@ const ownerNav = [
   { href: '/admin/products', label: 'המלאי שלי', icon: Package },
   { href: '/admin/products/browse', label: 'הוספת מוצרים', icon: PlusSquare },
   { href: '/admin/orders', label: 'הזמנות', icon: ShoppingBag },
+  { href: '/admin/marketing', label: 'שיווק', icon: Megaphone },
+  { href: '/admin/print-shop', label: 'בית דפוס', icon: Printer },
 ];
 
 const adminNav = [
   { href: '/admin/catalog', label: 'קטלוג בוטני', icon: Sprout },
   { href: '/admin/nurseries', label: 'משתלות', icon: Store },
+  { href: '/admin/print-orders', label: 'הזמנות דפוס', icon: Printer },
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
