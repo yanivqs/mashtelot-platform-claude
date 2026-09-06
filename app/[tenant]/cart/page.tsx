@@ -92,12 +92,12 @@ export default function CartPage() {
         <span className="text-2xl font-bold text-gray-900">{formatPrice(subtotal)}</span>
       </div>
 
-      <button
-        className="mt-4 w-full rounded-lg bg-[var(--brand,#16a34a)] py-3.5 font-medium text-white transition hover:brightness-95"
-        onClick={() => alert('תהליך התשלום ייושם בשלב הבא (שלב 5).')}
+      <Link
+        href="/checkout"
+        className="mt-4 block w-full rounded-lg bg-[var(--brand,#16a34a)] py-3.5 text-center font-medium text-white transition hover:brightness-95"
       >
         המשך לתשלום
-      </button>
+      </Link>
     </div>
   );
 }
