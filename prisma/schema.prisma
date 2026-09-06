@@ -1,0 +1,280 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id          String       @id @default(uuid())
+  email       String       @unique
+  fullName    String?      @map("full_name")
+  phoneNumber String?      @map("phone_number")
+  role        Role         @default(CUSTOMER)
+  nurseryId   String?      @map("nursery_id")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  orders      Order[]
+  printOrders PrintOrder[]
+  nursery     Nursery?     @relation(fields: [nurseryId], references: [id])
+
+  @@map("users")
+}
+
+model Nursery {
+  id              String            @id @default(uuid())
+  name            String
+  subdomain       String            @unique
+  customDomain    String?           @unique @map("custom_domain")
+  logoUrl         String?           @map("logo_url")
+  primaryColor    String?           @default("#16a34a") @map("primary_color")
+  phoneNumber     String?           @map("phone_number")
+  whatsappNumber  String?           @map("whatsapp_number")
+  ownerEmail      String            @map("owner_email")
+  isActive        Boolean           @default(true) @map("is_active")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  coupons         Coupon[]
+  customerLoyalty CustomerLoyalty[]
+  nurseryProducts NurseryProduct[]
+  orders          Order[]
+  printOrders     PrintOrder[]
+  promotions      Promotion[]
+  users           User[]
+
+  @@map("nurseries")
+}
+
+model Plant {
+  id              String           @id @default(uuid())
+  plantId         Int?             @unique @map("plant_id")
+  hebrewName      String           @map("hebrew_name")
+  latinName       String?          @map("latin_name")
+  nickname        String?
+  family          String?
+  description     String?
+  notes           String?
+  origin          String?
+  native          String?
+  plantType       String?          @map("plant_type")
+  light           String?
+  water           String?
+  flowering       String?
+  floweringSeason String?          @map("flowering_season")
+  flowerColor     String?          @map("flower_color")
+  foliage         String?
+  evergreen       String?
+  height          String?
+  spacing         String?
+  growthRate      String?          @map("growth_rate")
+  climateZones    String?          @map("climate_zones")
+  resistance      String?
+  coastal         String?
+  care            String?
+  uniqueness      String?
+  imageUrl        String?          @map("image_url")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  nurseryProducts NurseryProduct[]
+
+  @@map("plants")
+}
+
+model MasterSupply {
+  id              String           @id @default(uuid())
+  title           String
+  brand           String?
+  category        SupplyCategory   @default(GENERAL)
+  barcode         String?          @unique
+  description     String?
+  imageUrl        String?          @map("image_url")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  nurseryProducts NurseryProduct[]
+
+  @@map("master_supplies")
+}
+
+model NurseryProduct {
+  id                 String        @id @default(uuid())
+  nurseryId          String        @map("nursery_id")
+  plantId            String?       @map("plant_id")
+  supplyId           String?       @map("supply_id")
+  customTitle        String?       @map("custom_title")
+  price              Decimal       @db.Decimal(10, 2)
+  compareAtPrice     Decimal?      @map("compare_at_price") @db.Decimal(10, 2)
+  stockQuantity      Int           @default(0) @map("stock_quantity")
+  isActive           Boolean       @default(true) @map("is_active")
+  customDescription  String?       @map("custom_description")
+  seoMetaTitle       String?       @map("seo_meta_title")
+  seoMetaDescription String?       @map("seo_meta_description")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+  nursery            Nursery       @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  plant              Plant?        @relation(fields: [plantId], references: [id])
+  supply             MasterSupply? @relation(fields: [supplyId], references: [id])
+  orderItems         OrderItem[]
+
+  @@unique([nurseryId, plantId])
+  @@unique([nurseryId, supplyId])
+  @@map("nursery_products")
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  nurseryId       String      @map("nursery_id")
+  userId          String?     @map("user_id")
+  customerName    String      @map("customer_name")
+  customerEmail   String      @map("customer_email")
+  customerPhone   String      @map("customer_phone")
+  shippingAddress String?     @map("shipping_address")
+  totalAmount     Decimal     @map("total_amount") @db.Decimal(10, 2)
+  status          OrderStatus @default(PENDING)
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  items           OrderItem[]
+  nursery         Nursery     @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  user            User?       @relation(fields: [userId], references: [id])
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id               String         @id @default(uuid())
+  orderId          String         @map("order_id")
+  nurseryProductId String         @map("nursery_product_id")
+  productTitle     String         @map("product_title")
+  quantity         Int
+  unitPrice        Decimal        @map("unit_price") @db.Decimal(10, 2)
+  nurseryProduct   NurseryProduct @relation(fields: [nurseryProductId], references: [id])
+  order            Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model Coupon {
+  id          String   @id @default(uuid())
+  nurseryId   String   @map("nursery_id")
+  code        String
+  discountPct Decimal  @map("discount_pct") @db.Decimal(5, 2)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  nursery     Nursery  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@unique([nurseryId, code])
+  @@map("coupons")
+}
+
+model Promotion {
+  id          String   @id @default(uuid())
+  nurseryId   String   @map("nursery_id")
+  title       String
+  popupText   String?  @map("popup_text")
+  triggerType String?  @map("trigger_type")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  nursery     Nursery  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@map("promotions")
+}
+
+model CustomerLoyalty {
+  id        String   @id @default(uuid())
+  nurseryId String   @map("nursery_id")
+  phone     String
+  points    Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+  nursery   Nursery  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@unique([nurseryId, phone])
+  @@map("customer_loyalty")
+}
+
+model PrintProduct {
+  id          String           @id @default(uuid())
+  title       String
+  description String?
+  basePrice   Decimal          @map("base_price") @db.Decimal(10, 2)
+  imageUrl    String?          @map("image_url")
+  minQuantity Int              @default(1) @map("min_quantity")
+  isActive    Boolean          @default(true) @map("is_active")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  items       PrintOrderItem[]
+
+  @@map("print_products")
+}
+
+model PrintOrder {
+  id          String           @id @default(uuid())
+  nurseryId   String           @map("nursery_id")
+  orderedById String?          @map("ordered_by_id")
+  status      PrintOrderStatus @default(NEW)
+  totalAmount Decimal          @map("total_amount") @db.Decimal(10, 2)
+  notes       String?
+  artworkUrl  String?          @map("artwork_url")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  items       PrintOrderItem[]
+  nursery     Nursery          @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  orderedBy   User?            @relation(fields: [orderedById], references: [id])
+
+  @@map("print_orders")
+}
+
+model PrintOrderItem {
+  id             String       @id @default(uuid())
+  printOrderId   String       @map("print_order_id")
+  printProductId String       @map("print_product_id")
+  quantity       Int
+  unitPrice      Decimal      @map("unit_price") @db.Decimal(10, 2)
+  customText     String?      @map("custom_text")
+  printOrder     PrintOrder   @relation(fields: [printOrderId], references: [id], onDelete: Cascade)
+  printProduct   PrintProduct @relation(fields: [printProductId], references: [id])
+
+  @@map("print_order_items")
+}
+
+model PrintGlobalOption {
+  id         String   @id @default(uuid())
+  optionName String   @map("option_name")
+  extraPrice Decimal  @map("extra_price") @db.Decimal(10, 2)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("print_global_options")
+}
+
+enum Role {
+  SUPER_ADMIN
+  NURSERY_OWNER
+  CUSTOMER
+}
+
+enum SupplyCategory {
+  SOIL
+  POTS
+  PESTICIDES
+  FERTILIZER
+  TOOLS
+  GENERAL
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PrintOrderStatus {
+  NEW
+  IN_PRODUCTION
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
