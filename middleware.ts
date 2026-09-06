@@ -8,10 +8,11 @@ export function middleware(request: NextRequest) {
   const url = request.nextUrl;
   const host = (request.headers.get('host') || '').toLowerCase();
 
-  // דילוג על נכסים סטטיים ונתיבי API
+  // דילוג על נכסים סטטיים, נתיבי API ופורטל הניהול (משותף, לא תלוי-טננט)
   if (
     url.pathname.startsWith('/_next') ||
     url.pathname.startsWith('/api') ||
+    url.pathname.startsWith('/admin') ||
     url.pathname === '/favicon.ico' ||
     url.pathname.includes('.')
   ) {
