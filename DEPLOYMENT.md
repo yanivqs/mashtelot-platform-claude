@@ -10,7 +10,7 @@
 - חשבון GitHub (הקוד צריך להיות ב-repo)
 - חשבון [Vercel](https://vercel.com) (חינם לפרויקט אישי)
 - מסד הנתונים ב-Supabase כבר קיים (זה שמוגדר ב-`.env` המקומי)
-- דומיין בבעלותך, למשל `mashtelot.com` (מכל רשם — GoDaddy / Namecheap / Cloudflare / name.com)
+- דומיין בבעלותך: `mashtelot.net` (נרכש ב-GoDaddy)
 
 ---
 
@@ -44,9 +44,34 @@ git push origin main
    | `DATABASE_URL` | מחרוזת ה-**transaction pooler** של Supabase (פורט 6543, עם `?pgbouncer=true`) |
    | `DIRECT_URL` | מחרוזת ה-**session pooler** של Supabase (פורט 5432) — משמש למיגרציות |
    | `AUTH_SECRET` | מחרוזת אקראית: `openssl rand -hex 32` |
-   | `ROOT_DOMAIN` | `mashtelot.com` (הדומיין שלך, **בלי** `https://`) |
+   | `ROOT_DOMAIN` | `mashtelot.net` (הדומיין שלך, **בלי** `https://`) |
+   | `RESEND_API_KEY` | מפתח API מ-[resend.com](https://resend.com) (אופציונלי — בלעדיו לא נשלחים מיילים) |
+   | `EMAIL_FROM` | כתובת שולח מדומיין מאומת ב-Resend, למשל `משתלות מ.נט <orders@mashtelot.net>` |
+   | `SUPABASE_URL` | כתובת ה-API של פרויקט Supabase, למשל `https://abcdefgh.supabase.co` |
+   | `SUPABASE_SERVICE_ROLE_KEY` | מ-Supabase → Settings → API → `service_role` (סוד — Production/Preview בלבד) |
 
 5. **Deploy**. בסיום תקבל כתובת `xxx.vercel.app`.
+
+### העלאת תמונות — Supabase Storage
+
+משתמשים באותו פרויקט Supabase של מסד הנתונים:
+
+1. **Supabase → Storage → New bucket** → שם: `uploads`, סמן **Public bucket** → Create.
+2. **Supabase → Settings → API** → העתק את `Project URL` ל-`SUPABASE_URL`
+   ואת מפתח ה-`service_role` ל-`SUPABASE_SERVICE_ROLE_KEY` (ב-Vercel Env Vars).
+3. redeploy. מאפשר העלאת תמונות צמחים, לוגו משתלה וקבצים גרפיים לבית הדפוס
+   ישירות מפורטל הניהול (עד 5MB לקובץ, JPG/PNG/WEBP/GIF/AVIF).
+
+בלי המשתנים האלה — כפתור ההעלאה מציג שגיאה ידידותית, ותמונות שכבר קיימות
+(למשל מיובאות מה-CSV) ממשיכות להופיע כרגיל.
+
+### מיילים טרנזקציוניים — Resend
+
+1. ב-[resend.com](https://resend.com) → הוסף את הדומיין `mashtelot.net` ואמת את
+   רשומות ה-DNS שהוא מבקש (SPF/DKIM). אם ה-Nameservers ב-Vercel — מוסיפים אותן שם.
+2. צור API key והגדר `RESEND_API_KEY` + `EMAIL_FROM` ב-Vercel.
+3. בכל הזמנה נשלח אישור ללקוח + התראה לכתובת `owner_email` של המשתלה. אם המשתנים
+   חסרים — ההזמנה עדיין נוצרת, רק בלי מייל (נרשמת אזהרה בלוג).
 
 ---
 
@@ -56,18 +81,29 @@ git push origin main
 
 | דומיין | סוג |
 |---|---|
-| `mashtelot.com` | הדומיין הראשי (Landing + `/admin`) |
-| `www.mashtelot.com` | Redirect ל-apex |
-| `*.mashtelot.com` | **Wildcard** — נותן לכל משתלה תת-דומיין (`galim.mashtelot.com`) אוטומטית |
+| `mashtelot.net` | הדומיין הראשי (Landing + `/admin`) |
+| `www.mashtelot.net` | Redirect ל-apex |
+| `*.mashtelot.net` | **Wildcard** — נותן לכל משתלה תת-דומיין (`galim.mashtelot.net`) אוטומטית |
 
-Vercel יציג את רשומות ה-DNS שצריך להגדיר אצל הרשם:
+### הגדרת ה-DNS ב-GoDaddy
 
-- `A` record ל-`@` → `76.76.21.21`
-- `CNAME` ל-`*` → `cname.vercel-dns.com`
-- `CNAME` ל-`www` → `cname.vercel-dns.com`
+ב-GoDaddy: **My Products → Domains → `mashtelot.net` → DNS / Manage DNS**.
+מחק רשומות `A`/`CNAME` קיימות של GoDaddy (parking) ל-`@` ו-`www`, והוסף:
+
+| Type | Name | Value | TTL |
+|---|---|---|---|
+| `A` | `@` | `76.76.21.21` | 600 |
+| `CNAME` | `www` | `cname.vercel-dns.com` | 1 hour |
+| `CNAME` | `*` | `cname.vercel-dns.com` | 1 hour |
+
+הערות GoDaddy:
+- GoDaddy לא מאפשר `ALIAS`/`ANAME` ב-apex — לכן משתמשים ב-`A` record ל-IP של Vercel (`76.76.21.21`). זה הנתיב הרשמי של Vercel.
+- אם Vercel מציג ערך `A` אחר במסך ה-Domains — השתמש במה ש-Vercel מציג.
+- אין צורך לשנות Nameservers. משאירים את ה-DNS אצל GoDaddy.
+- לחלופין אפשר להעביר את ה-Nameservers ל-Vercel (Vercel → Domains → "Use Vercel DNS") ואז Vercel מנהל הכל — פחות שליטה, יותר פשוט.
 
 ה-wildcard מקבל תעודת SSL אוטומטית מ-Vercel. אחרי שה-DNS מתעדכן
-(עד 48 שעות, בד"כ דקות), כל `<subdomain>.mashtelot.com` יגיע ל-middleware,
+(בד"כ דקות, עד 48 שעות), כל `<subdomain>.mashtelot.net` יגיע ל-middleware,
 שיזהה את המשתלה לפי ה-`subdomain` בטבלת `nurseries`.
 
 ### דומיין מותאם אישית למשתלה (`www.galim-nursery.co.il`)
@@ -105,9 +141,9 @@ npm run db:seed:all      # צמחים + ציוד + דפוס + משתלת דמו 
 
 ## 7. בדיקת עשן אחרי פריסה
 
-- `https://mashtelot.com` → דף נחיתה
-- `https://demo-nursery.mashtelot.com` → חנות (אם נזרעה)
-- `https://mashtelot.com/admin` → כניסה, ואז דשבורד
+- `https://mashtelot.net` → דף נחיתה
+- `https://demo-nursery.mashtelot.net` → חנות (אם נזרעה)
+- `https://mashtelot.net/admin` → כניסה, ואז דשבורד
 - עמוד מוצר → בדוק `view-source` שיש `<link rel="canonical">` ו-JSON-LD
 - הזמנה מלאה: קטלוג → עגלה → תשלום → אישור → מופיע ב-`/admin/orders`
 

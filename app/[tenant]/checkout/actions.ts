@@ -2,7 +2,13 @@
 
 import { prisma } from '@/lib/prisma';
 import { getNurseryByTenant } from '@/lib/tenant';
-import { resolveProductContent } from '@/lib/seo';
+import { resolveProductContent, tenantUrl } from '@/lib/seo';
+import { rateLimit, clientIp } from '@/lib/rate-limit';
+import {
+  sendEmail,
+  orderConfirmationEmail,
+  newOrderNotificationEmail,
+} from '@/lib/email';
 
 export interface CheckoutInput {
   tenant: string;
@@ -34,6 +40,11 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
     (i) => i.productId && Number.isInteger(i.quantity) && i.quantity > 0,
   );
   if (cart.length === 0) return { error: 'העגלה ריקה' };
+
+  // הגבלת קצב לפי כתובת IP כדי לבלום הצפת הזמנות
+  if (!rateLimit(`checkout:ip:${clientIp()}`, 6, 10 * 60_000).ok) {
+    return { error: 'יותר מדי הזמנות בזמן קצר. נסו שוב מאוחר יותר.' };
+  }
 
   const nursery = await getNurseryByTenant(input.tenant);
   if (!nursery) return { error: 'המשתלה לא נמצאה' };
@@ -96,8 +107,62 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
       return order.id;
     });
 
+    // מיילים טרנזקציוניים — לא חוסמים ולא מפילים את ההזמנה אם נכשלים
+    await sendOrderEmails(orderId, nursery);
+
     return { ok: true, orderId };
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'אירעה שגיאה ביצירת ההזמנה' };
+  }
+}
+
+async function sendOrderEmails(
+  orderId: string,
+  nursery: Awaited<ReturnType<typeof getNurseryByTenant>>,
+): Promise<void> {
+  if (!nursery) return;
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+    if (!order) return;
+
+    const data = {
+      id: order.id,
+      customerName: order.customerName,
+      customerEmail: order.customerEmail,
+      customerPhone: order.customerPhone,
+      shippingAddress: order.shippingAddress,
+      totalAmount: order.totalAmount.toString(),
+      items: order.items.map((i) => ({
+        productTitle: i.productTitle,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice.toString(),
+      })),
+      nurseryName: nursery.name,
+      nurseryPhone: nursery.phoneNumber,
+      storeUrl: tenantUrl(nursery, '/'),
+    };
+
+    const customer = orderConfirmationEmail(data);
+    const owner = newOrderNotificationEmail(data);
+
+    await Promise.allSettled([
+      sendEmail({
+        to: order.customerEmail,
+        subject: customer.subject,
+        html: customer.html,
+        replyTo: nursery.ownerEmail,
+      }),
+      sendEmail({
+        to: nursery.ownerEmail,
+        subject: owner.subject,
+        html: owner.html,
+        replyTo: order.customerEmail,
+      }),
+    ]);
+  } catch (e) {
+    console.error('[checkout] שליחת מיילים נכשלה', e);
   }
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useFormState, useFormStatus } from 'react-dom';
+import { ImageUpload } from '@/components/admin/image-upload';
 import { createNursery, type NurseryFormState } from './actions';
 
 const initial: NurseryFormState = {};
@@ -40,6 +41,10 @@ export function CreateNurseryForm() {
         <span className="mb-1 block font-medium text-gray-700">סיסמה ראשונית (אופציונלי)</span>
         <input name="ownerPassword" type="text" minLength={8} className={field} />
       </label>
+
+      <div className="sm:col-span-2">
+        <ImageUpload name="logoUrl" label="לוגו המשתלה (אופציונלי)" folder="logos" />
+      </div>
 
       <div className="flex items-center gap-3 sm:col-span-2">
         <SubmitButton />

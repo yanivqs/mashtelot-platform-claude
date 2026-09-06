@@ -17,7 +17,7 @@ async function main() {
     create: {
       name: 'משתלת הדגמה ראשית',
       subdomain: SUBDOMAIN,
-      ownerEmail: 'demo@mashtelot.com',
+      ownerEmail: 'demo@mashtelot.net',
       primaryColor: '#16a34a',
       phoneNumber: '03-1234567',
       whatsappNumber: '+972501234567',

@@ -1,6 +1,7 @@
 'use client';
 
 import { useFormState, useFormStatus } from 'react-dom';
+import { ImageUpload } from '@/components/admin/image-upload';
 import { updatePlant, type PlantFormState } from './actions';
 
 const initial: PlantFormState = {};
@@ -18,7 +19,6 @@ const FIELDS: Array<{ name: string; label: string; type?: 'text' | 'textarea' }>
   { name: 'height', label: 'גובה' },
   { name: 'spacing', label: 'מרווח שתילה' },
   { name: 'growthRate', label: 'קצב גדילה' },
-  { name: 'imageUrl', label: 'קישור לתמונה' },
   { name: 'description', label: 'תיאור', type: 'textarea' },
   { name: 'care', label: 'טיפול', type: 'textarea' },
 ];
@@ -48,6 +48,16 @@ export function PlantForm({
   return (
     <form action={formAction} className="grid gap-4 sm:grid-cols-2">
       <input type="hidden" name="id" value={plant.id} />
+
+      <div className="sm:col-span-2">
+        <ImageUpload
+          name="imageUrl"
+          defaultValue={plant.imageUrl}
+          label="תמונת הצמח"
+          folder="plants"
+        />
+      </div>
+
       {FIELDS.map((f) => (
         <label key={f.name} className={`text-sm ${f.type === 'textarea' ? 'sm:col-span-2' : ''}`}>
           <span className="mb-1 block font-medium text-gray-700">{f.label}</span>

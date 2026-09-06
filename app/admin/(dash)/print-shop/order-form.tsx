@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { formatPrice } from '@/lib/utils';
+import { ImageUpload } from '@/components/admin/image-upload';
 import { createPrintOrder } from './actions';
 
 export interface PrintProductVM {
@@ -25,6 +26,7 @@ export function PrintOrderForm({
   const [rows, setRows] = useState<Record<string, { qty: string; text: string }>>({});
   const [notes, setNotes] = useState('');
   const [artworkUrl, setArtworkUrl] = useState('');
+  const [resetCount, setResetCount] = useState(0);
   const [pending, setPending] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -52,6 +54,7 @@ export function PrintOrderForm({
       setRows({});
       setNotes('');
       setArtworkUrl('');
+      setResetCount((c) => c + 1);
       setMsg({ ok: true, text: 'ההזמנה נשלחה לבית הדפוס של הפלטפורמה.' });
     } else {
       setMsg({ ok: false, text: res.error ?? 'שגיאה' });
@@ -101,10 +104,15 @@ export function PrintOrderForm({
         </p>
       )}
 
-      <label className="block text-sm">
-        <span className="mb-1 block font-medium text-gray-700">קישור לקובץ גרפי / לוגו</span>
-        <input value={artworkUrl} onChange={(e) => setArtworkUrl(e.target.value)} className={field} />
-      </label>
+      <div className="text-sm">
+        <ImageUpload
+          key={resetCount}
+          label="קובץ גרפי / לוגו להדפסה"
+          folder="artwork"
+          defaultValue={artworkUrl}
+          onChange={setArtworkUrl}
+        />
+      </div>
       <label className="block text-sm">
         <span className="mb-1 block font-medium text-gray-700">הערות להזמנה</span>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={field} />

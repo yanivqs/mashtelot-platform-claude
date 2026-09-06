@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// דומיין הבסיס של הפלטפורמה (ללא פרוטוקול). לדוגמה: mashtelot.com
+// דומיין הבסיס של הפלטפורמה (ללא פרוטוקול). לדוגמה: mashtelot.net
 const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'localhost:3000';
 
 export function middleware(request: NextRequest) {
@@ -26,7 +26,7 @@ export function middleware(request: NextRequest) {
 
   let tenant: string;
   if (host.endsWith(`.${ROOT_DOMAIN}`)) {
-    // תת-דומיין של הפלטפורמה: galim.mashtelot.com -> "galim"
+    // תת-דומיין של הפלטפורמה: galim.mashtelot.net -> "galim"
     tenant = host.slice(0, -1 * (ROOT_DOMAIN.length + 1)).replace(/^www\./, '');
   } else {
     // דומיין מותאם אישית: www.galim-nursery.co.il -> "galim-nursery.co.il"

@@ -21,6 +21,7 @@ export async function createNursery(
   const subdomain = String(formData.get('subdomain') || '').trim().toLowerCase();
   const ownerEmail = String(formData.get('ownerEmail') || '').trim().toLowerCase();
   const ownerPassword = String(formData.get('ownerPassword') || '');
+  const logoUrl = String(formData.get('logoUrl') || '').trim() || null;
 
   if (!name || !subdomain || !ownerEmail) {
     return { error: 'שם, תת-דומיין ואימייל בעלים הם שדות חובה' };
@@ -33,7 +34,7 @@ export async function createNursery(
   if (existing) return { error: 'תת-הדומיין כבר תפוס' };
 
   const nursery = await prisma.nursery.create({
-    data: { name, subdomain, ownerEmail },
+    data: { name, subdomain, ownerEmail, logoUrl },
   });
 
   if (ownerPassword) {
