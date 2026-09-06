@@ -33,11 +33,10 @@ git push origin main
 
 1. **vercel.com → Add New → Project → Import** את ה-repo `mashtelot-platform-claude` מ-GitHub.
 2. Framework Preset: **Next.js** (מזוהה אוטומטית). Root Directory: `./` (שורש הריפו).
-3. **Build Command** — דרוס ל:
-   ```
-   prisma generate && prisma migrate deploy && next build
-   ```
-   (כך הסכימה של מסד הנתונים תתעדכן בכל פריסה.)
+3. **Build Command** — השאר על ברירת המחדל. ה-`package.json` כולל סקריפט
+   `vercel-build` (`prisma generate && prisma migrate deploy && next build`)
+   ש-Vercel מריץ אוטומטית, ו-`postinstall` שמריץ `prisma generate`.
+   אל תוסיף את אינטגרציית **Prisma Postgres** — משתמשים ב-Supabase הקיים.
 4. **Environment Variables** — הוסף את כולם (Production + Preview):
 
    | משתנה | ערך |

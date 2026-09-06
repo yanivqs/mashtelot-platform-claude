@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
+    "postinstall": "prisma generate",
     "db:seed:plants": "npx prisma db seed",
     "db:seed:demo": "node seed.js",
     "db:seed:supplies": "node seed-supplies.js",
