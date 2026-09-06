@@ -16,10 +16,12 @@
 
 ## 2. הכנת הקוד
 
+הריפו: `https://github.com/yanivqs/mashtelot-platform-claude` (שורש הריפו = תיקיית
+האפליקציה, כלומר תוכן `nursery-platform/`).
+
 ```bash
-cd nursery-platform
 git add -A && git commit -m "prepare for deploy"
-git push        # ל-GitHub
+git push origin main
 ```
 
 ודא שקיים `prisma/migrations/` עם כל המיגרציות (יש) — בפרודקשן מריצים
@@ -29,8 +31,8 @@ git push        # ל-GitHub
 
 ## 3. פריסה ב-Vercel
 
-1. **vercel.com → Add New → Project → Import** את ה-repo מ-GitHub.
-2. Framework Preset: **Next.js** (מזוהה אוטומטית). Root Directory: `nursery-platform`.
+1. **vercel.com → Add New → Project → Import** את ה-repo `mashtelot-platform-claude` מ-GitHub.
+2. Framework Preset: **Next.js** (מזוהה אוטומטית). Root Directory: `./` (שורש הריפו).
 3. **Build Command** — דרוס ל:
    ```
    prisma generate && prisma migrate deploy && next build
