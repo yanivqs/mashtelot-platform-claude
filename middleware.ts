@@ -1,34 +1,44 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+// דומיין הבסיס של הפלטפורמה (ללא פרוטוקול). לדוגמה: mashtelot.com
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000';
+
 export function middleware(request: NextRequest) {
   const url = request.nextUrl;
-  const hostname = request.headers.get('host') || '';
+  const host = (request.headers.get('host') || '').toLowerCase();
 
-  // הגדרת דומיינים ראשיים (זיהוי סביבת פיתוח ופרודקשן)
-  const currentHost =
-    process.env.NODE_ENV === 'production'
-      ? hostname.replace(`.mashtelot.com`, '') // החלף בדומיין הפרודקשן שלך
-      : hostname.replace(`.localhost:3000`, '');
-
-  // מניעת הפניה עבור קבצים סטטיים ונתיבי API פנימיים
+  // דילוג על נכסים סטטיים ונתיבי API
   if (
     url.pathname.startsWith('/_next') ||
     url.pathname.startsWith('/api') ||
+    url.pathname === '/favicon.ico' ||
     url.pathname.includes('.')
   ) {
     return NextResponse.next();
   }
 
-  // מקרה 1: גישה לדומיין הראשי (ראשי / Landing Page)
-  if (hostname === 'localhost:3000' || hostname === 'mashtelot.com') {
+  // גישה לדומיין הראשי -> Landing page (app/page.tsx)
+  if (host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`) {
     return NextResponse.next();
   }
 
-  // מקרה 2: גישה לתת-דומיין או דומיין מותאם אישית של משתלה
-  // שרשור מחדש לנתיב הפנימי [tenant]
+  let tenant: string;
+  if (host.endsWith(`.${ROOT_DOMAIN}`)) {
+    // תת-דומיין של הפלטפורמה: galim.mashtelot.com -> "galim"
+    tenant = host.slice(0, -1 * (ROOT_DOMAIN.length + 1)).replace(/^www\./, '');
+  } else {
+    // דומיין מותאם אישית: www.galim-nursery.co.il -> "galim-nursery.co.il"
+    tenant = host.replace(/^www\./, '');
+  }
+
+  if (!tenant) {
+    return NextResponse.next();
+  }
+
+  // שרשור מחדש לנתיב הפנימי של הטננט, שמירת ה-URL המקורי בדפדפן
   return NextResponse.rewrite(
-    new URL(`/${currentHost}${url.pathname}`, request.url)
+    new URL(`/${encodeURIComponent(tenant)}${url.pathname}`, request.url),
   );
 }
 
