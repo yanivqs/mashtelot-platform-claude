@@ -1,6 +1,6 @@
 import type { Nursery, Plant, MasterSupply, NurseryProduct } from '@prisma/client';
 
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000';
+const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'localhost:3000';
 const PROTOCOL = ROOT_DOMAIN.startsWith('localhost') ? 'http' : 'https';
 
 /** Absolute origin for a tenant storefront (custom domain wins over subdomain). */

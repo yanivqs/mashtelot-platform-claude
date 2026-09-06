@@ -5,7 +5,7 @@ import { toggleNurseryActive } from './actions';
 
 export const dynamic = 'force-dynamic';
 
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000';
+const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'localhost:3000';
 
 export default async function AdminNurseriesPage() {
   await requireUser(['SUPER_ADMIN']);

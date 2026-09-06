@@ -44,7 +44,7 @@ git push origin main
    | `DATABASE_URL` | מחרוזת ה-**transaction pooler** של Supabase (פורט 6543, עם `?pgbouncer=true`) |
    | `DIRECT_URL` | מחרוזת ה-**session pooler** של Supabase (פורט 5432) — משמש למיגרציות |
    | `AUTH_SECRET` | מחרוזת אקראית: `openssl rand -hex 32` |
-   | `NEXT_PUBLIC_ROOT_DOMAIN` | `mashtelot.com` (הדומיין שלך, **בלי** `https://`) |
+   | `ROOT_DOMAIN` | `mashtelot.com` (הדומיין שלך, **בלי** `https://`) |
 
 5. **Deploy**. בסיום תקבל כתובת `xxx.vercel.app`.
 

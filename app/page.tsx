@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { Leaf, Store, Search, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
+import { tenantOrigin } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'פלטפורמת משתלות SaaS | חנות מקוונת וקטלוג בוטני למשתלות',
@@ -35,9 +36,14 @@ const features = [
 ];
 
 export default async function LandingPage() {
-  const [plantCount, nurseryCount] = await Promise.all([
+  const [plantCount, nurseryCount, demoNursery] = await Promise.all([
     prisma.plant.count(),
     prisma.nursery.count({ where: { isActive: true } }),
+    prisma.nursery.findFirst({
+      where: { isActive: true },
+      orderBy: { createdAt: 'asc' },
+      select: { subdomain: true, customDomain: true },
+    }),
   ]);
 
   return (
@@ -66,12 +72,14 @@ export default async function LandingPage() {
               פתחו חנות למשתלה
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <Link
-              href="http://demo-nursery.localhost:3000"
-              className="rounded-lg border border-brand-200 px-6 py-3 font-medium text-brand-800 transition hover:bg-brand-50"
-            >
-              לחנות הדגמה
-            </Link>
+            {demoNursery && (
+              <a
+                href={tenantOrigin(demoNursery)}
+                className="rounded-lg border border-brand-200 px-6 py-3 font-medium text-brand-800 transition hover:bg-brand-50"
+              >
+                לחנות הדגמה
+              </a>
+            )}
           </div>
         </div>
       </section>

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // דומיין הבסיס של הפלטפורמה (ללא פרוטוקול). לדוגמה: mashtelot.com
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000';
+const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'localhost:3000';
 
 export function middleware(request: NextRequest) {
   const url = request.nextUrl;
