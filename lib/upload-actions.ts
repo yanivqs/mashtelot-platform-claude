@@ -34,8 +34,14 @@ export async function uploadImage(formData: FormData): Promise<UploadResult> {
     return { error: 'יותר מדי העלאות בזמן קצר. נסו שוב בעוד מספר דקות.' };
   }
 
-  const baseUrl = process.env.SUPABASE_URL?.replace(/\/$/, '');
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // מקבלים גם אם הודבק עם סיומת נתיב (למשל .../rest/v1/) — לוקחים רק את ה-origin
+  let baseUrl: string | undefined;
+  try {
+    if (process.env.SUPABASE_URL) baseUrl = new URL(process.env.SUPABASE_URL).origin;
+  } catch {
+    baseUrl = undefined;
+  }
   if (!baseUrl || !key) {
     return { error: 'אחסון הקבצים לא מוגדר (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY חסרים).' };
   }

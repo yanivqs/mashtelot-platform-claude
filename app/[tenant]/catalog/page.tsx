@@ -60,8 +60,12 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
 
   return (
     <div dir="rtl" className="mx-auto max-w-6xl px-6 py-10">
-      <h1 className="mb-2 text-2xl font-bold text-gray-900">קטלוג</h1>
-      <p className="mb-6 text-sm text-gray-500">{total} מוצרים</p>
+      <header className="mb-6 border-b border-gray-100 pb-5">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+          {searchParams.q ? `תוצאות חיפוש: ${searchParams.q}` : 'הקטלוג שלנו'}
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">{total} מוצרים</p>
+      </header>
 
       <CatalogFilters plantTypes={plantTypes} />
 

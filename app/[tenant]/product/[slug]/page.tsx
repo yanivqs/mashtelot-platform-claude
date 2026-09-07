@@ -6,6 +6,8 @@ import { getProductById } from '@/lib/catalog';
 import { idFromSlug, productSlug, formatPrice } from '@/lib/utils';
 import { resolveProductContent, productJsonLd, tenantUrl } from '@/lib/seo';
 import { AddToCartButton } from '@/components/cart/add-to-cart-button';
+import { PlantFactsGrid } from '@/components/storefront/plant-key-facts';
+import { SpecTable } from '@/components/storefront/spec-table';
 
 export const revalidate = 300;
 export const dynamicParams = true;
@@ -47,50 +49,30 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   const { title, description, image } = resolveProductContent(product);
   const price = Number(product.price);
+  const compareAt = product.compareAtPrice ? Number(product.compareAtPrice) : null;
+  const onSale = compareAt !== null && compareAt > price;
   const outOfStock = product.stockQuantity <= 0;
   const plant = product.plant;
+  const kicker = plant?.plantType || product.supply?.brand || null;
   const canonicalPath = `/product/${productSlug(product.id, title)}`;
+  const care = plant?.care?.trim();
 
-  const specs: Array<[string, string | null | undefined]> = [
-    ['שם לטיני', plant?.latinName],
-    ['משפחה', plant?.family],
-    ['סוג צמח', plant?.plantType],
-    ['תאורה', plant?.light],
-    ['השקיה', plant?.water],
-    ['עונת פריחה', plant?.floweringSeason],
-    ['צבע פריחה', plant?.flowerColor],
-    ['גובה', plant?.height],
-    ['מרווח שתילה', plant?.spacing],
-    ['קצב גדילה', plant?.growthRate],
-    ['טיפול', plant?.care],
-  ];
-  const rows = specs.filter(([, v]) => v && v.trim());
-
-  const jsonLd = productJsonLd({
-    nursery,
-    product,
-    url: tenantUrl(nursery, canonicalPath),
-  });
+  const jsonLd = productJsonLd({ nursery, product, url: tenantUrl(nursery, canonicalPath) });
 
   return (
-    <div dir="rtl" className="mx-auto max-w-6xl px-6 py-10">
+    <div dir="rtl" className="mx-auto max-w-5xl px-6 py-10">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
       <nav className="mb-6 text-sm text-gray-500">
-        <Link href="/" className="hover:underline">
-          בית
-        </Link>{' '}
-        /{' '}
-        <Link href="/catalog" className="hover:underline">
-          קטלוג
-        </Link>{' '}
-        / <span className="text-gray-700">{title}</span>
+        <Link href="/" className="hover:underline">בית</Link> /{' '}
+        <Link href="/catalog" className="hover:underline">קטלוג</Link> /{' '}
+        <span className="text-gray-700">{title}</span>
       </nav>
 
-      <div className="grid gap-10 md:grid-cols-2">
+      <div className="grid gap-8 md:grid-cols-2">
         <div className="flex aspect-square items-center justify-center overflow-hidden rounded-2xl bg-brand-50 text-7xl">
           {image ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -100,26 +82,24 @@ export default async function ProductPage({ params }: ProductPageProps) {
           )}
         </div>
 
-        <div>
-          {plant?.plantType && (
-            <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-              {plant.plantType}
+        <div className="flex flex-col">
+          {kicker && (
+            <span className="w-fit rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
+              {kicker}
             </span>
           )}
-          <h1 className="mt-3 text-3xl font-bold text-gray-900">{title}</h1>
+          <h1 className="mt-3 text-3xl font-bold leading-tight text-gray-900">{title}</h1>
           {plant?.latinName && (
             <p className="mt-1 text-sm italic text-gray-400">{plant.latinName}</p>
           )}
 
           <div className="mt-5 flex items-baseline gap-3">
             <span className="text-3xl font-bold text-gray-900">{formatPrice(price)}</span>
-            {product.compareAtPrice && Number(product.compareAtPrice) > price && (
-              <span className="text-lg text-gray-400 line-through">
-                {formatPrice(Number(product.compareAtPrice))}
-              </span>
+            {onSale && (
+              <span className="text-lg text-gray-400 line-through">{formatPrice(compareAt!)}</span>
             )}
           </div>
-          <p className={`mt-1 text-sm ${outOfStock ? 'text-red-600' : 'text-brand-700'}`}>
+          <p className={`mt-1 text-sm ${outOfStock ? 'text-rose-600' : 'text-brand-700'}`}>
             {outOfStock ? 'אזל מהמלאי' : `במלאי (${product.stockQuantity} יח')`}
           </p>
 
@@ -137,27 +117,33 @@ export default async function ProductPage({ params }: ProductPageProps) {
             />
           </div>
 
-          {description && (
+          {plant && (
             <div className="mt-8">
-              <h2 className="mb-2 text-lg font-bold text-gray-900">תיאור</h2>
-              <p className="whitespace-pre-line leading-relaxed text-gray-700">{description}</p>
+              <PlantFactsGrid plant={plant} limit={4} />
             </div>
           )}
         </div>
       </div>
 
-      {rows.length > 0 && (
-        <div className="mt-12">
+      {description && (
+        <section className="mt-12">
+          <h2 className="mb-3 text-lg font-bold text-gray-900">תיאור</h2>
+          <p className="whitespace-pre-line leading-relaxed text-gray-700">{description}</p>
+        </section>
+      )}
+
+      {plant && (
+        <section className="mt-10">
           <h2 className="mb-4 text-lg font-bold text-gray-900">מאפיינים בוטניים</h2>
-          <dl className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-            {rows.map(([label, value]) => (
-              <div key={label} className="flex justify-between border-b border-gray-100 py-2">
-                <dt className="text-sm font-medium text-gray-500">{label}</dt>
-                <dd className="text-sm text-gray-900">{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+          <SpecTable plant={plant} />
+        </section>
+      )}
+
+      {care && (
+        <section className="mt-10">
+          <h2 className="mb-3 text-lg font-bold text-gray-900">הנחיות טיפול</h2>
+          <p className="whitespace-pre-line leading-relaxed text-gray-700">{care}</p>
+        </section>
       )}
     </div>
   );
