@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
-import { ChevronDown, Trash2 } from 'lucide-react';
+import { ChevronDown, Trash2, AlertCircle } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
+import { SEO_LEVEL_META, type SeoScore } from '@/lib/seo-score';
 import { updateProduct, deleteProduct, type ProductFormState } from './actions';
 
 export interface RowProduct {
@@ -20,6 +21,7 @@ export interface RowProduct {
   customDescription: string | null;
   seoMetaTitle: string | null;
   seoMetaDescription: string | null;
+  seo: SeoScore;
 }
 
 const initial: ProductFormState = {};
@@ -73,6 +75,13 @@ export function ProductRow({ product }: { product: RowProduct }) {
         >
           {product.isActive ? 'פעיל' : 'מוסתר'}
         </span>
+        <span
+          className="hidden items-center gap-1 text-xs sm:flex"
+          title={`מדד SEO: ${product.seo.score}/100 (${SEO_LEVEL_META[product.seo.level].label})`}
+        >
+          <span className={`h-2 w-2 rounded-full ${SEO_LEVEL_META[product.seo.level].dot}`} />
+          <span className={SEO_LEVEL_META[product.seo.level].text}>SEO</span>
+        </span>
         <button
           onClick={() => setOpen((v) => !v)}
           className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
@@ -84,6 +93,33 @@ export function ProductRow({ product }: { product: RowProduct }) {
 
       {open && (
         <div className="bg-gray-50 px-4 py-4">
+          <div className="mb-4 rounded-lg border border-gray-200 bg-white p-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+              <span className={`h-2.5 w-2.5 rounded-full ${SEO_LEVEL_META[product.seo.level].dot}`} />
+              מדד SEO: {product.seo.score}/100 · {SEO_LEVEL_META[product.seo.level].label}
+            </div>
+            {product.seo.issues.length > 0 ? (
+              <ul className="mt-2 space-y-1">
+                {product.seo.issues.map((issue, i) => (
+                  <li key={i} className="flex items-start gap-1.5 text-xs text-gray-600">
+                    <AlertCircle
+                      className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
+                        issue.severity === 'high'
+                          ? 'text-rose-500'
+                          : issue.severity === 'medium'
+                            ? 'text-amber-500'
+                            : 'text-gray-400'
+                      }`}
+                    />
+                    {issue.message}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-1 text-xs text-green-700">כל שדות ה-SEO מולאו. מצוין.</p>
+            )}
+          </div>
+
           <form action={formAction} className="grid gap-4 sm:grid-cols-2">
             <input type="hidden" name="id" value={product.id} />
 
@@ -129,7 +165,12 @@ export function ProductRow({ product }: { product: RowProduct }) {
               <input name="customTitle" defaultValue={product.customTitle ?? ''} className={field} />
             </label>
             <label className="text-sm sm:col-span-2">
-              <span className="mb-1 block font-medium text-gray-700">תיאור מותאם</span>
+              <span className="mb-1 block font-medium text-gray-700">
+                תיאור מותאם
+                <span className="mr-2 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
+                  חשוב ל-SEO
+                </span>
+              </span>
               <textarea
                 name="customDescription"
                 rows={2}

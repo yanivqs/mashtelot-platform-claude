@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/auth';
 import { requireAnyModule } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
 import { resolveProductContent } from '@/lib/seo';
+import { scoreProductSeo } from '@/lib/seo-score';
 import { ProductRow, type RowProduct } from './product-row';
 
 export const dynamic = 'force-dynamic';
@@ -42,15 +43,23 @@ export default async function AdminProductsPage() {
       customDescription: p.customDescription,
       seoMetaTitle: p.seoMetaTitle,
       seoMetaDescription: p.seoMetaDescription,
+      seo: scoreProductSeo(p),
     };
   });
+
+  const needsSeo = rows.filter((r) => r.seo.level !== 'good').length;
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">המלאי שלי</h1>
-          <p className="text-sm text-gray-500">{rows.length} מוצרים</p>
+          <p className="text-sm text-gray-500">
+            {rows.length} מוצרים
+            {needsSeo > 0 && (
+              <span className="text-amber-700"> · {needsSeo} זקוקים לשיפור SEO</span>
+            )}
+          </p>
         </div>
         <Link
           href="/admin/products/browse"
@@ -59,6 +68,13 @@ export default async function AdminProductsPage() {
           הוספת מוצרים
         </Link>
       </div>
+
+      {needsSeo > 0 && (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          לכל מוצר יש מדד SEO. מוצרים שמסתמכים על התיאור הבוטני המשותף חשופים
+          ל&quot;תוכן כפול&quot; מול משתלות אחרות — פתחו מוצר וכתבו תיאור וכותרת ייחודיים.
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-200 bg-white p-10 text-center text-gray-500">

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { scoreProductSeo } from '@/lib/seo-score';
 
 function Stat({ label, value, href }: { label: string; value: number | string; href?: string }) {
   const body = (
@@ -51,12 +52,24 @@ export default async function AdminOverviewPage() {
     );
   }
 
-  const [total, active, outOfStock, orders] = await Promise.all([
+  const [total, active, outOfStock, orders, seoProducts] = await Promise.all([
     prisma.nurseryProduct.count({ where: { nurseryId: user.nurseryId } }),
     prisma.nurseryProduct.count({ where: { nurseryId: user.nurseryId, isActive: true } }),
     prisma.nurseryProduct.count({ where: { nurseryId: user.nurseryId, stockQuantity: { lte: 0 } } }),
     prisma.order.count({ where: { nurseryId: user.nurseryId } }),
+    prisma.nurseryProduct.findMany({
+      where: { nurseryId: user.nurseryId },
+      select: {
+        customTitle: true,
+        customDescription: true,
+        seoMetaTitle: true,
+        seoMetaDescription: true,
+        plant: { select: { description: true, imageUrl: true } },
+        supply: { select: { description: true, imageUrl: true } },
+      },
+    }),
   ]);
+  const needsSeo = seoProducts.filter((p) => scoreProductSeo(p).level !== 'good').length;
 
   return (
     <div>
@@ -67,6 +80,7 @@ export default async function AdminOverviewPage() {
         <Stat label="פעילים" value={active} href="/admin/products" />
         <Stat label="אזלו מהמלאי" value={outOfStock} href="/admin/products" />
         <Stat label="הזמנות" value={orders} href="/admin/orders" />
+        <Stat label="מוצרים לשיפור SEO" value={needsSeo} href="/admin/products" />
       </div>
 
       <div className="mt-8 rounded-xl border border-gray-100 bg-white p-6">
