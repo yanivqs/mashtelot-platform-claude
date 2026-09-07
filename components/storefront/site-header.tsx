@@ -6,14 +6,17 @@ export function SiteHeader({
   nursery,
   basePath,
   sticky = true,
+  navPages = [],
 }: {
   nursery: Nursery;
   basePath: string;
   sticky?: boolean;
+  navPages?: { slug: string; title: string }[];
 }) {
   const nav = [
     { href: basePath || '/', label: 'בית' },
     { href: `${basePath}/catalog`, label: 'קטלוג' },
+    ...navPages.map((p) => ({ href: `${basePath}/${p.slug}`, label: p.title })),
     { href: `${basePath}/contact`, label: 'צור קשר' },
   ];
 

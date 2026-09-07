@@ -4,6 +4,7 @@ import { getNurseryByTenant } from '@/lib/tenant';
 import { getActivePromotion } from '@/lib/marketing';
 import { getNurseryTheme } from '@/lib/theme';
 import { isModuleEnabled } from '@/lib/module-access';
+import { getNavPages } from '@/lib/pages';
 import { tenantOrigin } from '@/lib/seo';
 import { CartProvider } from '@/components/cart/cart-provider';
 import { SiteHeader } from '@/components/storefront/site-header';
@@ -44,6 +45,7 @@ export default async function TenantLayout({ children, params }: LayoutProps) {
   const promotion = await getActivePromotion(nursery.id);
   const theme = getNurseryTheme(nursery);
   const showSocial = await isModuleEnabled(nursery.id, 'social');
+  const navPages = await getNavPages(nursery.id);
 
   return (
     <CartProvider tenant={params.tenant}>
@@ -57,7 +59,12 @@ export default async function TenantLayout({ children, params }: LayoutProps) {
           } as React.CSSProperties
         }
       >
-        <SiteHeader nursery={nursery} basePath="" sticky={theme.stickyHeader} />
+        <SiteHeader
+          nursery={nursery}
+          basePath=""
+          sticky={theme.stickyHeader}
+          navPages={navPages}
+        />
         <main className="flex-1">{children}</main>
         <SiteFooter nursery={nursery} showSocial={showSocial} />
         {promotion?.popupText && (

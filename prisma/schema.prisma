@@ -52,6 +52,7 @@ model Nursery {
   coupons         Coupon[]
   customerLoyalty CustomerLoyalty[]
   modules         NurseryModule[]
+  staticPages     StaticPage[]
   nurseryProducts NurseryProduct[]
   orders          Order[]
   printOrders     PrintOrder[]
@@ -73,6 +74,25 @@ model NurseryModule {
 
   @@unique([nurseryId, moduleKey])
   @@map("nursery_modules")
+}
+
+model StaticPage {
+  id                 String   @id @default(uuid())
+  nurseryId          String   @map("nursery_id")
+  slug               String
+  title              String
+  contentHtml        String   @default("") @map("content_html")
+  isPublished        Boolean  @default(false) @map("is_published")
+  showInNav          Boolean  @default(true) @map("show_in_nav")
+  sortOrder          Int      @default(0) @map("sort_order")
+  seoMetaTitle       String?  @map("seo_meta_title")
+  seoMetaDescription String?  @map("seo_meta_description")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  nursery            Nursery  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@unique([nurseryId, slug])
+  @@map("static_pages")
 }
 
 model Plant {
