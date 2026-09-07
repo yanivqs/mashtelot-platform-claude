@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { CreateNurseryForm } from './create-form';
@@ -47,6 +48,12 @@ export default async function AdminNurseriesPage() {
             >
               {n.isActive ? 'פעילה' : 'מושבתת'}
             </span>
+            <Link
+              href={`/admin/nurseries/${n.id}`}
+              className="text-xs font-medium text-brand-700 hover:underline"
+            >
+              עריכה
+            </Link>
             <form action={toggleNurseryActive}>
               <input type="hidden" name="id" value={n.id} />
               <button className="text-xs text-gray-500 hover:text-gray-800">

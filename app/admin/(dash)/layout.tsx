@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { LayoutDashboard, Package, PlusSquare, ShoppingBag, Megaphone, Printer, Sprout, Store, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, PlusSquare, ShoppingBag, Megaphone, Printer, Sprout, Store, Settings, LogOut } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { logout } from './actions';
 
@@ -16,6 +16,7 @@ const ownerNav = [
   { href: '/admin/orders', label: 'הזמנות', icon: ShoppingBag },
   { href: '/admin/marketing', label: 'שיווק', icon: Megaphone },
   { href: '/admin/print-shop', label: 'בית דפוס', icon: Printer },
+  { href: '/admin/settings', label: 'הגדרות המשתלה', icon: Settings },
 ];
 
 const adminNav = [

@@ -2,14 +2,27 @@ import Link from 'next/link';
 import type { Nursery } from '@prisma/client';
 import { CartBadge } from './cart-badge';
 
-export function SiteHeader({ nursery, basePath }: { nursery: Nursery; basePath: string }) {
+export function SiteHeader({
+  nursery,
+  basePath,
+  sticky = true,
+}: {
+  nursery: Nursery;
+  basePath: string;
+  sticky?: boolean;
+}) {
   const nav = [
     { href: basePath || '/', label: 'בית' },
     { href: `${basePath}/catalog`, label: 'קטלוג' },
+    { href: `${basePath}/contact`, label: 'צור קשר' },
   ];
 
   return (
-    <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/90 backdrop-blur">
+    <header
+      className={`${
+        sticky ? 'sticky top-0' : ''
+      } z-30 border-b border-gray-100 bg-white/90 backdrop-blur`}
+    >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
         <Link href={basePath || '/'} className="flex items-center gap-3">
           {nursery.logoUrl ? (

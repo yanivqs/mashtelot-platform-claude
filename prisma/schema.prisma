@@ -36,6 +36,17 @@ model Nursery {
   whatsappNumber  String?           @map("whatsapp_number")
   ownerEmail      String            @map("owner_email")
   isActive        Boolean           @default(true) @map("is_active")
+  aboutText       String?           @map("about_text")
+  addressLine     String?           @map("address_line")
+  city            String?
+  mapLink         String?           @map("map_link")
+  contactEmail    String?           @map("contact_email")
+  facebookUrl     String?           @map("facebook_url")
+  instagramUrl    String?           @map("instagram_url")
+  tiktokUrl       String?           @map("tiktok_url")
+  youtubeUrl      String?           @map("youtube_url")
+  openingHours    Json?             @map("opening_hours")
+  themeConfig     Json?             @map("theme_config")
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
   coupons         Coupon[]

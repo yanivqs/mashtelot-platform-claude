@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getNurseryByTenant } from '@/lib/tenant';
 import { getActivePromotion } from '@/lib/marketing';
+import { getNurseryTheme } from '@/lib/theme';
 import { tenantOrigin } from '@/lib/seo';
 import { CartProvider } from '@/components/cart/cart-provider';
 import { SiteHeader } from '@/components/storefront/site-header';
@@ -40,16 +41,21 @@ export default async function TenantLayout({ children, params }: LayoutProps) {
   if (!nursery) notFound();
 
   const promotion = await getActivePromotion(nursery.id);
-  const brand = nursery.primaryColor || '#16a34a';
+  const theme = getNurseryTheme(nursery);
 
   return (
     <CartProvider tenant={params.tenant}>
       <div
         dir="rtl"
         className="flex min-h-screen flex-col bg-white"
-        style={{ '--brand': brand } as React.CSSProperties}
+        style={
+          {
+            '--brand': theme.colors.primary,
+            '--accent': theme.colors.accent,
+          } as React.CSSProperties
+        }
       >
-        <SiteHeader nursery={nursery} basePath="" />
+        <SiteHeader nursery={nursery} basePath="" sticky={theme.stickyHeader} />
         <main className="flex-1">{children}</main>
         <SiteFooter nursery={nursery} />
         {promotion?.popupText && (
