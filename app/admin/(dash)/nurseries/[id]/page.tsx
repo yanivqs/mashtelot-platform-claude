@@ -3,8 +3,10 @@ import { notFound } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getNurseryModuleMap } from '@/lib/module-access';
 import { NurseryProfileForm } from '../profile-form';
 import { nurseryToFormValues } from '../form-values';
+import { NurseryModulesForm, type ModuleStateVM } from '../modules-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +15,10 @@ export default async function EditNurseryPage({ params }: { params: { id: string
 
   const nursery = await prisma.nursery.findUnique({ where: { id: params.id } });
   if (!nursery) notFound();
+
+  const moduleMap = await getNurseryModuleMap(nursery.id);
+  const moduleStates: Record<string, ModuleStateVM> = {};
+  for (const [key, state] of moduleMap) moduleStates[key] = state;
 
   return (
     <div className="max-w-3xl">
@@ -29,7 +35,13 @@ export default async function EditNurseryPage({ params }: { params: { id: string
         {nursery.subdomain}
       </p>
 
+      <div className="mb-8 rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+        <h2 className="mb-4 font-bold">מודולים משויכים</h2>
+        <NurseryModulesForm nurseryId={nursery.id} states={moduleStates} />
+      </div>
+
       <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+        <h2 className="mb-4 font-bold">פרטי משתלה ועיצוב</h2>
         <NurseryProfileForm nursery={nurseryToFormValues(nursery)} scope="super" />
       </div>
     </div>

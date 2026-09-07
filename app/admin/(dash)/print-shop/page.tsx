@@ -1,4 +1,5 @@
 import { requireUser } from '@/lib/auth';
+import { requireModule } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
 import { formatPrice } from '@/lib/utils';
 import { PrintOrderForm, type PrintProductVM } from './order-form';
@@ -15,6 +16,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default async function PrintShopPage() {
   const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
+  await requireModule('print_shop');
   const nurseryId =
     user.nurseryId ??
     (user.role === 'SUPER_ADMIN'

@@ -1,4 +1,5 @@
 import { requireUser } from '@/lib/auth';
+import { requireModule } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
 import { CouponForm, PromotionForm } from './forms';
 import { toggleCoupon, deleteCoupon, togglePromotion, deletePromotion } from './actions';
@@ -7,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function MarketingPage() {
   const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
+  await requireModule('promotions');
   const nurseryId =
     user.nurseryId ??
     (user.role === 'SUPER_ADMIN'

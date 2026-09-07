@@ -95,12 +95,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function NurseryProfileForm({
   nursery,
   scope,
+  canEditDesign = true,
 }: {
   nursery: NurseryFormValues;
   scope: 'owner' | 'super';
+  canEditDesign?: boolean;
 }) {
   const [state, formAction] = useFormState(updateNursery, initial);
   const isSuper = scope === 'super';
+  const showDesign = isSuper || canEditDesign;
 
   return (
     <form action={formAction} className="grid gap-4 sm:grid-cols-2">
@@ -165,6 +168,21 @@ export function NurseryProfileForm({
         <Text name="youtubeUrl" label="יוטיוב" defaultValue={nursery.youtubeUrl} dir="ltr" />
       </Section>
 
+      {!showDesign && (
+        <>
+          <input type="hidden" name="heroLayout" value={nursery.hero.layout} />
+          <input type="hidden" name="heroHeadline" value={nursery.hero.headline ?? ''} />
+          <input type="hidden" name="heroSubheadline" value={nursery.hero.subheadline ?? ''} />
+          <input type="hidden" name="heroImageUrl" value={nursery.hero.imageUrl ?? ''} />
+          <input type="hidden" name="heroCtaText" value={nursery.hero.ctaText ?? ''} />
+          <input type="hidden" name="heroCtaHref" value={nursery.hero.ctaHref ?? ''} />
+          <input type="hidden" name="primaryColor" value={nursery.primaryColor ?? ''} />
+          <input type="hidden" name="accentColor" value={nursery.accentColor ?? ''} />
+          {nursery.stickyHeader && <input type="hidden" name="stickyHeader" value="on" />}
+        </>
+      )}
+
+      {showDesign && (
       <Section title="עיצוב ו-Hero">
         <label className="text-sm">
           <span className="mb-1 block font-medium text-gray-700">פריסת ה-Hero</span>
@@ -206,6 +224,7 @@ export function NurseryProfileForm({
         <Text name="primaryColor" label="צבע ראשי (hex)" defaultValue={nursery.primaryColor} dir="ltr" placeholder="#16a34a" />
         <Text name="accentColor" label="צבע משני (hex)" defaultValue={nursery.accentColor} dir="ltr" placeholder="#16a34a" />
       </Section>
+      )}
 
       <div className="flex items-center gap-3 sm:col-span-2">
         <SaveButton />

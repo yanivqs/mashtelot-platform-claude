@@ -1,4 +1,5 @@
 import { requireUser } from '@/lib/auth';
+import { requireModule } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
 import { formatPrice } from '@/lib/utils';
 import { OrderStatusSelect } from './order-status';
@@ -7,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminOrdersPage() {
   const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
+  await requireModule('orders');
   const where = user.role === 'SUPER_ADMIN' ? {} : { nurseryId: user.nurseryId ?? '__none__' };
 
   const orders = await prisma.order.findMany({

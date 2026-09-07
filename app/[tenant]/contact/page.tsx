@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { Phone, Mail, MapPin, Clock } from 'lucide-react';
 import { getNurseryByTenant } from '@/lib/tenant';
 import { normalizeOpeningHours } from '@/lib/theme';
+import { isModuleEnabled } from '@/lib/module-access';
 import { SocialLinks } from '@/components/storefront/social-links';
 
 export const revalidate = 300;
@@ -33,6 +34,7 @@ export default async function ContactPage({ params }: { params: { tenant: string
   const hours = normalizeOpeningHours(nursery.openingHours);
   const address = [nursery.addressLine, nursery.city].filter(Boolean).join(', ');
   const embed = nursery.mapLink ? mapEmbedSrc(nursery.mapLink) : null;
+  const showSocial = await isModuleEnabled(nursery.id, 'social');
 
   return (
     <div dir="rtl" className="mx-auto max-w-4xl px-6 py-12">
@@ -78,7 +80,7 @@ export default async function ContactPage({ params }: { params: { tenant: string
               </span>
             </div>
           )}
-          <SocialLinks nursery={nursery} className="pt-1" />
+          {showSocial && <SocialLinks nursery={nursery} className="pt-1" />}
         </div>
 
         {hours.length > 0 && (

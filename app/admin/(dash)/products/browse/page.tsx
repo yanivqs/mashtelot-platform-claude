@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
+import { requireAnyModule } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
 import { addCatalogItem } from './actions';
 
@@ -14,6 +15,7 @@ interface Props {
 
 export default async function BrowseCatalogPage({ searchParams }: Props) {
   const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
+  await requireAnyModule(['plant_catalog', 'supplies']);
   const nurseryId =
     user.nurseryId ??
     (user.role === 'SUPER_ADMIN'

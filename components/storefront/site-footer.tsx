@@ -4,7 +4,13 @@ import { Phone, Mail, MapPin, Clock } from 'lucide-react';
 import { normalizeOpeningHours } from '@/lib/theme';
 import { SocialLinks } from './social-links';
 
-export function SiteFooter({ nursery }: { nursery: Nursery }) {
+export function SiteFooter({
+  nursery,
+  showSocial = false,
+}: {
+  nursery: Nursery;
+  showSocial?: boolean;
+}) {
   const hours = normalizeOpeningHours(nursery.openingHours);
   const address = [nursery.addressLine, nursery.city].filter(Boolean).join(', ');
 
@@ -18,7 +24,7 @@ export function SiteFooter({ nursery }: { nursery: Nursery }) {
               {nursery.aboutText}
             </p>
           )}
-          <SocialLinks nursery={nursery} className="mt-4" />
+          {showSocial && <SocialLinks nursery={nursery} className="mt-4" />}
         </div>
 
         <div className="space-y-2 text-sm text-gray-600">

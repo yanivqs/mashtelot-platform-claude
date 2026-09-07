@@ -25,6 +25,24 @@ async function main() {
   });
   console.log(`משתלה: ${nursery.name} (${nursery.id})`);
 
+  // הפעלת מודולים למשתלת ההדגמה (משתלות אמיתיות מתחילות עם הכל כבוי)
+  const demoModules = [
+    'plant_catalog',
+    'supplies',
+    'orders',
+    'promotions',
+    'print_shop',
+    'social',
+  ];
+  for (const moduleKey of demoModules) {
+    await prisma.nurseryModule.upsert({
+      where: { nurseryId_moduleKey: { nurseryId: nursery.id, moduleKey } },
+      update: { isEnabled: true },
+      create: { nurseryId: nursery.id, moduleKey, isEnabled: true },
+    });
+  }
+  console.log(`✅ הופעלו ${demoModules.length} מודולים.`);
+
   const plants = await prisma.plant.findMany({
     where: { imageUrl: { not: null } },
     take: SAMPLE_SIZE,

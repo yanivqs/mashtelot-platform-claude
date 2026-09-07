@@ -51,6 +51,7 @@ model Nursery {
   updatedAt       DateTime          @updatedAt @map("updated_at")
   coupons         Coupon[]
   customerLoyalty CustomerLoyalty[]
+  modules         NurseryModule[]
   nurseryProducts NurseryProduct[]
   orders          Order[]
   printOrders     PrintOrder[]
@@ -58,6 +59,20 @@ model Nursery {
   users           User[]
 
   @@map("nurseries")
+}
+
+model NurseryModule {
+  id        String   @id @default(uuid())
+  nurseryId String   @map("nursery_id")
+  moduleKey String   @map("module_key")
+  isEnabled Boolean  @default(false) @map("is_enabled")
+  config    Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  nursery   Nursery  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@unique([nurseryId, moduleKey])
+  @@map("nursery_modules")
 }
 
 model Plant {

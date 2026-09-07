@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
+import { requireAnyModule } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
 import { resolveProductContent } from '@/lib/seo';
 import { ProductRow, type RowProduct } from './product-row';
@@ -8,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminProductsPage() {
   const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
+  await requireAnyModule(['plant_catalog', 'supplies']);
 
   const nurseryId =
     user.role === 'SUPER_ADMIN'
