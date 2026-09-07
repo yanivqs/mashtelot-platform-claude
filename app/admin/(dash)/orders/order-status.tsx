@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { updateOrderStatus } from './actions';
 
 const OPTIONS: Array<[string, string]> = [
+  ['QUOTE_REQUESTED', 'בקשת הצעת מחיר'],
   ['PENDING', 'ממתין'],
   ['PAID', 'שולם'],
   ['PROCESSING', 'בטיפול'],

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, ShoppingCart } from 'lucide-react';
+import Link from 'next/link';
+import { Check, ShoppingCart, FileText } from 'lucide-react';
 import { useCart, type CartItem } from './cart-provider';
 import { cn } from '@/lib/utils';
 
@@ -13,7 +14,7 @@ interface Props {
 }
 
 export function AddToCartButton({ product, disabled, className, withQuantity }: Props) {
-  const { add } = useCart();
+  const { add, salesMode } = useCart();
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
 
@@ -22,6 +23,24 @@ export function AddToCartButton({ product, disabled, className, withQuantity }: 
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   }
+
+  if (salesMode === 'DISABLED') {
+    return (
+      <Link
+        href="/contact"
+        className={cn(
+          'inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50',
+          className,
+        )}
+      >
+        צרו קשר לפרטים ורכישה
+      </Link>
+    );
+  }
+
+  const isQuote = salesMode === 'QUOTE';
+  const idleLabel = isQuote ? 'הוסף לבקשת הצעה' : 'הוסף לעגלה';
+  const doneLabel = isQuote ? 'נוסף לבקשה' : 'נוסף לעגלה';
 
   return (
     <div className={cn('flex items-center gap-3', className)}>
@@ -58,13 +77,14 @@ export function AddToCartButton({ product, disabled, className, withQuantity }: 
       >
         {added ? (
           <>
-            <Check className="h-4 w-4" /> נוסף לעגלה
+            <Check className="h-4 w-4" /> {doneLabel}
           </>
         ) : disabled ? (
           'אזל מהמלאי'
         ) : (
           <>
-            <ShoppingCart className="h-4 w-4" /> הוסף לעגלה
+            {isQuote ? <FileText className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />}
+            {idleLabel}
           </>
         )}
       </button>

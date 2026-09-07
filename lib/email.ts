@@ -115,34 +115,49 @@ function shell(title: string, body: string): string {
   </div></body></html>`;
 }
 
-/** אישור הזמנה ללקוח. */
-export function orderConfirmationEmail(o: OrderEmailData): { subject: string; html: string } {
-  const subject = `אישור הזמנה #${o.id.slice(0, 8)} · ${o.nurseryName}`;
-  const html = shell('ההזמנה שלך התקבלה!', `
-    <p style="color:#374151;line-height:1.6">
-      שלום ${escapeHtml(o.customerName)},<br>
-      תודה שהזמנת מ<strong>${escapeHtml(o.nurseryName)}</strong>. המשתלה תיצור איתך קשר
-      בטלפון ${escapeHtml(o.customerPhone)} לתיאום תשלום ואיסוף/משלוח.
-    </p>
+/** אישור הזמנה / קבלת בקשת הצעת מחיר ללקוח. */
+export function orderConfirmationEmail(
+  o: OrderEmailData,
+  isQuote = false,
+): { subject: string; html: string } {
+  const subject = isQuote
+    ? `קיבלנו את בקשתך להצעת מחיר · ${o.nurseryName}`
+    : `אישור הזמנה #${o.id.slice(0, 8)} · ${o.nurseryName}`;
+  const intro = isQuote
+    ? `תודה שפנית ל<strong>${escapeHtml(o.nurseryName)}</strong>. קיבלנו את בקשתך להצעת מחיר
+       ונחזור אליך בטלפון ${escapeHtml(o.customerPhone)} עם הצעה מפורטת. אין חיוב בשלב זה.`
+    : `תודה שהזמנת מ<strong>${escapeHtml(o.nurseryName)}</strong>. המשתלה תיצור איתך קשר
+       בטלפון ${escapeHtml(o.customerPhone)} לתיאום תשלום ואיסוף/משלוח.`;
+  const totalLabel = isQuote ? 'הערכת מחיר' : 'סה"כ';
+
+  const html = shell(isQuote ? 'בקשתך להצעת מחיר התקבלה' : 'ההזמנה שלך התקבלה!', `
+    <p style="color:#374151;line-height:1.6">שלום ${escapeHtml(o.customerName)},<br>${intro}</p>
     <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
       ${itemRows(o.items)}
       <tr><td colspan="2" style="border-top:1px solid #e5e7eb"></td></tr>
       <tr>
-        <td style="padding:8px 0;font-weight:bold;color:#111827">סה"כ</td>
+        <td style="padding:8px 0;font-weight:bold;color:#111827">${totalLabel}</td>
         <td style="padding:8px 0;text-align:left;font-weight:bold;color:#111827">${formatPrice(o.totalAmount)}</td>
       </tr>
     </table>
     ${o.shippingAddress ? `<p style="color:#6b7280;font-size:13px">כתובת למשלוח: ${escapeHtml(o.shippingAddress)}</p>` : ''}
-    <p style="color:#9ca3af;font-size:12px">מספר הזמנה מלא: ${escapeHtml(o.id)}</p>
+    <p style="color:#9ca3af;font-size:12px">מספר פנייה: ${escapeHtml(o.id)}</p>
     ${o.storeUrl ? `<a href="${escapeHtml(o.storeUrl)}" style="display:inline-block;margin-top:8px;background:#16a34a;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:14px">חזרה לחנות</a>` : ''}
   `);
   return { subject, html };
 }
 
-/** התראה לבעל המשתלה על הזמנה חדשה. */
-export function newOrderNotificationEmail(o: OrderEmailData): { subject: string; html: string } {
-  const subject = `הזמנה חדשה #${o.id.slice(0, 8)} · ${formatPrice(o.totalAmount)}`;
-  const html = shell('התקבלה הזמנה חדשה', `
+/** התראה לבעל המשתלה על הזמנה / בקשת הצעת מחיר חדשה. */
+export function newOrderNotificationEmail(
+  o: OrderEmailData,
+  isQuote = false,
+): { subject: string; html: string } {
+  const subject = isQuote
+    ? `בקשת הצעת מחיר חדשה #${o.id.slice(0, 8)} · ${formatPrice(o.totalAmount)}`
+    : `הזמנה חדשה #${o.id.slice(0, 8)} · ${formatPrice(o.totalAmount)}`;
+  const totalLabel = isQuote ? 'הערכת מחיר' : 'סה"כ';
+
+  const html = shell(isQuote ? 'התקבלה בקשת הצעת מחיר' : 'התקבלה הזמנה חדשה', `
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:14px;color:#374151">
       <tr><td style="padding:4px 0;width:90px;color:#6b7280">לקוח</td><td>${escapeHtml(o.customerName)}</td></tr>
       <tr><td style="padding:4px 0;color:#6b7280">טלפון</td><td>${escapeHtml(o.customerPhone)}</td></tr>
@@ -153,11 +168,11 @@ export function newOrderNotificationEmail(o: OrderEmailData): { subject: string;
       ${itemRows(o.items)}
       <tr><td colspan="2" style="border-top:1px solid #e5e7eb"></td></tr>
       <tr>
-        <td style="padding:8px 0;font-weight:bold;color:#111827">סה"כ</td>
+        <td style="padding:8px 0;font-weight:bold;color:#111827">${totalLabel}</td>
         <td style="padding:8px 0;text-align:left;font-weight:bold;color:#111827">${formatPrice(o.totalAmount)}</td>
       </tr>
     </table>
-    <p style="color:#9ca3af;font-size:12px">ההזמנה ממתינה לטיפול בפורטל הניהול · /admin/orders</p>
+    <p style="color:#9ca3af;font-size:12px">ממתין לטיפול בפורטל הניהול · /admin/orders</p>
   `);
   return { subject, html };
 }

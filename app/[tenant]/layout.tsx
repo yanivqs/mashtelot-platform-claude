@@ -4,6 +4,7 @@ import { getNurseryByTenant } from '@/lib/tenant';
 import { getActivePromotion } from '@/lib/marketing';
 import { getNurseryTheme } from '@/lib/theme';
 import { isModuleEnabled } from '@/lib/module-access';
+import { getSalesMode } from '@/lib/sales';
 import { getNavPages } from '@/lib/pages';
 import { tenantOrigin } from '@/lib/seo';
 import { CartProvider } from '@/components/cart/cart-provider';
@@ -46,9 +47,10 @@ export default async function TenantLayout({ children, params }: LayoutProps) {
   const theme = getNurseryTheme(nursery);
   const showSocial = await isModuleEnabled(nursery.id, 'social');
   const navPages = await getNavPages(nursery.id);
+  const salesMode = await getSalesMode(nursery.id);
 
   return (
-    <CartProvider tenant={params.tenant}>
+    <CartProvider tenant={params.tenant} salesMode={salesMode}>
       <div
         dir="rtl"
         className="flex min-h-screen flex-col bg-white"

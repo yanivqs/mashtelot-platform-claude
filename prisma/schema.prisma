@@ -311,6 +311,7 @@ enum SupplyCategory {
 
 enum OrderStatus {
   PENDING
+  QUOTE_REQUESTED
   PAID
   PROCESSING
   SHIPPED

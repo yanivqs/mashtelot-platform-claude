@@ -33,7 +33,14 @@ export default async function AdminOrdersPage() {
             <div key={o.id} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="font-medium text-gray-900">{o.customerName}</p>
+                  <p className="flex items-center gap-2 font-medium text-gray-900">
+                    {o.customerName}
+                    {o.status === 'QUOTE_REQUESTED' && (
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                        בקשת הצעת מחיר
+                      </span>
+                    )}
+                  </p>
                   <p className="text-sm text-gray-500">
                     {o.customerPhone} · {o.customerEmail}
                   </p>

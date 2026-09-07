@@ -18,10 +18,13 @@ export interface CartItem {
   quantity: number;
 }
 
+export type SalesMode = 'DISABLED' | 'ONLINE' | 'QUOTE';
+
 interface CartContextValue {
   items: CartItem[];
   count: number;
   subtotal: number;
+  salesMode: SalesMode;
   add: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void;
   setQuantity: (productId: string, quantity: number) => void;
   remove: (productId: string) => void;
@@ -32,9 +35,11 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({
   tenant,
+  salesMode = 'ONLINE',
   children,
 }: {
   tenant: string;
+  salesMode?: SalesMode;
   children: ReactNode;
 }) {
   const storageKey = `cart:${tenant}`;
@@ -92,12 +97,13 @@ export function CartProvider({
       items,
       count: items.reduce((sum, i) => sum + i.quantity, 0),
       subtotal: items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+      salesMode,
       add,
       setQuantity,
       remove,
       clear,
     };
-  }, [items]);
+  }, [items, salesMode]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { getNurseryByTenant } from '@/lib/tenant';
+import { getSalesMode } from '@/lib/sales';
 import { resolveProductContent, tenantUrl } from '@/lib/seo';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
 import {
@@ -49,6 +50,12 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
   const nursery = await getNurseryByTenant(input.tenant);
   if (!nursery) return { error: 'המשתלה לא נמצאה' };
 
+  const salesMode = await getSalesMode(nursery.id);
+  if (salesMode === 'DISABLED') {
+    return { error: 'המשתלה אינה מקבלת הזמנות אונליין כרגע' };
+  }
+  const isQuote = salesMode === 'QUOTE';
+
   try {
     const orderId = await prisma.$transaction(async (tx) => {
       const products = await tx.nurseryProduct.findMany({
@@ -60,11 +67,11 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
       const lineItems = cart.map((c) => {
         const product = byId.get(c.productId);
         if (!product) throw new Error('אחד המוצרים בעגלה אינו זמין יותר');
-        if (product.stockQuantity < c.quantity) {
-          const { title } = resolveProductContent(product);
+        const { title } = resolveProductContent(product);
+        // בבקשת הצעת מחיר אין התחייבות למלאי — בודקים רק הזמנה אונליין
+        if (!isQuote && product.stockQuantity < c.quantity) {
           throw new Error(`אין מספיק מלאי עבור "${title}"`);
         }
-        const { title } = resolveProductContent(product);
         return {
           nurseryProductId: product.id,
           productTitle: title,
@@ -75,7 +82,7 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
 
       let total = lineItems.reduce((sum, li) => sum + Number(li.unitPrice) * li.quantity, 0);
 
-      if (input.couponCode?.trim()) {
+      if (!isQuote && input.couponCode?.trim()) {
         const coupon = await tx.coupon.findFirst({
           where: { nurseryId: nursery.id, code: input.couponCode.trim(), isActive: true },
         });
@@ -83,13 +90,15 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
         total = total * (1 - Number(coupon.discountPct) / 100);
       }
 
-      // ניכוי מלאי עם הגנה מפני מרוץ תנאים
-      for (const li of lineItems) {
-        const res = await tx.nurseryProduct.updateMany({
-          where: { id: li.nurseryProductId, stockQuantity: { gte: li.quantity } },
-          data: { stockQuantity: { decrement: li.quantity } },
-        });
-        if (res.count !== 1) throw new Error('המלאי השתנה בזמן ההזמנה, נסו שוב');
+      // ניכוי מלאי (רק בהזמנה אונליין) — עם הגנה מפני מרוץ תנאים
+      if (!isQuote) {
+        for (const li of lineItems) {
+          const res = await tx.nurseryProduct.updateMany({
+            where: { id: li.nurseryProductId, stockQuantity: { gte: li.quantity } },
+            data: { stockQuantity: { decrement: li.quantity } },
+          });
+          if (res.count !== 1) throw new Error('המלאי השתנה בזמן ההזמנה, נסו שוב');
+        }
       }
 
       const order = await tx.order.create({
@@ -100,7 +109,7 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
           customerPhone: phone,
           shippingAddress: input.shippingAddress?.trim() || null,
           totalAmount: total.toFixed(2),
-          status: 'PENDING',
+          status: isQuote ? 'QUOTE_REQUESTED' : 'PENDING',
           items: { create: lineItems },
         },
       });
@@ -108,7 +117,7 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
     });
 
     // מיילים טרנזקציוניים — לא חוסמים ולא מפילים את ההזמנה אם נכשלים
-    await sendOrderEmails(orderId, nursery);
+    await sendOrderEmails(orderId, nursery, isQuote);
 
     return { ok: true, orderId };
   } catch (e) {
@@ -119,6 +128,7 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
 async function sendOrderEmails(
   orderId: string,
   nursery: Awaited<ReturnType<typeof getNurseryByTenant>>,
+  isQuote: boolean,
 ): Promise<void> {
   if (!nursery) return;
   try {
@@ -145,8 +155,8 @@ async function sendOrderEmails(
       storeUrl: tenantUrl(nursery, '/'),
     };
 
-    const customer = orderConfirmationEmail(data);
-    const owner = newOrderNotificationEmail(data);
+    const customer = orderConfirmationEmail(data, isQuote);
+    const owner = newOrderNotificationEmail(data, isQuote);
 
     await Promise.allSettled([
       sendEmail({

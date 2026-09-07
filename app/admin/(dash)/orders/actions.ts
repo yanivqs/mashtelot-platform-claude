@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
 
 const VALID: OrderStatus[] = [
+  'QUOTE_REQUESTED',
   'PENDING',
   'PAID',
   'PROCESSING',
