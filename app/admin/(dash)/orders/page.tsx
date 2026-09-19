@@ -2,6 +2,7 @@ import { requireUser } from '@/lib/auth';
 import { requireModule } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
 import { formatPrice } from '@/lib/utils';
+import { PAYMENT_METHOD_LABELS } from '@/lib/payment-methods';
 import { OrderStatusSelect } from './order-status';
 
 export const dynamic = 'force-dynamic';
@@ -46,6 +47,12 @@ export default async function AdminOrdersPage() {
                   </p>
                   {o.shippingAddress && (
                     <p className="text-sm text-gray-500">משלוח: {o.shippingAddress}</p>
+                  )}
+                  {o.paymentMethod && (
+                    <p className="text-sm text-gray-500">
+                      תשלום: {PAYMENT_METHOD_LABELS[o.paymentMethod]}
+                      {o.paymentReference ? ` · אסמכתא: ${o.paymentReference}` : ''}
+                    </p>
                   )}
                   <p className="mt-1 text-xs text-gray-400">
                     {o.createdAt.toLocaleString('he-IL')}

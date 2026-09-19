@@ -37,9 +37,21 @@ export default async function MarketingPage() {
         {coupons.length > 0 && (
           <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
             {coupons.map((c) => (
-              <div key={c.id} className="flex items-center gap-4 border-b border-gray-50 px-4 py-3 last:border-0">
+              <div key={c.id} className="flex flex-wrap items-center gap-4 border-b border-gray-50 px-4 py-3 last:border-0">
                 <span className="font-mono text-sm font-medium text-gray-900">{c.code}</span>
                 <span className="text-sm text-gray-500">{Number(c.discountPct)}% הנחה</span>
+                {(c.startsAt || c.endsAt) && (
+                  <span className="text-xs text-gray-400">
+                    {c.startsAt ? c.startsAt.toLocaleDateString('he-IL') : '—'}
+                    {' עד '}
+                    {c.endsAt ? c.endsAt.toLocaleDateString('he-IL') : '—'}
+                  </span>
+                )}
+                {c.usageLimit !== null && (
+                  <span className="text-xs text-gray-400">
+                    שימושים: {c.usageCount}/{c.usageLimit}
+                  </span>
+                )}
                 <span
                   className={`ms-auto rounded-full px-2 py-0.5 text-xs font-medium ${
                     c.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'

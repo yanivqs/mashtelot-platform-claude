@@ -31,6 +31,18 @@ export function CouponForm() {
         <span className="mb-1 block font-medium text-gray-700">אחוז הנחה</span>
         <input name="discountPct" type="number" min="1" max="100" required className={`${field} w-28`} />
       </label>
+      <label className="text-sm">
+        <span className="mb-1 block font-medium text-gray-700">בתוקף מ-</span>
+        <input name="startsAt" type="date" className={`${field} w-40`} />
+      </label>
+      <label className="text-sm">
+        <span className="mb-1 block font-medium text-gray-700">בתוקף עד</span>
+        <input name="endsAt" type="date" className={`${field} w-40`} />
+      </label>
+      <label className="text-sm">
+        <span className="mb-1 block font-medium text-gray-700">מגבלת שימושים</span>
+        <input name="usageLimit" type="number" min="1" placeholder="ללא הגבלה" className={`${field} w-32`} />
+      </label>
       <Submit label="הוספת קופון" />
       {state.ok && <span className="text-sm text-green-700">נוסף ✓</span>}
       {state.error && <span className="text-sm text-red-600">{state.error}</span>}

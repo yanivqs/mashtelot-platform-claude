@@ -48,6 +48,28 @@ export function resolveProductContent(product: ProductWithRefs) {
   return { title, description, image, metaTitle, metaDescription };
 }
 
+/** Build a Schema.org/GardenStore (LocalBusiness) JSON-LD object for the storefront. */
+export function localBusinessJsonLd(nursery: Nursery) {
+  const hasAddress = Boolean(nursery.addressLine || nursery.city);
+  return {
+    '@context': 'https://schema.org/',
+    '@type': 'GardenStore',
+    name: nursery.name,
+    url: tenantOrigin(nursery),
+    image: nursery.logoUrl || undefined,
+    telephone: nursery.phoneNumber || undefined,
+    email: nursery.contactEmail || nursery.ownerEmail || undefined,
+    address: hasAddress
+      ? {
+          '@type': 'PostalAddress',
+          streetAddress: nursery.addressLine || undefined,
+          addressLocality: nursery.city || undefined,
+          addressCountry: 'IL',
+        }
+      : undefined,
+  };
+}
+
 /** Build a Schema.org/Product JSON-LD object for a product page. */
 export function productJsonLd(params: {
   nursery: Nursery;

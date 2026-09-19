@@ -38,16 +38,37 @@ export async function createCoupon(
   const nurseryId = await resolveNurseryId();
   const code = String(formData.get('code') || '').trim().toUpperCase();
   const pct = Number(String(formData.get('discountPct') || ''));
+  const startsAtRaw = String(formData.get('startsAt') || '').trim();
+  const endsAtRaw = String(formData.get('endsAt') || '').trim();
+  const usageLimitRaw = String(formData.get('usageLimit') || '').trim();
 
   if (!code) return { error: 'יש להזין קוד קופון' };
   if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
     return { error: 'אחוז הנחה חייב להיות בין 1 ל-100' };
   }
 
+  const startsAt = startsAtRaw ? new Date(startsAtRaw) : null;
+  const endsAt = endsAtRaw ? new Date(endsAtRaw) : null;
+  if (startsAt && Number.isNaN(startsAt.getTime())) return { error: 'תאריך תחילת תוקף לא תקין' };
+  if (endsAt && Number.isNaN(endsAt.getTime())) return { error: 'תאריך סיום תוקף לא תקין' };
+  if (startsAt && endsAt && startsAt > endsAt) {
+    return { error: 'תאריך תחילת התוקף חייב להיות לפני תאריך הסיום' };
+  }
+
+  let usageLimit: number | null = null;
+  if (usageLimitRaw) {
+    usageLimit = Number(usageLimitRaw);
+    if (!Number.isInteger(usageLimit) || usageLimit <= 0) {
+      return { error: 'מגבלת שימושים חייבת להיות מספר שלם חיובי' };
+    }
+  }
+
   const exists = await prisma.coupon.findFirst({ where: { nurseryId, code } });
   if (exists) return { error: 'קוד קופון זה כבר קיים' };
 
-  await prisma.coupon.create({ data: { nurseryId, code, discountPct: pct.toFixed(2) } });
+  await prisma.coupon.create({
+    data: { nurseryId, code, discountPct: pct.toFixed(2), startsAt, endsAt, usageLimit },
+  });
   revalidatePath('/admin/marketing');
   return { ok: true };
 }

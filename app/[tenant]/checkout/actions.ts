@@ -1,10 +1,13 @@
 'use server';
 
+import type { PaymentMethod } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getNurseryByTenant } from '@/lib/tenant';
 import { getSalesMode } from '@/lib/sales';
 import { resolveProductContent, tenantUrl } from '@/lib/seo';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
+import { getEnabledPaymentMethods } from '@/lib/payment-access';
+import type { EnabledPaymentMethod } from '@/lib/payment-methods';
 import {
   sendEmail,
   orderConfirmationEmail,
@@ -18,7 +21,16 @@ export interface CheckoutInput {
   customerPhone: string;
   shippingAddress?: string;
   couponCode?: string;
+  paymentMethod?: PaymentMethod;
+  paymentReference?: string;
   items: Array<{ productId: string; quantity: number }>;
+}
+
+/** אמצעי התשלום הידניים הפעילים אצל המשתלה, לבניית טופס ה-checkout בצד הלקוח. */
+export async function getCheckoutPaymentMethods(tenant: string): Promise<EnabledPaymentMethod[]> {
+  const nursery = await getNurseryByTenant(tenant);
+  if (!nursery) return [];
+  return getEnabledPaymentMethods(nursery.id);
 }
 
 export interface CheckoutResult {
@@ -56,6 +68,16 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
   }
   const isQuote = salesMode === 'QUOTE';
 
+  // אימות אמצעי תשלום מול האפשרויות הפעילות אצל המשתלה (לא סומכים על הקלט מהלקוח)
+  let paymentMethod: PaymentMethod | null = null;
+  if (!isQuote && input.paymentMethod) {
+    const allowed = await prisma.nurseryPaymentMethod.findFirst({
+      where: { nurseryId: nursery.id, method: input.paymentMethod, isEnabled: true },
+    });
+    if (allowed) paymentMethod = input.paymentMethod;
+  }
+  const paymentReference = !isQuote ? input.paymentReference?.trim() || null : null;
+
   try {
     const orderId = await prisma.$transaction(async (tx) => {
       const products = await tx.nurseryProduct.findMany({
@@ -87,6 +109,21 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
           where: { nurseryId: nursery.id, code: input.couponCode.trim(), isActive: true },
         });
         if (!coupon) throw new Error('קוד קופון לא תקף');
+        const now = new Date();
+        if (coupon.startsAt && coupon.startsAt > now) throw new Error('קוד קופון עדיין לא בתוקף');
+        if (coupon.endsAt && coupon.endsAt < now) throw new Error('קוד קופון פג תוקף');
+
+        // מיצוי מכסת שימושים (אם הוגדרה) — עדכון תנאי כדי למנוע חריגה במרוץ תנאים
+        if (coupon.usageLimit !== null) {
+          const res = await tx.coupon.updateMany({
+            where: { id: coupon.id, usageCount: { lt: coupon.usageLimit } },
+            data: { usageCount: { increment: 1 } },
+          });
+          if (res.count !== 1) throw new Error('קוד קופון מוצה');
+        } else {
+          await tx.coupon.update({ where: { id: coupon.id }, data: { usageCount: { increment: 1 } } });
+        }
+
         total = total * (1 - Number(coupon.discountPct) / 100);
       }
 
@@ -110,6 +147,8 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
           shippingAddress: input.shippingAddress?.trim() || null,
           totalAmount: total.toFixed(2),
           status: isQuote ? 'QUOTE_REQUESTED' : 'PENDING',
+          paymentMethod,
+          paymentReference,
           items: { create: lineItems },
         },
       });

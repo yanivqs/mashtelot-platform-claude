@@ -81,23 +81,30 @@ async function main() {
       })
       .on('end', async () => {
         try {
-          console.log(`📦 נמצאו ${plantsToInsert.length} צמחים בקובץ. מזין ל-Database...`);
+          console.log(`📦 נמצאו ${plantsToInsert.length} צמחים בקובץ. מעדכן/מוסיף ב-Database...`);
 
-          // מחיקת נתונים קודמים במידה וקיימים כדי למנוע כפילויות
-          await prisma.plant.deleteMany({});
-
-          // הזרקה במנות (Batches) של 100 צמחים לביצועים מהירים
-          const batchSize = 100;
-          for (let i = 0; i < plantsToInsert.length; i += batchSize) {
-            const batch = plantsToInsert.slice(i, i + batchSize);
-            await prisma.plant.createMany({
-              data: batch,
-              skipDuplicates: true,
+          // עדכון-או-הוספה לפי plant_id (ולא מחיקה מלאה) — כך שעדכון קטלוג
+          // לא פוגע במוצרים שכבר משויכים למשתלות דרך nursery_products.
+          let created = 0;
+          let updated = 0;
+          let skipped = 0;
+          for (const row of plantsToInsert) {
+            if (row.plantId == null) {
+              skipped++;
+              continue;
+            }
+            const result = await prisma.plant.upsert({
+              where: { plantId: row.plantId },
+              create: row,
+              update: row,
             });
-            console.log(`✅ הוזנו ${Math.min(i + batchSize, plantsToInsert.length)} מתוך ${plantsToInsert.length} צמחים`);
+            if (result.createdAt.getTime() === result.updatedAt.getTime()) created++;
+            else updated++;
           }
 
-          console.log('🎉 ייבוא הצמחים הושלם בהצלחה!');
+          console.log(
+            `🎉 ייבוא הצמחים הושלם: ${created} נוספו, ${updated} עודכנו, ${skipped} דולגו (ללא plant_id).`,
+          );
           resolve(true);
         } catch (error) {
           console.error('❌ שגיאה בזמן הזרקת הנתונים:', error);

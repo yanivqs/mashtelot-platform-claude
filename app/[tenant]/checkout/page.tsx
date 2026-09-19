@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import type { PaymentMethod } from '@prisma/client';
 import { useCart } from '@/components/cart/cart-provider';
 import { formatPrice } from '@/lib/utils';
-import { createOrder } from './actions';
+import { createOrder, getCheckoutPaymentMethods } from './actions';
+import type { EnabledPaymentMethod } from '@/lib/payment-methods';
 
 const field =
   'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500';
@@ -17,6 +19,14 @@ export default function CheckoutPage() {
   const isQuote = salesMode === 'QUOTE';
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<EnabledPaymentMethod[]>([]);
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | ''>('');
+
+  useEffect(() => {
+    if (isQuote) return;
+    getCheckoutPaymentMethods(params.tenant).then(setPaymentMethods);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.tenant, isQuote]);
 
   if (salesMode === 'DISABLED' || items.length === 0) {
     return (
@@ -44,6 +54,8 @@ export default function CheckoutPage() {
       customerPhone: String(fd.get('customerPhone') || ''),
       shippingAddress: String(fd.get('shippingAddress') || ''),
       couponCode: String(fd.get('couponCode') || ''),
+      paymentMethod: selectedMethod || undefined,
+      paymentReference: String(fd.get('paymentReference') || ''),
       items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
     });
 
@@ -87,6 +99,50 @@ export default function CheckoutPage() {
               <span className="mb-1 block font-medium text-gray-700">קוד קופון</span>
               <input name="couponCode" className={field} />
             </label>
+          )}
+
+          {!isQuote && paymentMethods.length > 0 && (
+            <div className="rounded-lg border border-gray-200 p-4">
+              <span className="mb-2 block text-sm font-medium text-gray-700">אופן התשלום</span>
+              <div className="space-y-2">
+                {paymentMethods.map((m) => (
+                  <label key={m.method} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="paymentMethodChoice"
+                      checked={selectedMethod === m.method}
+                      onChange={() => setSelectedMethod(m.method)}
+                    />
+                    {m.label}
+                  </label>
+                ))}
+              </div>
+              {selectedMethod && (
+                <div className="mt-3 space-y-2 border-t border-gray-100 pt-3">
+                  {(() => {
+                    const m = paymentMethods.find((x) => x.method === selectedMethod);
+                    if (!m) return null;
+                    return (
+                      <>
+                        {(m.destination || m.instructions) && (
+                          <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">
+                            {m.instructions}
+                            {m.instructions && m.destination ? ' · ' : ''}
+                            {m.destination}
+                          </p>
+                        )}
+                        <label className="block text-sm">
+                          <span className="mb-1 block font-medium text-gray-700">
+                            אסמכתא / הערה לתשלום
+                          </span>
+                          <input name="paymentReference" className={field} />
+                        </label>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
           )}
 
           {error && (
