@@ -47,7 +47,23 @@ export default async function AdminCatalogPage({
 
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-bold">קטלוג בוטני מרכזי</h1>
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold">קטלוג בוטני מרכזי</h1>
+        <div className="flex gap-2">
+          <Link
+            href="/admin/catalog/categories"
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            ניהול קטגוריות
+          </Link>
+          <Link
+            href="/admin/catalog/import"
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            ייבוא CSV
+          </Link>
+        </div>
+      </div>
       <p className="mb-6 text-sm text-gray-500">{total.toLocaleString('he-IL')} צמחים</p>
 
       <form method="get" className="mb-6 flex max-w-lg gap-3">

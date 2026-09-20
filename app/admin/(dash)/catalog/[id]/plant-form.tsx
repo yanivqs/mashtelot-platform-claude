@@ -1,6 +1,7 @@
 'use client';
 
 import { useFormState, useFormStatus } from 'react-dom';
+import type { PlantCategory } from '@prisma/client';
 import { ImageUpload } from '@/components/admin/image-upload';
 import { updatePlant, type PlantFormState } from './actions';
 
@@ -40,8 +41,12 @@ function SaveButton() {
 
 export function PlantForm({
   plant,
+  categories = [],
+  selectedCategoryIds = [],
 }: {
   plant: Record<string, string | null> & { id: string };
+  categories?: PlantCategory[];
+  selectedCategoryIds?: string[];
 }) {
   const [state, formAction] = useFormState(updatePlant, initial);
 
@@ -57,6 +62,25 @@ export function PlantForm({
           folder="plants"
         />
       </div>
+
+      {categories.length > 0 && (
+        <div className="sm:col-span-2">
+          <span className="mb-1 block text-sm font-medium text-gray-700">קטגוריות</span>
+          <div className="flex flex-wrap gap-3">
+            {categories.map((c) => (
+              <label key={c.id} className="flex items-center gap-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  name="categoryIds"
+                  value={c.id}
+                  defaultChecked={selectedCategoryIds.includes(c.id)}
+                />
+                {c.name}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {FIELDS.map((f) => (
         <label key={f.name} className={`text-sm ${f.type === 'textarea' ? 'sm:col-span-2' : ''}`}>

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { PaymentMethod } from '@prisma/client';
 import { useCart } from '@/components/cart/cart-provider';
 import { formatPrice } from '@/lib/utils';
-import { createOrder, getCheckoutPaymentMethods } from './actions';
+import { createOrder, getCheckoutPaymentMethods, getCheckoutShippingCities } from './actions';
 import type { EnabledPaymentMethod } from '@/lib/payment-methods';
 
 const field =
@@ -21,10 +21,12 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<EnabledPaymentMethod[]>([]);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | ''>('');
+  const [shippingCities, setShippingCities] = useState<string[]>([]);
 
   useEffect(() => {
     if (isQuote) return;
     getCheckoutPaymentMethods(params.tenant).then(setPaymentMethods);
+    getCheckoutShippingCities(params.tenant).then(setShippingCities);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.tenant, isQuote]);
 
@@ -53,6 +55,7 @@ export default function CheckoutPage() {
       customerEmail: String(fd.get('customerEmail') || ''),
       customerPhone: String(fd.get('customerPhone') || ''),
       shippingAddress: String(fd.get('shippingAddress') || ''),
+      city: String(fd.get('city') || ''),
       couponCode: String(fd.get('couponCode') || ''),
       paymentMethod: selectedMethod || undefined,
       paymentReference: String(fd.get('paymentReference') || ''),
@@ -90,8 +93,23 @@ export default function CheckoutPage() {
             <span className="mb-1 block font-medium text-gray-700">אימייל *</span>
             <input name="customerEmail" type="email" required className={field} />
           </label>
+          {!isQuote && shippingCities.length > 0 && (
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-gray-700">עיר למשלוח *</span>
+              <select name="city" required defaultValue="" className={field}>
+                <option value="" disabled>
+                  בחרו עיר...
+                </option>
+                {shippingCities.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-gray-700">כתובת למשלוח</span>
+            <span className="mb-1 block font-medium text-gray-700">כתובת למשלוח (רחוב ומספר)</span>
             <textarea name="shippingAddress" rows={2} className={field} />
           </label>
           {!isQuote && (
@@ -188,7 +206,7 @@ export default function CheckoutPage() {
           <p className="mt-1 text-xs text-gray-400">
             {isQuote
               ? 'המחיר הסופי ייקבע בהצעת המחיר.'
-              : 'הנחות קופון יחושבו בעת שליחת ההזמנה.'}
+              : 'הנחות קופון ועלות משלוח יחושבו בעת שליחת ההזמנה.'}
           </p>
         </aside>
       </div>

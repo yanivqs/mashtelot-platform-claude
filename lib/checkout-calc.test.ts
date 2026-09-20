@@ -4,6 +4,7 @@ import {
   calcSubtotal,
   assertCouponValid,
   applyDiscount,
+  resolveShippingCost,
   CheckoutError,
   type ProductForCheckout,
 } from './checkout-calc';
@@ -101,5 +102,20 @@ describe('applyDiscount', () => {
   it('applies a percentage discount to a subtotal', () => {
     expect(applyDiscount(100, 10)).toBe(90);
     expect(applyDiscount(65, 20)).toBeCloseTo(52);
+  });
+});
+
+describe('resolveShippingCost', () => {
+  it('charges the flat shipping price when there is no free-shipping threshold', () => {
+    expect(resolveShippingCost(50, { shippingPrice: 25, freeShippingThreshold: null })).toBe(25);
+  });
+
+  it('charges the flat price when the subtotal is below the threshold', () => {
+    expect(resolveShippingCost(99, { shippingPrice: 25, freeShippingThreshold: 100 })).toBe(25);
+  });
+
+  it('is free once the subtotal reaches the threshold', () => {
+    expect(resolveShippingCost(100, { shippingPrice: 25, freeShippingThreshold: 100 })).toBe(0);
+    expect(resolveShippingCost(150, { shippingPrice: 25, freeShippingThreshold: 100 })).toBe(0);
   });
 });

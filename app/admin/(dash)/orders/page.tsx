@@ -14,7 +14,7 @@ export default async function AdminOrdersPage() {
 
   const orders = await prisma.order.findMany({
     where,
-    include: { items: true, nursery: { select: { name: true } } },
+    include: { items: true, nursery: { select: { name: true } }, shippingZone: true },
     orderBy: { createdAt: 'desc' },
     take: 100,
   });
@@ -52,6 +52,14 @@ export default async function AdminOrdersPage() {
                     <p className="text-sm text-gray-500">
                       תשלום: {PAYMENT_METHOD_LABELS[o.paymentMethod]}
                       {o.paymentReference ? ` · אסמכתא: ${o.paymentReference}` : ''}
+                    </p>
+                  )}
+                  {o.shippingZone && (
+                    <p className="text-sm text-gray-500">
+                      אזור משלוח: {o.shippingZone.name}
+                      {o.shippingCost !== null
+                        ? ` · ${formatPrice(o.shippingCost.toString())}`
+                        : ''}
                     </p>
                   )}
                   <p className="mt-1 text-xs text-gray-400">

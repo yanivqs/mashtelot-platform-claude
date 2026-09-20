@@ -17,13 +17,20 @@ export default async function EditPlantPage({
 }) {
   await requireUser(['SUPER_ADMIN']);
 
-  const plant = await prisma.plant.findUnique({ where: { id: params.id } });
+  const plant = await prisma.plant.findUnique({
+    where: { id: params.id },
+    include: { categories: true },
+  });
   if (!plant) notFound();
 
   const linkedCount = await prisma.nurseryProduct.count({ where: { plantId: plant.id } });
+  const allCategories = await prisma.plantCategory.findMany({ orderBy: { sortOrder: 'asc' } });
+  const selectedCategoryIds = plant.categories.map((c) => c.categoryId);
 
   const plantData = Object.fromEntries(
-    Object.entries(plant).map(([k, v]) => [k, v instanceof Date ? v.toISOString() : v]),
+    Object.entries(plant)
+      .filter(([k]) => k !== 'categories')
+      .map(([k, v]) => [k, v instanceof Date ? v.toISOString() : v]),
   ) as Record<string, string | null> & { id: string };
 
   return (
@@ -48,7 +55,7 @@ export default async function EditPlantPage({
       )}
 
       <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-        <PlantForm plant={plantData} />
+        <PlantForm plant={plantData} categories={allCategories} selectedCategoryIds={selectedCategoryIds} />
       </div>
 
       {linkedCount === 0 && (

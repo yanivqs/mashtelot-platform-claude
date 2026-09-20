@@ -13,7 +13,30 @@
 import { randomUUID } from 'crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { prisma } from '@/lib/prisma';
-import { calcSubtotal, applyDiscount } from '@/lib/checkout-calc';
+import { calcSubtotal, applyDiscount, resolveShippingCost } from '@/lib/checkout-calc';
+
+/**
+ * מקביל מקומי ל-lib/shipping.ts (לא מיובא ישירות — אותה מגבלת `server-only`
+ * שמתועדת למעלה חלה גם כאן: הייבוא עצמו קורס ב-Node רגיל, לא רק קריאה לפונקציה).
+ */
+function normalizeCityName(city: string): string {
+  return city.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+async function resolveShippingZoneForTest(nurseryIdArg: string, city: string) {
+  const normalized = normalizeCityName(city);
+  if (!normalized) return null;
+  const match = await prisma.shippingZoneCity.findFirst({
+    where: { normalizedCityName: normalized, zone: { nurseryId: nurseryIdArg, isEnabled: true } },
+    include: { zone: true },
+  });
+  if (!match) return null;
+  return {
+    id: match.zone.id,
+    shippingPrice: Number(match.zone.shippingPrice),
+    freeShippingThreshold:
+      match.zone.freeShippingThreshold !== null ? Number(match.zone.freeShippingThreshold) : null,
+  };
+}
 
 const RUN_ID = randomUUID().slice(0, 8);
 let nurseryId: string;
@@ -48,6 +71,7 @@ afterAll(async () => {
   await prisma.orderItem.deleteMany({ where: { nurseryProduct: { nurseryId } } });
   await prisma.order.deleteMany({ where: { nurseryId } });
   await prisma.coupon.deleteMany({ where: { nurseryId } });
+  await prisma.shippingZone.deleteMany({ where: { nurseryId } }); // מוחק גם shipping_zone_cities (onDelete: Cascade)
   const product = await prisma.nurseryProduct.findUnique({ where: { id: productId } });
   await prisma.nurseryProduct.deleteMany({ where: { nurseryId } });
   if (product?.supplyId) await prisma.masterSupply.deleteMany({ where: { id: product.supplyId } });
@@ -136,5 +160,35 @@ describe('checkout smoke: coupon usage-limit race safety', () => {
       },
     });
     expect(() => assertCouponValid(coupon)).toThrow(/פג תוקף/);
+  });
+});
+
+describe('checkout smoke: shipping zone resolution against real DB rows', () => {
+  const cityName = `עיר בדיקה ${RUN_ID}`;
+
+  it('resolves a zone by normalized city name and computes cost with a free-shipping threshold', async () => {
+    await prisma.shippingZone.create({
+      data: {
+        nurseryId,
+        name: `[smoke] אזור ${RUN_ID}`,
+        shippingPrice: '30.00',
+        freeShippingThreshold: '200.00',
+        cities: { create: [{ cityName, normalizedCityName: normalizeCityName(cityName) }] },
+      },
+    });
+
+    // התאמה לא-רגישת-רישיות/רווחים
+    const zone = await resolveShippingZoneForTest(nurseryId, `  ${cityName.toUpperCase()}  `);
+    expect(zone).not.toBeNull();
+    expect(zone!.shippingPrice).toBe(30);
+    expect(zone!.freeShippingThreshold).toBe(200);
+
+    expect(resolveShippingCost(150, zone!)).toBe(30); // מתחת לסף
+    expect(resolveShippingCost(200, zone!)).toBe(0); // הגיע לסף — חינם
+  });
+
+  it('returns null for a city with no configured zone', async () => {
+    const zone = await resolveShippingZoneForTest(nurseryId, `עיר-לא-קיימת-${RUN_ID}`);
+    expect(zone).toBeNull();
   });
 });

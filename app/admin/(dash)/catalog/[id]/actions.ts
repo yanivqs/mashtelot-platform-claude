@@ -46,8 +46,20 @@ export async function updatePlant(
   }
   data.hebrewName = hebrewName;
 
+  const categoryIds = formData.getAll('categoryIds').map(String);
+
   try {
-    await prisma.plant.update({ where: { id }, data });
+    await prisma.$transaction([
+      prisma.plant.update({ where: { id }, data }),
+      prisma.plantCategoryAssignment.deleteMany({ where: { plantId: id } }),
+      ...(categoryIds.length > 0
+        ? [
+            prisma.plantCategoryAssignment.createMany({
+              data: categoryIds.map((categoryId) => ({ plantId: id, categoryId })),
+            }),
+          ]
+        : []),
+    ]);
   } catch {
     return { error: 'שגיאה בשמירה' };
   }

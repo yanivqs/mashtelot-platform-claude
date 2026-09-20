@@ -1,121 +1,54 @@
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
-import csv from 'csv-parser';
+import { parse } from 'csv-parse/sync';
+import { parsePlantCsvRow, upsertPlantRows, type PlantImportRow } from '../lib/plant-import';
 
 const prisma = new PrismaClient();
-
-interface PlantCSVRow {
-  plant_id: string;
-  hebrew_name: string;
-  latin_name: string;
-  nickname: string;
-  family: string;
-  description: string;
-  notes: string;
-  origin: string;
-  native: string;
-  plant_type: string;
-  light: string;
-  water: string;
-  flowering: string;
-  flowering_season: string;
-  flower_color: string;
-  foliage: string;
-  evergreen: string;
-  height: string;
-  spacing: string;
-  growth_rate: string;
-  climate_zones: string;
-  resistance: string;
-  coastal: string;
-  care: string;
-  uniqueness: string;
-  image_url: string;
-}
 
 async function main() {
   console.log('🌱 מתחיל ייבוא צמחים מקובץ CSV...');
 
   const csvFilePath = path.join(process.cwd(), 'plants_export.csv');
-
   if (!fs.existsSync(csvFilePath)) {
     console.error('❌ הקובץ plants_export.csv לא נמצא בשרש הפרויקט!');
     process.exit(1);
   }
 
-  const plantsToInsert: any[] = [];
-
-  return new Promise((resolve, reject) => {
-    fs.createReadStream(csvFilePath)
-      .pipe(csv())
-      .on('data', (row: PlantCSVRow) => {
-        plantsToInsert.push({
-          plantId: row.plant_id ? parseInt(row.plant_id, 10) : null,
-          hebrewName: row.hebrew_name || 'צמח ללא שם',
-          latinName: row.latin_name || null,
-          nickname: row.nickname || null,
-          family: row.family || null,
-          description: row.description || null,
-          notes: row.notes || null,
-          origin: row.origin || null,
-          native: row.native || null,
-          plantType: row.plant_type || null,
-          light: row.light || null,
-          water: row.water || null,
-          flowering: row.flowering || null,
-          floweringSeason: row.flowering_season || null,
-          flowerColor: row.flower_color || null,
-          foliage: row.foliage || null,
-          evergreen: row.evergreen || null,
-          height: row.height || null,
-          spacing: row.spacing || null,
-          growthRate: row.growth_rate || null,
-          climateZones: row.climate_zones || null,
-          resistance: row.resistance || null,
-          coastal: row.coastal || null,
-          care: row.care || null,
-          uniqueness: row.uniqueness || null,
-          imageUrl: row.image_url || null,
-        });
-      })
-      .on('end', async () => {
-        try {
-          console.log(`📦 נמצאו ${plantsToInsert.length} צמחים בקובץ. מעדכן/מוסיף ב-Database...`);
-
-          // עדכון-או-הוספה לפי plant_id (ולא מחיקה מלאה) — כך שעדכון קטלוג
-          // לא פוגע במוצרים שכבר משויכים למשתלות דרך nursery_products.
-          let created = 0;
-          let updated = 0;
-          let skipped = 0;
-          for (const row of plantsToInsert) {
-            if (row.plantId == null) {
-              skipped++;
-              continue;
-            }
-            const result = await prisma.plant.upsert({
-              where: { plantId: row.plantId },
-              create: row,
-              update: row,
-            });
-            if (result.createdAt.getTime() === result.updatedAt.getTime()) created++;
-            else updated++;
-          }
-
-          console.log(
-            `🎉 ייבוא הצמחים הושלם: ${created} נוספו, ${updated} עודכנו, ${skipped} דולגו (ללא plant_id).`,
-          );
-          resolve(true);
-        } catch (error) {
-          console.error('❌ שגיאה בזמן הזרקת הנתונים:', error);
-          reject(error);
-        }
-      })
-      .on('error', (error) => {
-        console.error('❌ שגיאה בקריאת קובץ ה-CSV:', error);
-        reject(error);
-      });
+  const text = fs.readFileSync(csvFilePath, 'utf-8');
+  const records: Record<string, string>[] = parse(text, {
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
   });
+
+  // עדכון-או-הוספה לפי plant_id (ולא מחיקה מלאה) — כך שעדכון קטלוג לא פוגע
+  // במוצרים שכבר משויכים למשתלות דרך nursery_products. אותה לוגיקה בדיוק
+  // כמו מסך הייבוא באדמין (lib/plant-import.ts).
+  const rows: PlantImportRow[] = [];
+  let skipped = 0;
+  for (const record of records) {
+    const result = parsePlantCsvRow(record);
+    if ('error' in result) skipped++;
+    else rows.push(result.row);
+  }
+
+  console.log(
+    `📦 נמצאו ${records.length} שורות בקובץ (${rows.length} תקינות, ${skipped} דולגו). מעדכן/מוסיף ב-Database...`,
+  );
+
+  const existing = await prisma.plant.findMany({
+    where: { plantId: { in: rows.map((r) => r.plantId) } },
+    select: { plantId: true },
+  });
+  const existingSet = new Set(existing.map((p) => p.plantId));
+  const createCount = rows.filter((r) => !existingSet.has(r.plantId)).length;
+
+  await upsertPlantRows(prisma, rows);
+
+  console.log(
+    `🎉 ייבוא הצמחים הושלם: ${createCount} נוספו, ${rows.length - createCount} עודכנו, ${skipped} דולגו (plant_id/hebrew_name חסרים).`,
+  );
 }
 
 main()

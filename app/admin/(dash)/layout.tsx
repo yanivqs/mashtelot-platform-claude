@@ -13,6 +13,7 @@ import {
   FileText,
   Newspaper,
   LogOut,
+  Truck,
   type LucideIcon,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
@@ -36,6 +37,7 @@ const ICONS: Record<string, LucideIcon> = {
   Settings,
   FileText,
   Newspaper,
+  Truck,
 };
 
 interface NavItem {

@@ -12,16 +12,11 @@ export interface NurseryFormValues {
   ownerEmail: string;
   logoUrl: string | null;
   phoneNumber: string | null;
-  whatsappNumber: string | null;
   contactEmail: string | null;
   aboutText: string | null;
   addressLine: string | null;
   city: string | null;
   mapLink: string | null;
-  facebookUrl: string | null;
-  instagramUrl: string | null;
-  tiktokUrl: string | null;
-  youtubeUrl: string | null;
   primaryColor: string | null;
   accentColor: string | null;
   openingHoursText: string;
@@ -135,7 +130,6 @@ export function NurseryProfileForm({
 
       <Section title="יצירת קשר ומיקום">
         <Text name="phoneNumber" label="טלפון" defaultValue={nursery.phoneNumber} dir="ltr" />
-        <Text name="whatsappNumber" label="וואטסאפ" defaultValue={nursery.whatsappNumber} dir="ltr" />
         <Text name="contactEmail" label="אימייל ליצירת קשר" defaultValue={nursery.contactEmail} dir="ltr" />
         <Text name="addressLine" label="כתובת" defaultValue={nursery.addressLine} />
         <Text name="city" label="עיר / יישוב" defaultValue={nursery.city} />
@@ -159,13 +153,6 @@ export function NurseryProfileForm({
             className={field}
           />
         </label>
-      </Section>
-
-      <Section title="רשתות חברתיות">
-        <Text name="facebookUrl" label="פייסבוק" defaultValue={nursery.facebookUrl} dir="ltr" />
-        <Text name="instagramUrl" label="אינסטגרם" defaultValue={nursery.instagramUrl} dir="ltr" />
-        <Text name="tiktokUrl" label="טיקטוק" defaultValue={nursery.tiktokUrl} dir="ltr" />
-        <Text name="youtubeUrl" label="יוטיוב" defaultValue={nursery.youtubeUrl} dir="ltr" />
       </Section>
 
       {!showDesign && (

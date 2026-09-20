@@ -14,11 +14,12 @@ export interface CatalogQuery {
   nurseryId: string;
   q?: string;
   plantType?: string;
+  categoryId?: string;
   page?: number;
 }
 
 /** Paginated, filterable catalog query for a single tenant. */
-export async function getCatalog({ nurseryId, q, plantType, page = 1 }: CatalogQuery) {
+export async function getCatalog({ nurseryId, q, plantType, categoryId, page = 1 }: CatalogQuery) {
   const where: Prisma.NurseryProductWhereInput = {
     nurseryId,
     isActive: true,
@@ -36,6 +37,12 @@ export async function getCatalog({ nurseryId, q, plantType, page = 1 }: CatalogQ
 
   if (plantType && plantType !== 'all') {
     where.plant = { is: { plantType } };
+  }
+
+  if (categoryId && categoryId !== 'all') {
+    where.plant = {
+      is: { ...(where.plant?.is ?? {}), categories: { some: { categoryId } } },
+    };
   }
 
   const [items, total] = await Promise.all([
@@ -69,6 +76,26 @@ export async function getPlantTypes(nurseryId: string): Promise<string[]> {
     if (r.plant?.plantType) set.add(r.plant.plantType);
   }
   return [...set].sort((a, b) => a.localeCompare(b, 'he'));
+}
+
+export interface CategoryOption {
+  id: string;
+  name: string;
+}
+
+/** קטגוריות שיש להן לפחות מוצר פעיל אחד בקטלוג של המשתלה (לתפריט הסינון). */
+export async function getCategories(nurseryId: string): Promise<CategoryOption[]> {
+  return prisma.plantCategory.findMany({
+    where: {
+      plants: {
+        some: {
+          plant: { is: { nurseryProducts: { some: { nurseryId, isActive: true } } } },
+        },
+      },
+    },
+    select: { id: true, name: true },
+    orderBy: { sortOrder: 'asc' },
+  });
 }
 
 export async function getFeaturedProducts(nurseryId: string, take = 8) {

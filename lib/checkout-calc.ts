@@ -71,3 +71,14 @@ export function assertCouponValid(coupon: CouponForCheckout, now: Date = new Dat
 export function applyDiscount(subtotal: number, discountPct: number): number {
   return subtotal * (1 - discountPct / 100);
 }
+
+export interface ShippingZoneForCheckout {
+  shippingPrice: number;
+  freeShippingThreshold: number | null;
+}
+
+/** עלות המשלוח לאזור נתון, בהתחשב בסף למשלוח חינם (0 אם הסכום הגיע לסף). */
+export function resolveShippingCost(subtotal: number, zone: ShippingZoneForCheckout): number {
+  if (zone.freeShippingThreshold !== null && subtotal >= zone.freeShippingThreshold) return 0;
+  return zone.shippingPrice;
+}

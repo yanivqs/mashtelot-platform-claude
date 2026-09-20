@@ -9,6 +9,10 @@ const nextConfig = {
       },
     ],
   },
+  experimental: {
+    // ברירת המחדל (1MB) קטנה מדי לקובץ ה-CSV של ייבוא הקטלוג הבוטני (~1.5MB)
+    serverActionsBodySizeLimit: '5mb',
+  },
 };
 
 module.exports = nextConfig;

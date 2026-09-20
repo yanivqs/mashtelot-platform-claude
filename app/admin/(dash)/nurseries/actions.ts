@@ -121,16 +121,11 @@ export async function updateNursery(
     name,
     logoUrl: s(formData, 'logoUrl'),
     phoneNumber: s(formData, 'phoneNumber'),
-    whatsappNumber: s(formData, 'whatsappNumber'),
     contactEmail: s(formData, 'contactEmail'),
     aboutText: s(formData, 'aboutText'),
     addressLine: s(formData, 'addressLine'),
     city: s(formData, 'city'),
     mapLink: s(formData, 'mapLink'),
-    facebookUrl: s(formData, 'facebookUrl'),
-    instagramUrl: s(formData, 'instagramUrl'),
-    tiktokUrl: s(formData, 'tiktokUrl'),
-    youtubeUrl: s(formData, 'youtubeUrl'),
     primaryColor: primaryColorRaw ?? undefined,
     openingHours: openingHours.length
       ? (openingHours as unknown as Prisma.InputJsonValue)

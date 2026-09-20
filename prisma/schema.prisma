@@ -33,7 +33,6 @@ model Nursery {
   logoUrl         String?                @map("logo_url")
   primaryColor    String?                @default("#16a34a") @map("primary_color")
   phoneNumber     String?                @map("phone_number")
-  whatsappNumber  String?                @map("whatsapp_number")
   ownerEmail      String                 @map("owner_email")
   isActive        Boolean                @default(true) @map("is_active")
   aboutText       String?                @map("about_text")
@@ -41,10 +40,6 @@ model Nursery {
   city            String?
   mapLink         String?                @map("map_link")
   contactEmail    String?                @map("contact_email")
-  facebookUrl     String?                @map("facebook_url")
-  instagramUrl    String?                @map("instagram_url")
-  tiktokUrl       String?                @map("tiktok_url")
-  youtubeUrl      String?                @map("youtube_url")
   openingHours    Json?                  @map("opening_hours")
   themeConfig     Json?                  @map("theme_config")
   createdAt       DateTime               @default(now()) @map("created_at")
@@ -60,8 +55,38 @@ model Nursery {
   promotions      Promotion[]
   users           User[]
   auditEvents     AuditEvent[]
+  channels        NurseryChannel[]
+  shippingZones   ShippingZone[]
 
   @@map("nurseries")
+}
+
+enum ChannelProvider {
+  WHATSAPP
+  FACEBOOK
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE
+  TELEGRAM
+  LINKEDIN
+  PINTEREST
+  GOOGLE_BUSINESS
+}
+
+model NurseryChannel {
+  id         String          @id @default(uuid())
+  nurseryId  String          @map("nursery_id")
+  provider   ChannelProvider
+  value      String
+  isEnabled  Boolean         @default(true) @map("is_enabled")
+  isFeatured Boolean         @default(false) @map("is_featured")
+  sortOrder  Int             @default(0) @map("sort_order")
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+  nursery    Nursery         @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@unique([nurseryId, provider])
+  @@map("nursery_channels")
 }
 
 model AuditEvent {
@@ -129,38 +154,60 @@ model StaticPage {
 }
 
 model Plant {
-  id              String           @id @default(uuid())
-  plantId         Int?             @unique @map("plant_id")
-  hebrewName      String           @map("hebrew_name")
-  latinName       String?          @map("latin_name")
+  id              String                    @id @default(uuid())
+  plantId         Int?                      @unique @map("plant_id")
+  hebrewName      String                    @map("hebrew_name")
+  latinName       String?                   @map("latin_name")
   nickname        String?
   family          String?
   description     String?
   notes           String?
   origin          String?
   native          String?
-  plantType       String?          @map("plant_type")
+  plantType       String?                   @map("plant_type")
   light           String?
   water           String?
   flowering       String?
-  floweringSeason String?          @map("flowering_season")
-  flowerColor     String?          @map("flower_color")
+  floweringSeason String?                   @map("flowering_season")
+  flowerColor     String?                   @map("flower_color")
   foliage         String?
   evergreen       String?
   height          String?
   spacing         String?
-  growthRate      String?          @map("growth_rate")
-  climateZones    String?          @map("climate_zones")
+  growthRate      String?                   @map("growth_rate")
+  climateZones    String?                   @map("climate_zones")
   resistance      String?
   coastal         String?
   care            String?
   uniqueness      String?
-  imageUrl        String?          @map("image_url")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  imageUrl        String?                   @map("image_url")
+  createdAt       DateTime                  @default(now()) @map("created_at")
+  updatedAt       DateTime                  @updatedAt @map("updated_at")
   nurseryProducts NurseryProduct[]
+  categories      PlantCategoryAssignment[]
 
   @@map("plants")
+}
+
+model PlantCategory {
+  id        String                    @id @default(uuid())
+  name      String                    @unique
+  slug      String                    @unique
+  sortOrder Int                       @default(0) @map("sort_order")
+  createdAt DateTime                  @default(now()) @map("created_at")
+  plants    PlantCategoryAssignment[]
+
+  @@map("plant_categories")
+}
+
+model PlantCategoryAssignment {
+  plantId    String        @map("plant_id")
+  categoryId String        @map("category_id")
+  plant      Plant         @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  category   PlantCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([plantId, categoryId])
+  @@map("plant_category_assignments")
 }
 
 model MasterSupply {
@@ -203,6 +250,34 @@ model NurseryProduct {
   @@map("nursery_products")
 }
 
+model ShippingZone {
+  id                    String             @id @default(uuid())
+  nurseryId             String             @map("nursery_id")
+  name                  String
+  isEnabled             Boolean            @default(true) @map("is_enabled")
+  shippingPrice         Decimal            @map("shipping_price") @db.Decimal(10, 2)
+  freeShippingThreshold Decimal?           @map("free_shipping_threshold") @db.Decimal(10, 2)
+  sortOrder             Int                @default(0) @map("sort_order")
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+  nursery               Nursery            @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  cities                ShippingZoneCity[]
+  orders                Order[]
+
+  @@map("shipping_zones")
+}
+
+model ShippingZoneCity {
+  id                 String       @id @default(uuid())
+  shippingZoneId     String       @map("shipping_zone_id")
+  cityName           String       @map("city_name")
+  normalizedCityName String       @map("normalized_city_name")
+  zone               ShippingZone @relation(fields: [shippingZoneId], references: [id], onDelete: Cascade)
+
+  @@unique([shippingZoneId, normalizedCityName])
+  @@map("shipping_zone_cities")
+}
+
 model Order {
   id               String         @id @default(uuid())
   nurseryId        String         @map("nursery_id")
@@ -215,11 +290,14 @@ model Order {
   status           OrderStatus    @default(PENDING)
   paymentMethod    PaymentMethod? @map("payment_method")
   paymentReference String?        @map("payment_reference")
+  shippingZoneId   String?        @map("shipping_zone_id")
+  shippingCost     Decimal?       @map("shipping_cost") @db.Decimal(10, 2)
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
   items            OrderItem[]
   nursery          Nursery        @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
   user             User?          @relation(fields: [userId], references: [id])
+  shippingZone     ShippingZone?  @relation(fields: [shippingZoneId], references: [id], onDelete: SetNull)
 
   @@map("orders")
 }
@@ -277,6 +355,30 @@ model CustomerLoyalty {
 
   @@unique([nurseryId, phone])
   @@map("customer_loyalty")
+}
+
+enum ImportJobStatus {
+  DRY_RUN_COMPLETE
+  COMMITTED
+  FAILED
+}
+
+model ImportJob {
+  id               String          @id @default(uuid())
+  createdByEmail   String?         @map("created_by_email")
+  originalFilename String          @map("original_filename")
+  fileHash         String          @map("file_hash")
+  status           ImportJobStatus
+  rowCount         Int             @map("row_count")
+  createCount      Int             @map("create_count")
+  updateCount      Int             @map("update_count")
+  errorCount       Int             @map("error_count")
+  payload          Json
+  createdAt        DateTime        @default(now()) @map("created_at")
+  completedAt      DateTime?       @map("completed_at")
+
+  @@index([fileHash])
+  @@map("import_jobs")
 }
 
 model PrintProduct {

@@ -8,7 +8,14 @@ import { resolveProductContent, tenantUrl } from '@/lib/seo';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
 import { getEnabledPaymentMethods } from '@/lib/payment-access';
 import type { EnabledPaymentMethod } from '@/lib/payment-methods';
-import { buildLineItems, calcSubtotal, assertCouponValid, applyDiscount } from '@/lib/checkout-calc';
+import { resolveShippingZone, hasAnyShippingZone } from '@/lib/shipping';
+import {
+  buildLineItems,
+  calcSubtotal,
+  assertCouponValid,
+  applyDiscount,
+  resolveShippingCost,
+} from '@/lib/checkout-calc';
 import {
   sendEmail,
   orderConfirmationEmail,
@@ -21,6 +28,7 @@ export interface CheckoutInput {
   customerEmail: string;
   customerPhone: string;
   shippingAddress?: string;
+  city?: string;
   couponCode?: string;
   paymentMethod?: PaymentMethod;
   paymentReference?: string;
@@ -32,6 +40,18 @@ export async function getCheckoutPaymentMethods(tenant: string): Promise<Enabled
   const nursery = await getNurseryByTenant(tenant);
   if (!nursery) return [];
   return getEnabledPaymentMethods(nursery.id);
+}
+
+/** רשימת הערים הזמינות למשלוח אצל המשתלה (ריקה = לא מוגדרים אזורי משלוח). */
+export async function getCheckoutShippingCities(tenant: string): Promise<string[]> {
+  const nursery = await getNurseryByTenant(tenant);
+  if (!nursery) return [];
+  const zones = await prisma.shippingZone.findMany({
+    where: { nurseryId: nursery.id, isEnabled: true },
+    include: { cities: true },
+    orderBy: { sortOrder: 'asc' },
+  });
+  return zones.flatMap((z) => z.cities.map((c) => c.cityName));
 }
 
 export interface CheckoutResult {
@@ -79,6 +99,15 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
   }
   const paymentReference = !isQuote ? input.paymentReference?.trim() || null : null;
 
+  // אזור משלוח: רק אם למשתלה מוגדר לפחות אזור אחד (לא פוגע במשתלות שלא הגדירו משלוחים)
+  let shippingZone: Awaited<ReturnType<typeof resolveShippingZone>> = null;
+  if (!isQuote && (await hasAnyShippingZone(nursery.id))) {
+    const city = input.city?.trim();
+    if (!city) return { error: 'יש לבחור עיר למשלוח' };
+    shippingZone = await resolveShippingZone(nursery.id, city);
+    if (!shippingZone) return { error: 'משלוח לא זמין לעיר זו, צרו קשר עם המשתלה' };
+  }
+
   try {
     const orderId = await prisma.$transaction(async (tx) => {
       const products = await tx.nurseryProduct.findMany({
@@ -116,6 +145,12 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
         total = applyDiscount(total, Number(coupon.discountPct));
       }
 
+      let shippingCost = 0;
+      if (shippingZone) {
+        shippingCost = resolveShippingCost(total, shippingZone);
+        total += shippingCost;
+      }
+
       // ניכוי מלאי (רק בהזמנה אונליין) — עם הגנה מפני מרוץ תנאים
       if (!isQuote) {
         for (const li of lineItems) {
@@ -138,6 +173,8 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
           status: isQuote ? 'QUOTE_REQUESTED' : 'PENDING',
           paymentMethod,
           paymentReference,
+          shippingZoneId: shippingZone?.id ?? null,
+          shippingCost: shippingZone ? shippingCost.toFixed(2) : null,
           items: { create: lineItems },
         },
       });

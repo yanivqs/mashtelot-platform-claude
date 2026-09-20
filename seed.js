@@ -20,10 +20,15 @@ async function main() {
       ownerEmail: 'demo@mashtelot.net',
       primaryColor: '#16a34a',
       phoneNumber: '03-1234567',
-      whatsappNumber: '+972501234567',
     },
   });
   console.log(`משתלה: ${nursery.name} (${nursery.id})`);
+
+  await prisma.nurseryChannel.upsert({
+    where: { nurseryId_provider: { nurseryId: nursery.id, provider: 'WHATSAPP' } },
+    update: {},
+    create: { nurseryId: nursery.id, provider: 'WHATSAPP', value: '+972501234567' },
+  });
 
   // הפעלת מודולים למשתלת ההדגמה (משתלות אמיתיות מתחילות עם הכל כבוי)
   const demoModules = [

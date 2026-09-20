@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getNurseryByTenant } from '@/lib/tenant';
-import { getCatalog, getPlantTypes } from '@/lib/catalog';
+import { getCatalog, getPlantTypes, getCategories } from '@/lib/catalog';
 import { ProductCard } from '@/components/storefront/product-card';
 import { CatalogFilters } from '@/components/storefront/catalog-filters';
 
@@ -10,7 +10,7 @@ export const revalidate = 300;
 
 interface CatalogPageProps {
   params: { tenant: string };
-  searchParams: { q?: string; type?: string; page?: string };
+  searchParams: { q?: string; type?: string; category?: string; page?: string };
 }
 
 export async function generateMetadata({
@@ -23,7 +23,7 @@ export async function generateMetadata({
   const q = searchParams.q?.trim();
   const title = q ? `תוצאות חיפוש: ${q}` : 'קטלוג הצמחים והציוד';
   // דפי חיפוש/סינון לא מאונדקסים (תוכן דל/כפול); דפדוף רגיל כן
-  const hasFilters = Boolean(q || searchParams.type);
+  const hasFilters = Boolean(q || searchParams.type || searchParams.category);
 
   return {
     title,
@@ -39,20 +39,23 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
   if (!nursery) notFound();
 
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10) || 1);
-  const [{ items, total, pageCount }, plantTypes] = await Promise.all([
+  const [{ items, total, pageCount }, plantTypes, categories] = await Promise.all([
     getCatalog({
       nurseryId: nursery.id,
       q: searchParams.q,
       plantType: searchParams.type,
+      categoryId: searchParams.category,
       page,
     }),
     getPlantTypes(nursery.id),
+    getCategories(nursery.id),
   ]);
 
   const buildPageHref = (p: number) => {
     const sp = new URLSearchParams();
     if (searchParams.q) sp.set('q', searchParams.q);
     if (searchParams.type) sp.set('type', searchParams.type);
+    if (searchParams.category) sp.set('category', searchParams.category);
     if (p > 1) sp.set('page', String(p));
     const qs = sp.toString();
     return qs ? `/catalog?${qs}` : '/catalog';
@@ -67,7 +70,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
         <p className="mt-1 text-sm text-gray-500">{total} מוצרים</p>
       </header>
 
-      <CatalogFilters plantTypes={plantTypes} />
+      <CatalogFilters plantTypes={plantTypes} categories={categories} />
 
       {items.length === 0 ? (
         <p className="rounded-lg bg-gray-50 p-10 text-center text-gray-500">

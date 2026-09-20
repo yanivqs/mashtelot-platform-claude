@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 const PAGE_SIZE = 24;
 
 interface Props {
-  searchParams: { q?: string; tab?: string; page?: string };
+  searchParams: { q?: string; tab?: string; category?: string; page?: string };
 }
 
 export default async function BrowseCatalogPage({ searchParams }: Props) {
@@ -26,7 +26,9 @@ export default async function BrowseCatalogPage({ searchParams }: Props) {
 
   const tab = searchParams.tab === 'supplies' ? 'supplies' : 'plants';
   const q = searchParams.q?.trim() || '';
+  const categoryId = searchParams.category?.trim() || '';
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10) || 1);
+  const categories = tab === 'plants' ? await prisma.plantCategory.findMany({ orderBy: { sortOrder: 'asc' } }) : [];
 
   const owned = await prisma.nurseryProduct.findMany({
     where: { nurseryId },
@@ -46,14 +48,17 @@ export default async function BrowseCatalogPage({ searchParams }: Props) {
   let total = 0;
 
   if (tab === 'plants') {
-    const where = q
-      ? {
-          OR: [
-            { hebrewName: { contains: q, mode: 'insensitive' as const } },
-            { latinName: { contains: q, mode: 'insensitive' as const } },
-          ],
-        }
-      : {};
+    const where = {
+      ...(q
+        ? {
+            OR: [
+              { hebrewName: { contains: q, mode: 'insensitive' as const } },
+              { latinName: { contains: q, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+      ...(categoryId ? { categories: { some: { categoryId } } } : {}),
+    };
     const [plants, count] = await Promise.all([
       prisma.plant.findMany({
         where,
@@ -104,6 +109,7 @@ export default async function BrowseCatalogPage({ searchParams }: Props) {
     const sp = new URLSearchParams();
     sp.set('tab', tab);
     if (q) sp.set('q', q);
+    if (categoryId) sp.set('category', categoryId);
     if (p > 1) sp.set('page', String(p));
     return `/admin/products/browse?${sp.toString()}`;
   };
@@ -145,6 +151,20 @@ export default async function BrowseCatalogPage({ searchParams }: Props) {
             className="w-full rounded-lg border border-gray-200 py-2.5 pr-10 pl-3 text-sm outline-none focus:border-brand-500"
           />
         </div>
+        {tab === 'plants' && categories.length > 0 && (
+          <select
+            name="category"
+            defaultValue={categoryId}
+            className="rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500"
+          >
+            <option value="">כל הקטגוריות</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
         <button className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white">חיפוש</button>
       </form>
 

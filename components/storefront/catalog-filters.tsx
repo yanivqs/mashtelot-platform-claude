@@ -4,7 +4,18 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { Search } from 'lucide-react';
 
-export function CatalogFilters({ plantTypes }: { plantTypes: string[] }) {
+interface CategoryOption {
+  id: string;
+  name: string;
+}
+
+export function CatalogFilters({
+  plantTypes,
+  categories = [],
+}: {
+  plantTypes: string[];
+  categories?: CategoryOption[];
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -39,6 +50,23 @@ export function CatalogFilters({ plantTypes }: { plantTypes: string[] }) {
           className="w-full rounded-lg border border-gray-200 py-2.5 pr-10 pl-3 text-sm outline-none focus:border-brand-500"
         />
       </div>
+
+      {categories.length > 0 && (
+        <select
+          value={params.get('category') ?? 'all'}
+          onChange={(e) =>
+            apply({ category: e.target.value === 'all' ? undefined : e.target.value })
+          }
+          className="rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-brand-500"
+        >
+          <option value="all">כל הקטגוריות</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      )}
 
       {plantTypes.length > 0 && (
         <select

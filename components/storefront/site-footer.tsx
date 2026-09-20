@@ -2,14 +2,15 @@ import Link from 'next/link';
 import type { Nursery } from '@prisma/client';
 import { Phone, Mail, MapPin, Clock } from 'lucide-react';
 import { normalizeOpeningHours } from '@/lib/theme';
+import type { EnabledChannel } from '@/lib/channels';
 import { SocialLinks } from './social-links';
 
 export function SiteFooter({
   nursery,
-  showSocial = false,
+  channels = [],
 }: {
   nursery: Nursery;
-  showSocial?: boolean;
+  channels?: EnabledChannel[];
 }) {
   const hours = normalizeOpeningHours(nursery.openingHours);
   const address = [nursery.addressLine, nursery.city].filter(Boolean).join(', ');
@@ -24,7 +25,7 @@ export function SiteFooter({
               {nursery.aboutText}
             </p>
           )}
-          {showSocial && <SocialLinks nursery={nursery} className="mt-4" />}
+          <SocialLinks channels={channels} className="mt-4" />
         </div>
 
         <div className="space-y-2 text-sm text-gray-600">
