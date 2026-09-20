@@ -15,6 +15,7 @@ const field =
 export default function CheckoutPage() {
   const router = useRouter();
   const params = useParams<{ tenant: string }>();
+  const tenant = params?.tenant ?? '';
   const { items, subtotal, clear, salesMode } = useCart();
   const isQuote = salesMode === 'QUOTE';
   const [pending, setPending] = useState(false);
@@ -25,10 +26,10 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (isQuote) return;
-    getCheckoutPaymentMethods(params.tenant).then(setPaymentMethods);
-    getCheckoutShippingCities(params.tenant).then(setShippingCities);
+    getCheckoutPaymentMethods(tenant).then(setPaymentMethods);
+    getCheckoutShippingCities(tenant).then(setShippingCities);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.tenant, isQuote]);
+  }, [tenant, isQuote]);
 
   if (salesMode === 'DISABLED' || items.length === 0) {
     return (
@@ -50,7 +51,7 @@ export default function CheckoutPage() {
     const fd = new FormData(e.currentTarget);
 
     const res = await createOrder({
-      tenant: params.tenant,
+      tenant,
       customerName: String(fd.get('customerName') || ''),
       customerEmail: String(fd.get('customerEmail') || ''),
       customerPhone: String(fd.get('customerPhone') || ''),
