@@ -59,8 +59,24 @@ model Nursery {
   printOrders     PrintOrder[]
   promotions      Promotion[]
   users           User[]
+  auditEvents     AuditEvent[]
 
   @@map("nurseries")
+}
+
+model AuditEvent {
+  id         String   @id @default(uuid())
+  nurseryId  String?  @map("nursery_id")
+  actorEmail String?  @map("actor_email")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  nursery    Nursery? @relation(fields: [nurseryId], references: [id], onDelete: SetNull)
+
+  @@index([nurseryId, createdAt])
+  @@map("audit_events")
 }
 
 model NurseryPaymentMethod {

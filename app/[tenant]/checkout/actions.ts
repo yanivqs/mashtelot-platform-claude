@@ -8,6 +8,7 @@ import { resolveProductContent, tenantUrl } from '@/lib/seo';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
 import { getEnabledPaymentMethods } from '@/lib/payment-access';
 import type { EnabledPaymentMethod } from '@/lib/payment-methods';
+import { buildLineItems, calcSubtotal, assertCouponValid, applyDiscount } from '@/lib/checkout-calc';
 import {
   sendEmail,
   orderConfirmationEmail,
@@ -84,34 +85,22 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
         where: { id: { in: cart.map((c) => c.productId) }, nurseryId: nursery.id, isActive: true },
         include: { plant: true, supply: true },
       });
-      const byId = new Map(products.map((p) => [p.id, p]));
+      const byId = new Map(
+        products.map((p) => {
+          const { title } = resolveProductContent(p);
+          return [p.id, { id: p.id, title, price: Number(p.price), stockQuantity: p.stockQuantity }];
+        }),
+      );
 
-      const lineItems = cart.map((c) => {
-        const product = byId.get(c.productId);
-        if (!product) throw new Error('אחד המוצרים בעגלה אינו זמין יותר');
-        const { title } = resolveProductContent(product);
-        // בבקשת הצעת מחיר אין התחייבות למלאי — בודקים רק הזמנה אונליין
-        if (!isQuote && product.stockQuantity < c.quantity) {
-          throw new Error(`אין מספיק מלאי עבור "${title}"`);
-        }
-        return {
-          nurseryProductId: product.id,
-          productTitle: title,
-          quantity: c.quantity,
-          unitPrice: product.price,
-        };
-      });
-
-      let total = lineItems.reduce((sum, li) => sum + Number(li.unitPrice) * li.quantity, 0);
+      const lineItems = buildLineItems(cart, byId, { isQuote });
+      let total = calcSubtotal(lineItems);
 
       if (!isQuote && input.couponCode?.trim()) {
         const coupon = await tx.coupon.findFirst({
           where: { nurseryId: nursery.id, code: input.couponCode.trim(), isActive: true },
         });
         if (!coupon) throw new Error('קוד קופון לא תקף');
-        const now = new Date();
-        if (coupon.startsAt && coupon.startsAt > now) throw new Error('קוד קופון עדיין לא בתוקף');
-        if (coupon.endsAt && coupon.endsAt < now) throw new Error('קוד קופון פג תוקף');
+        assertCouponValid(coupon);
 
         // מיצוי מכסת שימושים (אם הוגדרה) — עדכון תנאי כדי למנוע חריגה במרוץ תנאים
         if (coupon.usageLimit !== null) {
@@ -124,7 +113,7 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
           await tx.coupon.update({ where: { id: coupon.id }, data: { usageCount: { increment: 1 } } });
         }
 
-        total = total * (1 - Number(coupon.discountPct) / 100);
+        total = applyDiscount(total, Number(coupon.discountPct));
       }
 
       // ניכוי מלאי (רק בהזמנה אונליין) — עם הגנה מפני מרוץ תנאים
