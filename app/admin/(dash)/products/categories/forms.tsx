@@ -1,9 +1,9 @@
 'use client';
 
 import { useFormState, useFormStatus } from 'react-dom';
-import { createCategory, type CategoryState } from './actions';
+import { createNurseryCategory, type NurseryCategoryState } from './actions';
 
-const initial: CategoryState = {};
+const initial: NurseryCategoryState = {};
 const field =
   'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500';
 
@@ -19,13 +19,17 @@ function Submit() {
   );
 }
 
-export function CategoryForm({ options }: { options: Array<{ id: string; name: string; depth: number }> }) {
-  const [state, action] = useFormState(createCategory, initial);
+export function NurseryCategoryForm({
+  options,
+}: {
+  options: Array<{ id: string; name: string; depth: number }>;
+}) {
+  const [state, action] = useFormState(createNurseryCategory, initial);
   return (
     <form action={action} className="flex flex-wrap items-end gap-3">
       <label className="text-sm">
         <span className="mb-1 block font-medium text-gray-700">שם קטגוריה</span>
-        <input name="name" required placeholder='למשל "עצי פרי"' className={`${field} w-56`} />
+        <input name="name" required placeholder='למשל "סוקולנטים"' className={`${field} w-56`} />
       </label>
       <label className="text-sm">
         <span className="mb-1 block font-medium text-gray-700">תת-קטגוריה של</span>
@@ -33,7 +37,7 @@ export function CategoryForm({ options }: { options: Array<{ id: string; name: s
           <option value="">(קטגוריה ראשית)</option>
           {options.map((o) => (
             <option key={o.id} value={o.id}>
-              {'    '.repeat(o.depth)}
+              {'    '.repeat(o.depth)}
               {o.name}
             </option>
           ))}

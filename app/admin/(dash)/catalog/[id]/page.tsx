@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { flattenCategoryTree } from '@/lib/category-tree';
 import { PlantForm } from './plant-form';
 import { deletePlant } from './actions';
 
@@ -55,7 +56,11 @@ export default async function EditPlantPage({
       )}
 
       <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-        <PlantForm plant={plantData} categories={allCategories} selectedCategoryIds={selectedCategoryIds} />
+        <PlantForm
+          plant={plantData}
+          categories={flattenCategoryTree(allCategories)}
+          selectedCategoryIds={selectedCategoryIds}
+        />
       </div>
 
       {linkedCount === 0 && (

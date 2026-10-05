@@ -62,6 +62,7 @@ export default async function AdminOverviewPage() {
       select: {
         customTitle: true,
         customDescription: true,
+        customImageUrl: true,
         seoMetaTitle: true,
         seoMetaDescription: true,
         plant: { select: { description: true, imageUrl: true } },

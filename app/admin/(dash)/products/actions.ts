@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
 import { recordAudit } from '@/lib/audit';
@@ -32,6 +33,28 @@ export interface ProductFormState {
   error?: string;
 }
 
+async function syncProductCategories(
+  productId: string,
+  nurseryId: string,
+  rawIds: string[],
+): Promise<void> {
+  const owned = await prisma.nurseryCategory.findMany({
+    where: { nurseryId, id: { in: rawIds } },
+    select: { id: true },
+  });
+  await prisma.$transaction([
+    prisma.nurseryProductCategory.deleteMany({ where: { nurseryProductId: productId } }),
+    prisma.nurseryProductCategory.createMany({
+      data: owned.map((c) => ({ nurseryProductId: productId, nurseryCategoryId: c.id })),
+    }),
+  ]);
+}
+
+function optionalUrl(v: FormDataEntryValue | null): string | null {
+  const s = String(v ?? '').trim();
+  return s || null;
+}
+
 export async function updateProduct(
   _prev: ProductFormState,
   formData: FormData,
@@ -59,10 +82,13 @@ export async function updateProduct(
         isActive: formData.get('isActive') === 'on',
         customTitle: (String(formData.get('customTitle') || '').trim() || null),
         customDescription: (String(formData.get('customDescription') || '').trim() || null),
+        customImageUrl: optionalUrl(formData.get('customImageUrl')),
         seoMetaTitle: (String(formData.get('seoMetaTitle') || '').trim() || null),
         seoMetaDescription: (String(formData.get('seoMetaDescription') || '').trim() || null),
       },
     });
+
+    await syncProductCategories(id, nurseryId, formData.getAll('categoryIds').map(String));
 
     if (before) {
       const priceChanged = before.price.toString() !== price;
@@ -89,6 +115,45 @@ export async function updateProduct(
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'שגיאה בעדכון' };
   }
+}
+
+export async function createCustomProduct(
+  _prev: ProductFormState,
+  formData: FormData,
+): Promise<ProductFormState> {
+  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
+  const nurseryId =
+    user.nurseryId ??
+    (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id;
+  if (!nurseryId) return { error: 'אין משתלה משויכת' };
+
+  const title = String(formData.get('customTitle') || '').trim();
+  if (!title) return { error: 'יש להזין שם למוצר' };
+
+  const price = toDecimalString(formData.get('price'));
+  if (!price) return { error: 'מחיר לא תקין' };
+
+  const stock = parseInt(String(formData.get('stockQuantity') || '0'), 10);
+
+  const product = await prisma.nurseryProduct.create({
+    data: {
+      nurseryId,
+      customTitle: title,
+      price,
+      compareAtPrice: toDecimalString(formData.get('compareAtPrice')),
+      stockQuantity: Number.isFinite(stock) && stock >= 0 ? stock : 0,
+      isActive: formData.get('isActive') === 'on',
+      customDescription: (String(formData.get('customDescription') || '').trim() || null),
+      customImageUrl: optionalUrl(formData.get('customImageUrl')),
+      seoMetaTitle: (String(formData.get('seoMetaTitle') || '').trim() || null),
+      seoMetaDescription: (String(formData.get('seoMetaDescription') || '').trim() || null),
+    },
+  });
+
+  await syncProductCategories(product.id, nurseryId, formData.getAll('categoryIds').map(String));
+
+  revalidatePath('/admin/products');
+  redirect('/admin/products');
 }
 
 export async function deleteProduct(formData: FormData): Promise<void> {

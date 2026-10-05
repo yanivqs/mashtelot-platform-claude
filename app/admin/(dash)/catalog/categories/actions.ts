@@ -23,6 +23,7 @@ export async function createCategory(
 ): Promise<CategoryState> {
   await requireUser(['SUPER_ADMIN']);
   const name = String(formData.get('name') || '').trim();
+  const parentId = String(formData.get('parentId') || '') || null;
   if (!name) return { error: 'יש להזין שם קטגוריה' };
 
   const slug = slugify(name);
@@ -31,8 +32,9 @@ export async function createCategory(
   const exists = await prisma.plantCategory.findFirst({ where: { OR: [{ name }, { slug }] } });
   if (exists) return { error: 'קטגוריה בשם זה כבר קיימת' };
 
-  await prisma.plantCategory.create({ data: { name, slug } });
+  await prisma.plantCategory.create({ data: { name, slug, parentId } });
   revalidatePath('/admin/catalog/categories');
+  revalidatePath('/admin/catalog');
   return { ok: true };
 }
 
@@ -41,4 +43,5 @@ export async function deleteCategory(formData: FormData): Promise<void> {
   const id = String(formData.get('id') || '');
   await prisma.plantCategory.delete({ where: { id } });
   revalidatePath('/admin/catalog/categories');
+  revalidatePath('/admin/catalog');
 }

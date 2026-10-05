@@ -14,6 +14,7 @@ import {
   Newspaper,
   LogOut,
   Truck,
+  Tags,
   type LucideIcon,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
@@ -38,6 +39,7 @@ const ICONS: Record<string, LucideIcon> = {
   FileText,
   Newspaper,
   Truck,
+  Tags,
 };
 
 interface NavItem {
@@ -60,7 +62,8 @@ async function buildOwnerNav(nurseryId: string | null): Promise<NavItem[]> {
   const hasProducts = enabled.has('plant_catalog') || enabled.has('supplies');
   if (hasProducts) {
     nav.push({ href: '/admin/products', label: 'המלאי שלי', icon: Package });
-    nav.push({ href: '/admin/products/browse', label: 'הוספת מוצרים', icon: PlusSquare });
+    nav.push({ href: '/admin/products/browse', label: 'שיוך מוצרים', icon: PlusSquare });
+    nav.push({ href: '/admin/products/categories', label: 'הקטגוריות שלי', icon: Tags });
   }
 
   for (const mod of MODULES) {

@@ -57,6 +57,8 @@ model Nursery {
   auditEvents     AuditEvent[]
   channels        NurseryChannel[]
   shippingZones   ShippingZone[]
+  categories      NurseryCategory[]
+  blogPosts       BlogPost[]
 
   @@map("nurseries")
 }
@@ -193,8 +195,11 @@ model PlantCategory {
   id        String                    @id @default(uuid())
   name      String                    @unique
   slug      String                    @unique
+  parentId  String?                   @map("parent_id")
   sortOrder Int                       @default(0) @map("sort_order")
   createdAt DateTime                  @default(now()) @map("created_at")
+  parent    PlantCategory?            @relation("PlantCategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  PlantCategory[]           @relation("PlantCategoryTree")
   plants    PlantCategoryAssignment[]
 
   @@map("plant_categories")
@@ -226,24 +231,26 @@ model MasterSupply {
 }
 
 model NurseryProduct {
-  id                 String        @id @default(uuid())
-  nurseryId          String        @map("nursery_id")
-  plantId            String?       @map("plant_id")
-  supplyId           String?       @map("supply_id")
-  customTitle        String?       @map("custom_title")
-  price              Decimal       @db.Decimal(10, 2)
-  compareAtPrice     Decimal?      @map("compare_at_price") @db.Decimal(10, 2)
-  stockQuantity      Int           @default(0) @map("stock_quantity")
-  isActive           Boolean       @default(true) @map("is_active")
-  customDescription  String?       @map("custom_description")
-  seoMetaTitle       String?       @map("seo_meta_title")
-  seoMetaDescription String?       @map("seo_meta_description")
-  createdAt          DateTime      @default(now()) @map("created_at")
-  updatedAt          DateTime      @updatedAt @map("updated_at")
-  nursery            Nursery       @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
-  plant              Plant?        @relation(fields: [plantId], references: [id])
-  supply             MasterSupply? @relation(fields: [supplyId], references: [id])
+  id                 String                   @id @default(uuid())
+  nurseryId          String                   @map("nursery_id")
+  plantId            String?                  @map("plant_id")
+  supplyId           String?                  @map("supply_id")
+  customTitle        String?                  @map("custom_title")
+  customImageUrl     String?                  @map("custom_image_url")
+  price              Decimal                  @db.Decimal(10, 2)
+  compareAtPrice     Decimal?                 @map("compare_at_price") @db.Decimal(10, 2)
+  stockQuantity      Int                      @default(0) @map("stock_quantity")
+  isActive           Boolean                  @default(true) @map("is_active")
+  customDescription  String?                  @map("custom_description")
+  seoMetaTitle       String?                  @map("seo_meta_title")
+  seoMetaDescription String?                  @map("seo_meta_description")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+  updatedAt          DateTime                 @updatedAt @map("updated_at")
+  nursery            Nursery                  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  plant              Plant?                   @relation(fields: [plantId], references: [id])
+  supply             MasterSupply?            @relation(fields: [supplyId], references: [id])
   orderItems         OrderItem[]
+  categories         NurseryProductCategory[]
 
   @@unique([nurseryId, plantId])
   @@unique([nurseryId, supplyId])
@@ -472,4 +479,51 @@ enum PrintOrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+}
+
+model NurseryCategory {
+  id        String                   @id @default(uuid())
+  nurseryId String                   @map("nursery_id")
+  name      String
+  slug      String
+  parentId  String?                  @map("parent_id")
+  sortOrder Int                      @default(0) @map("sort_order")
+  createdAt DateTime                 @default(now()) @map("created_at")
+  nursery   Nursery                  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  parent    NurseryCategory?         @relation("NurseryCategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  NurseryCategory[]        @relation("NurseryCategoryTree")
+  products  NurseryProductCategory[]
+
+  @@unique([nurseryId, slug])
+  @@map("nursery_categories")
+}
+
+model NurseryProductCategory {
+  nurseryProductId  String          @map("nursery_product_id")
+  nurseryCategoryId String          @map("nursery_category_id")
+  nurseryProduct    NurseryProduct  @relation(fields: [nurseryProductId], references: [id], onDelete: Cascade)
+  nurseryCategory   NurseryCategory @relation(fields: [nurseryCategoryId], references: [id], onDelete: Cascade)
+
+  @@id([nurseryProductId, nurseryCategoryId])
+  @@map("nursery_product_categories")
+}
+
+model BlogPost {
+  id                 String    @id @default(uuid())
+  nurseryId          String    @map("nursery_id")
+  title              String
+  slug               String
+  excerpt            String?
+  contentHtml        String    @default("") @map("content_html")
+  coverImageUrl      String?   @map("cover_image_url")
+  isPublished        Boolean   @default(false) @map("is_published")
+  publishedAt        DateTime? @map("published_at")
+  seoMetaTitle       String?   @map("seo_meta_title")
+  seoMetaDescription String?   @map("seo_meta_description")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  nursery            Nursery   @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@unique([nurseryId, slug])
+  @@map("blog_posts")
 }

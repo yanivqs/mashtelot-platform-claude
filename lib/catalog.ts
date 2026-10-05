@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { flattenCategoryTree, categoryAndDescendantIds } from '@/lib/category-tree';
 
 export const PAGE_SIZE = 12;
 
@@ -40,9 +41,12 @@ export async function getCatalog({ nurseryId, q, plantType, categoryId, page = 1
   }
 
   if (categoryId && categoryId !== 'all') {
-    where.plant = {
-      is: { ...(where.plant?.is ?? {}), categories: { some: { categoryId } } },
-    };
+    const tree = await prisma.nurseryCategory.findMany({
+      where: { nurseryId },
+      select: { id: true, parentId: true },
+    });
+    const ids = categoryAndDescendantIds(tree, categoryId);
+    where.categories = { some: { nurseryCategoryId: { in: ids } } };
   }
 
   const [items, total] = await Promise.all([
@@ -83,19 +87,16 @@ export interface CategoryOption {
   name: string;
 }
 
-/** קטגוריות שיש להן לפחות מוצר פעיל אחד בקטלוג של המשתלה (לתפריט הסינון). */
+/** קטגוריות המשתלה (העץ שלה, מוזח לפי עומק) לתפריט הסינון בחנות. */
 export async function getCategories(nurseryId: string): Promise<CategoryOption[]> {
-  return prisma.plantCategory.findMany({
-    where: {
-      plants: {
-        some: {
-          plant: { is: { nurseryProducts: { some: { nurseryId, isActive: true } } } },
-        },
-      },
-    },
-    select: { id: true, name: true },
-    orderBy: { sortOrder: 'asc' },
+  const categories = await prisma.nurseryCategory.findMany({
+    where: { nurseryId },
+    select: { id: true, name: true, parentId: true, sortOrder: true },
   });
+  return flattenCategoryTree(categories).map((c) => ({
+    id: c.id,
+    name: `${'  '.repeat(c.depth)}${c.name}`,
+  }));
 }
 
 export async function getFeaturedProducts(nurseryId: string, take = 8) {

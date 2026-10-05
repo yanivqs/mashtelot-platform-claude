@@ -16,7 +16,7 @@ export interface SeoScore {
 
 type ProductForScore = Pick<
   NurseryProduct,
-  'customTitle' | 'customDescription' | 'seoMetaTitle' | 'seoMetaDescription'
+  'customTitle' | 'customDescription' | 'customImageUrl' | 'seoMetaTitle' | 'seoMetaDescription'
 > & {
   plant?: Pick<Plant, 'description' | 'imageUrl'> | null;
   supply?: Pick<MasterSupply, 'description' | 'imageUrl'> | null;
@@ -34,7 +34,8 @@ export function scoreProductSeo(p: ProductForScore): SeoScore {
 
   const sharedDesc = (p.plant?.description || p.supply?.description || '').trim();
   const customDesc = (p.customDescription || '').trim();
-  const hasImage = Boolean(p.plant?.imageUrl || p.supply?.imageUrl);
+  const hasOwnImage = Boolean(p.customImageUrl);
+  const hasSharedImage = Boolean(p.plant?.imageUrl || p.supply?.imageUrl);
 
   // תיאור ייחודי — המשקל הגבוה ביותר (40)
   if (customDesc.length >= MIN_DESC) {
@@ -87,14 +88,24 @@ export function scoreProductSeo(p: ProductForScore): SeoScore {
     });
   }
 
-  // תמונה (15)
-  if (hasImage) score += 15;
-  else
+  // תמונה (15): תמונה ייחודית של המשתלה מלאה; תמונה משותפת בלבד — חלקית (מסכנת דירוג)
+  if (hasOwnImage) {
+    score += 15;
+  } else if (hasSharedImage) {
+    score += 5;
     issues.push({
       field: 'image',
       severity: 'medium',
-      message: 'למוצר אין תמונה — פוגע גם בהמרה וגם בקידום.',
+      message:
+        'החנות מציגה את התמונה המשותפת של הצמח, שזהה למשתלות אחרות. החלפה בתמונה משלכם עשויה לשפר את הדירוג בחיפוש.',
     });
+  } else {
+    issues.push({
+      field: 'image',
+      severity: 'high',
+      message: 'למוצר אין תמונה — פוגע גם בהמרה וגם בקידום ועלול להוביל לדירוג נמוך.',
+    });
+  }
 
   const level: SeoLevel = score >= 75 ? 'good' : score >= 40 ? 'fair' : 'poor';
   return { score, level, issues };

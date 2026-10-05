@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import { ChevronDown, Trash2, AlertCircle } from 'lucide-react';
+import type { Plant } from '@prisma/client';
+import { ImageUpload } from '@/components/admin/image-upload';
+import { SpecTable } from '@/components/storefront/spec-table';
 import { formatPrice } from '@/lib/utils';
 import { SEO_LEVEL_META, type SeoScore } from '@/lib/seo-score';
 import { updateProduct, deleteProduct, type ProductFormState } from './actions';
@@ -12,16 +15,25 @@ export interface RowProduct {
   title: string;
   latinName: string | null;
   image: string | null;
-  kind: 'צמח' | 'ציוד';
+  kind: 'צמח' | 'ציוד' | 'מוצר מותאם';
   price: string;
   compareAtPrice: string | null;
   stockQuantity: number;
   isActive: boolean;
   customTitle: string | null;
   customDescription: string | null;
+  customImageUrl: string | null;
   seoMetaTitle: string | null;
   seoMetaDescription: string | null;
+  categoryIds: string[];
+  plant: Plant | null;
   seo: SeoScore;
+}
+
+export interface CategoryOption {
+  id: string;
+  name: string;
+  depth: number;
 }
 
 const initial: ProductFormState = {};
@@ -40,9 +52,16 @@ function SaveButton() {
 
 const field = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500';
 
-export function ProductRow({ product }: { product: RowProduct }) {
+export function ProductRow({
+  product,
+  categoryOptions,
+}: {
+  product: RowProduct;
+  categoryOptions: CategoryOption[];
+}) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useFormState(updateProduct, initial);
+  const [imageUrl, setImageUrl] = useState(product.customImageUrl ?? '');
 
   return (
     <div className="border-b border-gray-100 last:border-0">
@@ -123,6 +142,22 @@ export function ProductRow({ product }: { product: RowProduct }) {
           <form action={formAction} className="grid gap-4 sm:grid-cols-2">
             <input type="hidden" name="id" value={product.id} />
 
+            <div className="sm:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <ImageUpload
+                name="customImageUrl"
+                defaultValue={product.customImageUrl}
+                label="תמונת המוצר בחנות"
+                folder="plants"
+                onChange={setImageUrl}
+              />
+              {!imageUrl && (
+                <p className="mt-2 text-xs text-amber-800">
+                  שימו לב: ללא תמונה ייחודית תוצג התמונה הכללית של הצמח, המשותפת למשתלות אחרות.
+                  הדבר עלול להוביל לדירוג נמוך בתוצאות החיפוש — מומלץ להעלות תמונה משלכם.
+                </p>
+              )}
+            </div>
+
             <label className="text-sm">
               <span className="mb-1 block font-medium text-gray-700">מחיר (₪)</span>
               <input name="price" type="number" step="0.01" min="0" defaultValue={product.price} className={field} required />
@@ -140,13 +175,7 @@ export function ProductRow({ product }: { product: RowProduct }) {
             </label>
             <label className="text-sm">
               <span className="mb-1 block font-medium text-gray-700">מלאי</span>
-              <input
-                name="stockQuantity"
-                type="number"
-                min="0"
-                defaultValue={product.stockQuantity}
-                className={field}
-              />
+              <input name="stockQuantity" type="number" min="0" defaultValue={product.stockQuantity} className={field} />
             </label>
             <label className="flex items-center gap-2 self-end text-sm">
               <input
@@ -157,6 +186,26 @@ export function ProductRow({ product }: { product: RowProduct }) {
               />
               <span className="font-medium text-gray-700">מוצג בחנות</span>
             </label>
+
+            {categoryOptions.length > 0 && (
+              <fieldset className="text-sm sm:col-span-2">
+                <legend className="mb-1 font-medium text-gray-700">קטגוריות בחנות שלי</legend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {categoryOptions.map((c) => (
+                    <label key={c.id} className="flex items-center gap-2" style={{ paddingInlineStart: `${c.depth * 1}rem` }}>
+                      <input
+                        type="checkbox"
+                        name="categoryIds"
+                        value={c.id}
+                        defaultChecked={product.categoryIds.includes(c.id)}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      {c.name}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
 
             <label className="text-sm sm:col-span-2">
               <span className="mb-1 block font-medium text-gray-700">
@@ -171,12 +220,7 @@ export function ProductRow({ product }: { product: RowProduct }) {
                   חשוב ל-SEO
                 </span>
               </span>
-              <textarea
-                name="customDescription"
-                rows={2}
-                defaultValue={product.customDescription ?? ''}
-                className={field}
-              />
+              <textarea name="customDescription" rows={3} defaultValue={product.customDescription ?? ''} className={field} />
             </label>
             <label className="text-sm sm:col-span-2">
               <span className="mb-1 block font-medium text-gray-700">כותרת SEO (meta title)</span>
@@ -184,12 +228,7 @@ export function ProductRow({ product }: { product: RowProduct }) {
             </label>
             <label className="text-sm sm:col-span-2">
               <span className="mb-1 block font-medium text-gray-700">תיאור SEO (meta description)</span>
-              <textarea
-                name="seoMetaDescription"
-                rows={2}
-                defaultValue={product.seoMetaDescription ?? ''}
-                className={field}
-              />
+              <textarea name="seoMetaDescription" rows={2} defaultValue={product.seoMetaDescription ?? ''} className={field} />
             </label>
 
             <div className="flex items-center gap-3 sm:col-span-2">
@@ -199,10 +238,18 @@ export function ProductRow({ product }: { product: RowProduct }) {
             </div>
           </form>
 
-          <form
-            action={deleteProduct}
-            className="mt-3 border-t border-gray-200 pt-3"
-          >
+          {product.plant && (
+            <details className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
+              <summary className="cursor-pointer text-sm font-medium text-gray-900">
+                מידע בוטני מלא (קריאה בלבד — מהקטלוג המרכזי)
+              </summary>
+              <div className="mt-3">
+                <SpecTable plant={product.plant} />
+              </div>
+            </details>
+          )}
+
+          <form action={deleteProduct} className="mt-3 border-t border-gray-200 pt-3">
             <input type="hidden" name="id" value={product.id} />
             <button className="inline-flex items-center gap-1.5 text-sm text-red-600 hover:text-red-800">
               <Trash2 className="h-4 w-4" />

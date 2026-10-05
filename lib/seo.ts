@@ -37,7 +37,8 @@ export function resolveProductContent(product: ProductWithRefs) {
     product.supply?.description ||
     '';
 
-  const image = product.plant?.imageUrl || product.supply?.imageUrl || null;
+  const image =
+    product.customImageUrl || product.plant?.imageUrl || product.supply?.imageUrl || null;
 
   const metaTitle = product.seoMetaTitle || title;
   const metaDescription =

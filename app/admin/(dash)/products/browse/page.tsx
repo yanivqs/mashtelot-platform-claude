@@ -116,7 +116,7 @@ export default async function BrowseCatalogPage({ searchParams }: Props) {
 
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-bold">הוספת מוצרים</h1>
+      <h1 className="mb-1 text-2xl font-bold">שיוך מוצרים</h1>
       <p className="mb-6 text-sm text-gray-500">
         בחר פריטים מהקטלוג הבוטני המרכזי והוסף אותם לחנות שלך עם מחיר.
       </p>
