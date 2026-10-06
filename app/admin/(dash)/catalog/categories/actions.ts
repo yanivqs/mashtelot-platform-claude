@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
+import { syncMasterCategoriesToAllNurseries } from '@/lib/category-provision';
 
 function slugify(name: string): string {
   return name
@@ -33,6 +34,7 @@ export async function createCategory(
   if (exists) return { error: 'קטגוריה בשם זה כבר קיימת' };
 
   await prisma.plantCategory.create({ data: { name, slug, parentId } });
+  await syncMasterCategoriesToAllNurseries();
   revalidatePath('/admin/catalog/categories');
   revalidatePath('/admin/catalog');
   return { ok: true };

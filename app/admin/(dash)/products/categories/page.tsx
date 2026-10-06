@@ -61,10 +61,13 @@ export default async function NurseryCategoriesPage() {
               className="flex items-center gap-4 border-b border-gray-50 px-4 py-3 last:border-0"
               style={{ paddingInlineStart: `${1 + c.depth * 1.5}rem` }}
             >
-              <span className={c.depth === 0 ? 'font-medium text-gray-900' : 'text-gray-700'}>
+              <Link
+                href={`/admin/products/categories/${c.id}`}
+                className={`hover:text-brand-700 hover:underline ${c.depth === 0 ? 'font-medium text-gray-900' : 'text-gray-700'}`}
+              >
                 {c.depth > 0 && <span className="ml-1 text-gray-300">↳</span>}
                 {c.name}
-              </span>
+              </Link>
               <span className="text-sm text-gray-500">{countById.get(c.id) ?? 0} מוצרים</span>
               <form action={deleteNurseryCategory} className="ms-auto">
                 <input type="hidden" name="id" value={c.id} />

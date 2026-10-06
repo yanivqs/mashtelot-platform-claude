@@ -501,10 +501,12 @@ model NurseryCategory {
 model NurseryProductCategory {
   nurseryProductId  String          @map("nursery_product_id")
   nurseryCategoryId String          @map("nursery_category_id")
+  sortOrder         Int             @default(0) @map("sort_order")
   nurseryProduct    NurseryProduct  @relation(fields: [nurseryProductId], references: [id], onDelete: Cascade)
   nurseryCategory   NurseryCategory @relation(fields: [nurseryCategoryId], references: [id], onDelete: Cascade)
 
   @@id([nurseryProductId, nurseryCategoryId])
+  @@index([nurseryCategoryId, sortOrder])
   @@map("nursery_product_categories")
 }
 

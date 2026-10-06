@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { requireUser, hashPassword } from '@/lib/auth';
 import { parseOpeningHoursText } from '@/lib/theme';
 import { MODULE_KEYS } from '@/lib/modules';
+import { syncMasterCategoriesToNursery } from '@/lib/category-provision';
 
 export interface NurseryFormState {
   ok?: boolean;
@@ -45,6 +46,7 @@ export async function createNursery(
   const nursery = await prisma.nursery.create({
     data: { name, subdomain, ownerEmail, logoUrl },
   });
+  await syncMasterCategoriesToNursery(nursery.id);
 
   if (ownerPassword) {
     if (ownerPassword.length < 8) {

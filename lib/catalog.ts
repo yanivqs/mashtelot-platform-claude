@@ -41,12 +41,35 @@ export async function getCatalog({ nurseryId, q, plantType, categoryId, page = 1
   }
 
   if (categoryId && categoryId !== 'all') {
+    // בקטגוריה נבחרת: הסדר נקבע על ידי בעל המשתלה (sortOrder של השיוך לקטגוריה)
     const tree = await prisma.nurseryCategory.findMany({
       where: { nurseryId },
       select: { id: true, parentId: true },
     });
     const ids = categoryAndDescendantIds(tree, categoryId);
-    where.categories = { some: { nurseryCategoryId: { in: ids } } };
+    const assignments = await prisma.nurseryProductCategory.findMany({
+      where: { nurseryCategoryId: { in: ids }, nurseryProduct: { nurseryId, isActive: true } },
+      orderBy: { sortOrder: 'asc' },
+      select: { nurseryProductId: true },
+    });
+    const orderedIds = [...new Set(assignments.map((a) => a.nurseryProductId))];
+    const matching = new Set(
+      (await prisma.nurseryProduct.findMany({ where: { ...where, id: { in: orderedIds } }, select: { id: true } }))
+        .map((p) => p.id),
+    );
+    const allIds = orderedIds.filter((id) => matching.has(id));
+    const pageIds = allIds.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const found = await prisma.nurseryProduct.findMany({
+      where: { id: { in: pageIds } },
+      include: withRefs,
+    });
+    const byId = new Map(found.map((p) => [p.id, p]));
+    return {
+      items: pageIds.map((id) => byId.get(id)!).filter(Boolean),
+      total: allIds.length,
+      page,
+      pageCount: Math.max(1, Math.ceil(allIds.length / PAGE_SIZE)),
+    };
   }
 
   const [items, total] = await Promise.all([
@@ -93,10 +116,24 @@ export async function getCategories(nurseryId: string): Promise<CategoryOption[]
     where: { nurseryId },
     select: { id: true, name: true, parentId: true, sortOrder: true },
   });
-  return flattenCategoryTree(categories).map((c) => ({
-    id: c.id,
-    name: `${'  '.repeat(c.depth)}${c.name}`,
-  }));
+  const used = await prisma.nurseryProductCategory.findMany({
+    where: { nurseryProduct: { nurseryId, isActive: true } },
+    select: { nurseryCategoryId: true },
+    distinct: ['nurseryCategoryId'],
+  });
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  // קטגוריה מוצגת רק אם יש בה מוצר פעיל, או אם יש בתת-העץ שלה מוצר פעיל
+  const visible = new Set<string>();
+  for (const { nurseryCategoryId } of used) {
+    let current: string | null = nurseryCategoryId;
+    while (current && byId.has(current) && !visible.has(current)) {
+      visible.add(current);
+      current = byId.get(current)!.parentId;
+    }
+  }
+  return flattenCategoryTree(categories)
+    .filter((c) => visible.has(c.id))
+    .map((c) => ({ id: c.id, name: `${'  '.repeat(c.depth)}${c.name}` }));
 }
 
 export async function getFeaturedProducts(nurseryId: string, take = 8) {

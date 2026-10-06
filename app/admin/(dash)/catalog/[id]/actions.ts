@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
+import { assignPlantCategoriesToProduct } from '@/lib/category-provision';
 
 const EDITABLE_FIELDS = [
   'hebrewName',
@@ -70,6 +71,11 @@ export async function updatePlant(
           ]
         : []),
     ]);
+    const linked = await prisma.nurseryProduct.findMany({
+      where: { plantId: id },
+      select: { id: true, nurseryId: true },
+    });
+    for (const p of linked) await assignPlantCategoriesToProduct(p.id, p.nurseryId, id);
   } catch {
     return { error: 'שגיאה בשמירה' };
   }

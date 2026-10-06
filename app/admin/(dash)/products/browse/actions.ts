@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
+import { assignPlantCategoriesToProduct } from '@/lib/category-provision';
 
 async function resolveNurseryId(): Promise<string> {
   const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
@@ -24,7 +25,7 @@ export async function addCatalogItem(formData: FormData): Promise<void> {
   if (!refId) return;
 
   try {
-    await prisma.nurseryProduct.create({
+    const product = await prisma.nurseryProduct.create({
       data: {
         nurseryId,
         price,
@@ -33,6 +34,7 @@ export async function addCatalogItem(formData: FormData): Promise<void> {
         ...(kind === 'supply' ? { supplyId: refId } : { plantId: refId }),
       },
     });
+    if (kind !== 'supply') await assignPlantCategoriesToProduct(product.id, nurseryId, refId);
   } catch {
     // כנראה כבר קיים (unique constraint) - מתעלמים
   }
