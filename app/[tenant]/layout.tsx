@@ -8,6 +8,7 @@ import { getSalesMode } from '@/lib/sales';
 import { getNavPages } from '@/lib/pages';
 import { tenantOrigin, localBusinessJsonLd } from '@/lib/seo';
 import { getEnabledChannels } from '@/lib/channel-access';
+import { getCategoryNav } from '@/lib/catalog';
 import { CartProvider } from '@/components/cart/cart-provider';
 import { SiteHeader } from '@/components/storefront/site-header';
 import { SiteFooter } from '@/components/storefront/site-footer';
@@ -50,6 +51,7 @@ export default async function TenantLayout({ children, params }: LayoutProps) {
   const channels = showSocial ? await getEnabledChannels(nursery.id) : [];
   const navPages = await getNavPages(nursery.id);
   const salesMode = await getSalesMode(nursery.id);
+  const categories = await getCategoryNav(nursery.id);
   const jsonLd = localBusinessJsonLd(nursery);
 
   return (
@@ -73,6 +75,7 @@ export default async function TenantLayout({ children, params }: LayoutProps) {
           basePath=""
           sticky={theme.stickyHeader}
           navPages={navPages}
+          categories={categories}
         />
         <main className="flex-1">{children}</main>
         <SiteFooter nursery={nursery} channels={channels} />

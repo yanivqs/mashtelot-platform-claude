@@ -37,10 +37,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // שרשור מחדש לנתיב הפנימי של הטננט, שמירת ה-URL המקורי בדפדפן
-  return NextResponse.rewrite(
-    new URL(`/${encodeURIComponent(tenant)}${url.pathname}`, request.url),
-  );
+  // שרשור מחדש לנתיב הפנימי של הטננט, שמירת ה-URL המקורי בדפדפן.
+  // משכפלים את ה-URL המלא כדי לשמור על ה-query string (דפדוף, חיפוש, סינון)
+  const rewritten = url.clone();
+  rewritten.pathname = `/${encodeURIComponent(tenant)}${url.pathname}`;
+  return NextResponse.rewrite(rewritten);
 }
 
 export const config = {

@@ -5,11 +5,18 @@ import { prisma } from '@/lib/prisma';
 import { resolveProductContent } from '@/lib/seo';
 import { scoreProductSeo } from '@/lib/seo-score';
 import { flattenCategoryTree } from '@/lib/category-tree';
+import { firstLetter, parseLetter } from '@/lib/alphabet';
+import { lettersOf } from '@/lib/letter-filter';
+import { AlphabetBar } from '@/components/alphabet-bar';
 import { ProductRow, type RowProduct } from './product-row';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminProductsPage() {
+export default async function AdminProductsPage({
+  searchParams,
+}: {
+  searchParams: { q?: string; letter?: string };
+}) {
   const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
   await requireAnyModule(['plant_catalog', 'supplies']);
 
@@ -57,6 +64,23 @@ export default async function AdminProductsPage() {
   });
 
   const needsSeo = rows.filter((r) => r.seo.level !== 'good').length;
+
+  // סינון לפי אות / חיפוש (בזיכרון — מלאי של משתלה בודדת)
+  const q = searchParams.q?.trim().toLowerCase() || '';
+  const letter = parseLetter(searchParams.letter);
+  const letters = lettersOf(rows.map((r) => r.title));
+  const visibleRows = rows.filter(
+    (r) =>
+      (!letter || firstLetter(r.title) === letter) &&
+      (!q || `${r.title} ${r.latinName ?? ''}`.toLowerCase().includes(q)),
+  );
+  const letterHref = (l: string | null) => {
+    const sp = new URLSearchParams();
+    if (q) sp.set('q', q);
+    if (l) sp.set('letter', l);
+    const s = sp.toString();
+    return s ? `/admin/products?${s}` : '/admin/products';
+  };
 
   return (
     <div>
@@ -112,11 +136,36 @@ export default async function AdminProductsPage() {
           .
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-          {rows.map((product) => (
-            <ProductRow key={product.id} product={product} categoryOptions={categoryOptions} />
-          ))}
-        </div>
+        <>
+          <div className="mb-4 space-y-3">
+            <form method="get" className="flex max-w-lg gap-3">
+              {letter && <input type="hidden" name="letter" value={letter} />}
+              <input
+                name="q"
+                defaultValue={searchParams.q ?? ''}
+                placeholder="חיפוש במלאי..."
+                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
+              />
+              <button className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white">
+                חיפוש
+              </button>
+            </form>
+            <AlphabetBar available={letters} active={letter} hrefFor={letterHref} />
+            {(letter || q) && (
+              <p className="text-xs text-gray-500">
+                מוצגים {visibleRows.length} מתוך {rows.length}
+              </p>
+            )}
+          </div>
+          <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+            {visibleRows.length === 0 && (
+              <p className="p-8 text-center text-sm text-gray-500">לא נמצאו מוצרים.</p>
+            )}
+            {visibleRows.map((product) => (
+              <ProductRow key={product.id} product={product} categoryOptions={categoryOptions} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

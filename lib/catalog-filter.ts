@@ -1,0 +1,152 @@
+/**
+ * מנוע הסינון הטהור של קטלוג החנות (ללא Prisma/Next — ניתן לבדיקה).
+ * `lib/catalog.ts` בונה אינדקס של כל המוצרים הפעילים של המשתלה ומעביר אותו לכאן.
+ *
+ * ספירות הפאסטים והאותיות מחושבות "בלי עצמן": אפשרויות פאסט מחושבות על התוצאות
+ * עם כל שאר המסננים פרט לאותו פאסט, כך שלעולם לא מוצגת אפשרות שתוביל לאפס תוצאות.
+ */
+import { firstLetter } from '@/lib/alphabet';
+import {
+  PLANT_FACETS,
+  facetOptions,
+  plantMatchesFacet,
+  type FacetDef,
+  type FacetOption,
+  type PlantFacetFields,
+} from '@/lib/plant-facets';
+
+export interface CatalogIndexEntry {
+  id: string;
+  createdAt: number;
+  title: string;
+  /** טקסט חיפוש מנורמל: שם, שם לטיני, כינוי */
+  searchText: string;
+  letter: string | null;
+  plant: PlantFacetFields | null;
+  /** מזהה קטגוריה → סדר המוצר בתוכה (כפי שקבע בעל המשתלה) */
+  categorySort: Record<string, number>;
+}
+
+export interface CatalogFilterState {
+  q?: string;
+  letter?: string | null;
+  /** הקטגוריה הנבחרת וכל צאצאיה (null = ללא סינון קטגוריה) */
+  categoryIds?: string[] | null;
+  /** מפתח פאסט → מפתח אפשרות נבחרת */
+  facets?: Record<string, string>;
+}
+
+export function normalizeSearch(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+interface Skip {
+  letter?: boolean;
+  facet?: string;
+}
+
+function matches(entry: CatalogIndexEntry, state: CatalogFilterState, skip: Skip = {}): boolean {
+  const q = state.q ? normalizeSearch(state.q) : '';
+  if (q && !entry.searchText.includes(q)) return false;
+  if (!skip.letter && state.letter && entry.letter !== state.letter) return false;
+  if (state.categoryIds && !state.categoryIds.some((id) => id in entry.categorySort)) return false;
+  for (const [key, option] of Object.entries(state.facets ?? {})) {
+    if (key === skip.facet) continue;
+    const def = PLANT_FACETS.find((f) => f.key === key);
+    if (def && !plantMatchesFacet(entry.plant, def, option)) return false;
+  }
+  return true;
+}
+
+function sortEntries(entries: CatalogIndexEntry[], state: CatalogFilterState): CatalogIndexEntry[] {
+  const out = [...entries];
+  const cats = state.categoryIds;
+  if (cats && cats.length) {
+    // בקטגוריה: הסדר שקבע בעל המשתלה, ואז החדשים קודם
+    const rank = (e: CatalogIndexEntry) =>
+      Math.min(...cats.filter((id) => id in e.categorySort).map((id) => e.categorySort[id]));
+    return out.sort((a, b) => rank(a) - rank(b) || b.createdAt - a.createdAt);
+  }
+  if (state.letter) {
+    return out.sort((a, b) => a.title.localeCompare(b.title, 'he'));
+  }
+  return out.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export interface FacetView {
+  def: FacetDef;
+  options: FacetOption[];
+  selected: string | null;
+}
+
+export interface CatalogView {
+  pageIds: string[];
+  total: number;
+  page: number;
+  pageCount: number;
+  /** אותיות שיש להן תוצאות בהינתן שאר המסננים */
+  letters: Set<string>;
+  /** פאסטים שיש להם לפחות אפשרות אחת (או שנבחרה בהם אפשרות) */
+  facets: FacetView[];
+}
+
+export function buildCatalogView(
+  entries: CatalogIndexEntry[],
+  state: CatalogFilterState,
+  page: number,
+  pageSize: number,
+): CatalogView {
+  const filtered = sortEntries(
+    entries.filter((e) => matches(e, state)),
+    state,
+  );
+  const total = filtered.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(Math.max(1, page), pageCount);
+
+  const letters = new Set<string>();
+  for (const e of entries) {
+    if (e.letter && matches(e, state, { letter: true })) letters.add(e.letter);
+  }
+
+  const facets: FacetView[] = [];
+  for (const def of PLANT_FACETS) {
+    const pool = entries.filter((e) => e.plant && matches(e, state, { facet: def.key }));
+    const options = facetOptions(
+      pool.map((e) => e.plant),
+      def,
+    );
+    const selected = state.facets?.[def.key] ?? null;
+    if (options.length > 0 || selected) facets.push({ def, options, selected });
+  }
+
+  return {
+    pageIds: filtered.slice((safePage - 1) * pageSize, safePage * pageSize).map((e) => e.id),
+    total,
+    page: safePage,
+    pageCount,
+    letters,
+    facets,
+  };
+}
+
+/** בונה רשומת אינדקס ממוצר (שדות מינימליים). */
+export function toIndexEntry(p: {
+  id: string;
+  createdAt: Date;
+  title: string;
+  /** שמות נוספים לחיפוש (שם עברי מקורי, לטיני, כינוי) */
+  altNames?: Array<string | null | undefined>;
+  plant: PlantFacetFields | null;
+  categorySort: Record<string, number>;
+}): CatalogIndexEntry {
+  return {
+    id: p.id,
+    createdAt: p.createdAt.getTime(),
+    title: p.title,
+    searchText: normalizeSearch([p.title, ...(p.altNames ?? [])].filter(Boolean).join(' ')),
+    letter: firstLetter(p.title),
+    plant: p.plant,
+    categorySort: p.categorySort,
+  };
+}

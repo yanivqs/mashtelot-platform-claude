@@ -1,6 +1,15 @@
+import { cache } from 'react';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { flattenCategoryTree, categoryAndDescendantIds } from '@/lib/category-tree';
+import { categoryAndDescendantIds } from '@/lib/category-tree';
+import { parseLetter } from '@/lib/alphabet';
+import { PLANT_FACETS } from '@/lib/plant-facets';
+import {
+  buildCatalogView,
+  toIndexEntry,
+  type CatalogFilterState,
+  type CatalogView,
+} from '@/lib/catalog-filter';
 
 export const PAGE_SIZE = 12;
 
@@ -11,118 +20,45 @@ const withRefs = {
 
 export type CatalogProduct = Prisma.NurseryProductGetPayload<{ include: typeof withRefs }>;
 
-export interface CatalogQuery {
-  nurseryId: string;
-  q?: string;
-  plantType?: string;
-  categoryId?: string;
-  page?: number;
-}
+// ---------- עץ קטגוריות לניווט ----------
 
-/** Paginated, filterable catalog query for a single tenant. */
-export async function getCatalog({ nurseryId, q, plantType, categoryId, page = 1 }: CatalogQuery) {
-  const where: Prisma.NurseryProductWhereInput = {
-    nurseryId,
-    isActive: true,
-  };
-
-  if (q && q.trim()) {
-    const term = q.trim();
-    where.OR = [
-      { customTitle: { contains: term, mode: 'insensitive' } },
-      { plant: { is: { hebrewName: { contains: term, mode: 'insensitive' } } } },
-      { plant: { is: { latinName: { contains: term, mode: 'insensitive' } } } },
-      { supply: { is: { title: { contains: term, mode: 'insensitive' } } } },
-    ];
-  }
-
-  if (plantType && plantType !== 'all') {
-    where.plant = { is: { plantType } };
-  }
-
-  if (categoryId && categoryId !== 'all') {
-    // בקטגוריה נבחרת: הסדר נקבע על ידי בעל המשתלה (sortOrder של השיוך לקטגוריה)
-    const tree = await prisma.nurseryCategory.findMany({
-      where: { nurseryId },
-      select: { id: true, parentId: true },
-    });
-    const ids = categoryAndDescendantIds(tree, categoryId);
-    const assignments = await prisma.nurseryProductCategory.findMany({
-      where: { nurseryCategoryId: { in: ids }, nurseryProduct: { nurseryId, isActive: true } },
-      orderBy: { sortOrder: 'asc' },
-      select: { nurseryProductId: true },
-    });
-    const orderedIds = [...new Set(assignments.map((a) => a.nurseryProductId))];
-    const matching = new Set(
-      (await prisma.nurseryProduct.findMany({ where: { ...where, id: { in: orderedIds } }, select: { id: true } }))
-        .map((p) => p.id),
-    );
-    const allIds = orderedIds.filter((id) => matching.has(id));
-    const pageIds = allIds.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-    const found = await prisma.nurseryProduct.findMany({
-      where: { id: { in: pageIds } },
-      include: withRefs,
-    });
-    const byId = new Map(found.map((p) => [p.id, p]));
-    return {
-      items: pageIds.map((id) => byId.get(id)!).filter(Boolean),
-      total: allIds.length,
-      page,
-      pageCount: Math.max(1, Math.ceil(allIds.length / PAGE_SIZE)),
-    };
-  }
-
-  const [items, total] = await Promise.all([
-    prisma.nurseryProduct.findMany({
-      where,
-      include: withRefs,
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-    }),
-    prisma.nurseryProduct.count({ where }),
-  ]);
-
-  return {
-    items,
-    total,
-    page,
-    pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
-  };
-}
-
-/** Distinct plant types available in a tenant's active catalog (for filters). */
-export async function getPlantTypes(nurseryId: string): Promise<string[]> {
-  const rows = await prisma.nurseryProduct.findMany({
-    where: { nurseryId, isActive: true, plant: { is: { plantType: { not: null } } } },
-    select: { plantId: true, plant: { select: { plantType: true } } },
-    distinct: ['plantId'],
-  });
-  const set = new Set<string>();
-  for (const r of rows) {
-    if (r.plant?.plantType) set.add(r.plant.plantType);
-  }
-  return [...set].sort((a, b) => a.localeCompare(b, 'he'));
-}
-
-export interface CategoryOption {
+export interface CategoryNode {
   id: string;
+  slug: string;
   name: string;
+  children: CategoryNode[];
 }
 
-/** קטגוריות המשתלה (העץ שלה, מוזח לפי עומק) לתפריט הסינון בחנות. */
-export async function getCategories(nurseryId: string): Promise<CategoryOption[]> {
-  const categories = await prisma.nurseryCategory.findMany({
+interface RawCategory {
+  id: string;
+  slug: string;
+  name: string;
+  parentId: string | null;
+  sortOrder: number;
+}
+
+const getRawCategories = cache(async (nurseryId: string): Promise<RawCategory[]> =>
+  prisma.nurseryCategory.findMany({
     where: { nurseryId },
-    select: { id: true, name: true, parentId: true, sortOrder: true },
-  });
-  const used = await prisma.nurseryProductCategory.findMany({
-    where: { nurseryProduct: { nurseryId, isActive: true } },
-    select: { nurseryCategoryId: true },
-    distinct: ['nurseryCategoryId'],
-  });
+    select: { id: true, slug: true, name: true, parentId: true, sortOrder: true },
+  }),
+);
+
+/**
+ * עץ הקטגוריות של המשתלה — רק קטגוריות שיש בהן (או בצאצאיהן) מוצר פעיל.
+ * משמש גם לתפריט הראשי וגם לסינון בקטלוג.
+ */
+export const getCategoryNav = cache(async (nurseryId: string): Promise<CategoryNode[]> => {
+  const [categories, used] = await Promise.all([
+    getRawCategories(nurseryId),
+    prisma.nurseryProductCategory.findMany({
+      where: { nurseryProduct: { nurseryId, isActive: true } },
+      select: { nurseryCategoryId: true },
+      distinct: ['nurseryCategoryId'],
+    }),
+  ]);
   const byId = new Map(categories.map((c) => [c.id, c]));
-  // קטגוריה מוצגת רק אם יש בה מוצר פעיל, או אם יש בתת-העץ שלה מוצר פעיל
+
   const visible = new Set<string>();
   for (const { nurseryCategoryId } of used) {
     let current: string | null = nurseryCategoryId;
@@ -131,9 +67,140 @@ export async function getCategories(nurseryId: string): Promise<CategoryOption[]
       current = byId.get(current)!.parentId;
     }
   }
-  return flattenCategoryTree(categories)
-    .filter((c) => visible.has(c.id))
-    .map((c) => ({ id: c.id, name: `${'  '.repeat(c.depth)}${c.name}` }));
+
+  const childrenOf = new Map<string | null, RawCategory[]>();
+  for (const c of categories) {
+    if (!visible.has(c.id)) continue;
+    const parent = c.parentId && byId.has(c.parentId) ? c.parentId : null;
+    const list = childrenOf.get(parent) ?? [];
+    list.push(c);
+    childrenOf.set(parent, list);
+  }
+  const build = (parent: string | null): CategoryNode[] =>
+    (childrenOf.get(parent) ?? [])
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'he'))
+      .map((c) => ({ id: c.id, slug: c.slug, name: c.name, children: build(c.id) }));
+  return build(null);
+});
+
+/** הנתיב (שורש → הקטגוריה) לקטגוריה לפי slug או מזהה, או מערך ריק. */
+export function findCategoryPath(nav: CategoryNode[], param: string | undefined): CategoryNode[] {
+  if (!param) return [];
+  const walk = (nodes: CategoryNode[], trail: CategoryNode[]): CategoryNode[] | null => {
+    for (const node of nodes) {
+      const next = [...trail, node];
+      if (node.slug === param || node.id === param) return next;
+      const found = walk(node.children, next);
+      if (found) return found;
+    }
+    return null;
+  };
+  return walk(nav, []) ?? [];
+}
+
+// ---------- אינדקס הקטלוג ----------
+
+/** כל המוצרים הפעילים של המשתלה בשדות מינימליים — בסיס לסינון ולספירות. */
+const getCatalogIndex = cache(async (nurseryId: string) => {
+  const rows = await prisma.nurseryProduct.findMany({
+    where: { nurseryId, isActive: true },
+    select: {
+      id: true,
+      createdAt: true,
+      customTitle: true,
+      plant: {
+        select: {
+          hebrewName: true,
+          latinName: true,
+          nickname: true,
+          plantType: true,
+          light: true,
+          water: true,
+          floweringSeason: true,
+          flowerColor: true,
+          growthRate: true,
+          evergreen: true,
+          coastal: true,
+          native: true,
+        },
+      },
+      supply: { select: { title: true } },
+      categories: { select: { nurseryCategoryId: true, sortOrder: true } },
+    },
+  });
+
+  return rows.map((r) =>
+    toIndexEntry({
+      id: r.id,
+      createdAt: r.createdAt,
+      title: r.customTitle || r.plant?.hebrewName || r.supply?.title || 'מוצר ללא שם',
+      altNames: [r.plant?.hebrewName, r.plant?.latinName, r.plant?.nickname],
+      plant: r.plant,
+      categorySort: Object.fromEntries(r.categories.map((c) => [c.nurseryCategoryId, c.sortOrder])),
+    }),
+  );
+});
+
+export type CatalogSearchParams = Record<string, string | undefined>;
+
+/** קריאת פרמטרי הפאסטים מה-URL (מתעלם מערכים לא מוכרים). */
+export function parseFacetParams(sp: CatalogSearchParams): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const def of PLANT_FACETS) {
+    const raw = sp[def.key]?.trim();
+    if (!raw) continue;
+    if (def.mode === 'exact' || def.buckets?.some((b) => b.key === raw)) out[def.key] = raw;
+  }
+  return out;
+}
+
+export interface CatalogPage extends CatalogView {
+  items: CatalogProduct[];
+  categoryPath: CategoryNode[];
+  categoryNav: CategoryNode[];
+  letter: string | null;
+}
+
+/** עמוד קטלוג מסונן של משתלה: מוצרים, ספירות, אותיות זמינות, פאסטים וקטגוריות. */
+export async function getCatalogPage(
+  nurseryId: string,
+  sp: CatalogSearchParams,
+): Promise<CatalogPage> {
+  const [index, categoryNav, rawCategories] = await Promise.all([
+    getCatalogIndex(nurseryId),
+    getCategoryNav(nurseryId),
+    getRawCategories(nurseryId),
+  ]);
+
+  const categoryPath = findCategoryPath(categoryNav, sp.category);
+  const selected = categoryPath[categoryPath.length - 1];
+  const letter = parseLetter(sp.letter);
+
+  const state: CatalogFilterState = {
+    q: sp.q,
+    letter,
+    categoryIds: selected ? categoryAndDescendantIds(rawCategories, selected.id) : null,
+    facets: parseFacetParams(sp),
+  };
+
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
+  const view = buildCatalogView(index, state, page, PAGE_SIZE);
+
+  const found = view.pageIds.length
+    ? await prisma.nurseryProduct.findMany({
+        where: { id: { in: view.pageIds } },
+        include: withRefs,
+      })
+    : [];
+  const byId = new Map(found.map((p) => [p.id, p]));
+
+  return {
+    ...view,
+    items: view.pageIds.map((id) => byId.get(id)).filter((p): p is CatalogProduct => Boolean(p)),
+    categoryPath,
+    categoryNav,
+    letter,
+  };
 }
 
 export async function getFeaturedProducts(nurseryId: string, take = 8) {
