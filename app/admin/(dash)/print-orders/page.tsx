@@ -1,15 +1,15 @@
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatPrice } from '@/lib/utils';
-import { PrintStatusSelect, NewPrintProductForm } from './controls';
-import { togglePrintProduct } from './actions';
+import Link from 'next/link';
+import { PrintStatusSelect } from './controls';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PrintOrdersPage() {
   await requireUser(['SUPER_ADMIN']);
 
-  const [orders, products] = await Promise.all([
+  const [orders, productCount] = await Promise.all([
     prisma.printOrder.findMany({
       include: {
         nursery: { select: { name: true } },
@@ -18,14 +18,22 @@ export default async function PrintOrdersPage() {
       },
       orderBy: { createdAt: 'desc' },
     }),
-    prisma.printProduct.findMany({ orderBy: { createdAt: 'asc' } }),
+    prisma.printProduct.count(),
   ]);
 
   return (
     <div className="max-w-4xl space-y-10">
-      <div>
-        <h1 className="text-2xl font-bold">הזמנות דפוס נכנסות</h1>
-        <p className="text-sm text-gray-500">{orders.length} הזמנות מהמשתלות</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">הזמנות דפוס נכנסות</h1>
+          <p className="text-sm text-gray-500">{orders.length} הזמנות מהמשתלות</p>
+        </div>
+        <Link
+          href="/admin/print-orders/products"
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+        >
+          ניהול מוצרי דפוס ({productCount})
+        </Link>
       </div>
 
       {orders.length === 0 ? (
@@ -58,6 +66,8 @@ export default async function PrintOrdersPage() {
                   <li key={it.id} className="flex justify-between py-0.5">
                     <span>
                       {it.printProduct.title} × {it.quantity}
+                      {Array.isArray(it.options) && it.options.length > 0 &&
+                        ` · ${(it.options as Array<{ name?: string }>).map((o) => o.name).join(', ')}`}
                       {it.customText ? ` — "${it.customText}"` : ''}
                     </span>
                     <span>{formatPrice(Number(it.unitPrice) * it.quantity)}</span>
@@ -84,37 +94,6 @@ export default async function PrintOrdersPage() {
         </div>
       )}
 
-      <section>
-        <h2 className="mb-3 font-bold text-gray-900">קטלוג מוצרי הדפוס</h2>
-        <div className="mb-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-          <NewPrintProductForm />
-        </div>
-        <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-          {products.map((p) => (
-            <div key={p.id} className="flex items-center gap-4 border-b border-gray-50 px-4 py-3 last:border-0">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-900">{p.title}</p>
-                <p className="text-xs text-gray-400">
-                  {formatPrice(p.basePrice.toString())} ליח׳ · מינ׳ {p.minQuantity}
-                </p>
-              </div>
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                  p.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
-                }`}
-              >
-                {p.isActive ? 'פעיל' : 'כבוי'}
-              </span>
-              <form action={togglePrintProduct}>
-                <input type="hidden" name="id" value={p.id} />
-                <button className="text-xs text-gray-500 hover:text-gray-800">
-                  {p.isActive ? 'כבה' : 'הפעל'}
-                </button>
-              </form>
-            </div>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }

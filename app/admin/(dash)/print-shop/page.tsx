@@ -2,6 +2,7 @@ import { requireUser } from '@/lib/auth';
 import { requireModule } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
 import { formatPrice } from '@/lib/utils';
+import { parsePriceTiers } from '@/lib/print-pricing';
 import { PrintOrderForm, type PrintProductVM } from './order-form';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +25,10 @@ export default async function PrintShopPage() {
       : undefined);
 
   const [products, options, orders] = await Promise.all([
-    prisma.printProduct.findMany({ where: { isActive: true }, orderBy: { basePrice: 'asc' } }),
+    prisma.printProduct.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { basePrice: 'asc' }],
+    }),
     prisma.printGlobalOption.findMany({ orderBy: { optionName: 'asc' } }),
     nurseryId
       ? prisma.printOrder.findMany({
@@ -38,9 +42,17 @@ export default async function PrintShopPage() {
   const vm: PrintProductVM[] = products.map((p) => ({
     id: p.id,
     title: p.title,
+    category: p.category,
     description: p.description,
+    specs: p.specs,
+    imageUrl: p.imageUrl,
     basePrice: p.basePrice.toString(),
+    unitLabel: p.unitLabel,
     minQuantity: p.minQuantity,
+    leadTimeDays: p.leadTimeDays,
+    priceTiers: parsePriceTiers(p.priceTiers),
+    requiresArtwork: p.requiresArtwork,
+    allowOptions: p.allowOptions,
   }));
 
   return (
@@ -50,7 +62,7 @@ export default async function PrintShopPage() {
         הזמנת שלטים, תוויות ופריטי מיתוג לחנות מבית הדפוס של הפלטפורמה.
       </p>
 
-      <PrintOrderForm products={vm} options={options.map((o) => ({ optionName: o.optionName, extraPrice: o.extraPrice.toString() }))} />
+      <PrintOrderForm products={vm} options={options.map((o) => ({ id: o.id, optionName: o.optionName, extraPrice: o.extraPrice.toString() }))} />
 
       {orders.length > 0 && (
         <section className="mt-10">

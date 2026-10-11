@@ -2,7 +2,12 @@
 
 import { useRef } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
-import { updatePrintOrderStatus, createPrintProduct, type PrintProductState } from './actions';
+import {
+  updatePrintOrderStatus,
+  savePrintOption,
+  deletePrintOption,
+  type PrintProductState,
+} from './actions';
 
 const STATUS: Array<[string, string]> = [
   ['NEW', 'התקבלה'],
@@ -36,41 +41,59 @@ export function PrintStatusSelect({ id, status }: { id: string; status: string }
 const initial: PrintProductState = {};
 const field = 'rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500';
 
-function AddButton() {
+function SaveButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <button
-      className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+      className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
       disabled={pending}
     >
-      {pending ? '...' : 'הוספה'}
+      {pending ? '...' : label}
     </button>
   );
 }
 
-export function NewPrintProductForm() {
-  const [state, action] = useFormState(createPrintProduct, initial);
+/** שורת עריכה / הוספה של אפשרות גימור גלובלית. */
+export function PrintOptionForm({
+  option,
+}: {
+  option?: { id: string; optionName: string; extraPrice: string };
+}) {
+  const [state, action] = useFormState(savePrintOption, initial);
   return (
-    <form action={action} className="flex flex-wrap items-end gap-3">
-      <label className="text-sm">
-        <span className="mb-1 block font-medium text-gray-700">שם מוצר</span>
-        <input name="title" required className={`${field} w-56`} />
-      </label>
-      <label className="text-sm">
-        <span className="mb-1 block font-medium text-gray-700">מחיר ליח׳</span>
-        <input name="basePrice" type="number" step="0.01" min="0" required className={`${field} w-24`} />
-      </label>
-      <label className="text-sm">
-        <span className="mb-1 block font-medium text-gray-700">מינ׳ כמות</span>
-        <input name="minQuantity" type="number" min="1" defaultValue={1} className={`${field} w-20`} />
-      </label>
-      <label className="w-full text-sm sm:w-auto sm:flex-1">
-        <span className="mb-1 block font-medium text-gray-700">תיאור</span>
-        <input name="description" className={`${field} w-full`} />
-      </label>
-      <AddButton />
-      {state.ok && <span className="text-sm text-green-700">נוסף ✓</span>}
-      {state.error && <span className="text-sm text-red-600">{state.error}</span>}
-    </form>
+    <div className="flex flex-wrap items-center gap-2">
+      <form action={action} className="flex flex-wrap items-center gap-2">
+        <input type="hidden" name="id" value={option?.id ?? ''} />
+        <input
+          name="optionName"
+          required
+          defaultValue={option?.optionName}
+          placeholder="שם האפשרות (למשל: למינציה מט)"
+          className={`${field} w-64`}
+        />
+        <label className="flex items-center gap-1 text-sm text-gray-600">
+          +₪
+          <input
+            name="extraPrice"
+            type="number"
+            step="0.01"
+            min="0"
+            required
+            defaultValue={option?.extraPrice}
+            className={`${field} w-24`}
+          />
+          ליח׳
+        </label>
+        <SaveButton label={option ? 'שמירה' : 'הוספה'} />
+        {state.ok && <span className="text-xs text-green-700">✓</span>}
+        {state.error && <span className="text-xs text-red-600">{state.error}</span>}
+      </form>
+      {option && (
+        <form action={deletePrintOption}>
+          <input type="hidden" name="id" value={option.id} />
+          <button className="text-xs text-red-600 hover:text-red-800">מחיקה</button>
+        </form>
+      )}
+    </div>
   );
 }
