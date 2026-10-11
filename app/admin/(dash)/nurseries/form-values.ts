@@ -23,5 +23,6 @@ export function nurseryToFormValues(n: Nursery): NurseryFormValues {
     openingHoursText: openingHoursToText(n.openingHours),
     hero: theme.hero,
     stickyHeader: theme.stickyHeader,
+    carousel: theme.carousel,
   };
 }

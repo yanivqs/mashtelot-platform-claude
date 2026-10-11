@@ -2,7 +2,9 @@
 
 import { useFormState, useFormStatus } from 'react-dom';
 import { ImageUpload } from '@/components/admin/image-upload';
+import type { CarouselConfig } from '@/lib/theme';
 import { updateNursery, type NurseryFormState } from './actions';
+import { CarouselEditor } from './carousel-editor';
 
 export interface NurseryFormValues {
   id: string;
@@ -29,6 +31,7 @@ export interface NurseryFormValues {
     ctaHref: string | null;
   };
   stickyHeader: boolean;
+  carousel: CarouselConfig;
 }
 
 const initial: NurseryFormState = {};
@@ -91,14 +94,23 @@ export function NurseryProfileForm({
   nursery,
   scope,
   canEditDesign = true,
+  canEditCarousel = true,
 }: {
   nursery: NurseryFormValues;
   scope: 'owner' | 'super';
   canEditDesign?: boolean;
+  canEditCarousel?: boolean;
 }) {
   const [state, formAction] = useFormState(updateNursery, initial);
   const isSuper = scope === 'super';
   const showDesign = isSuper || canEditDesign;
+  const showCarousel = showDesign && (isSuper || canEditCarousel);
+  const carouselHidden = (
+    <>
+      <input type="hidden" name="carouselSlides" value={JSON.stringify(nursery.carousel.slides)} />
+      <input type="hidden" name="carouselInterval" value={nursery.carousel.intervalSec} />
+    </>
+  );
 
   return (
     <form action={formAction} className="grid gap-4 sm:grid-cols-2">
@@ -166,6 +178,7 @@ export function NurseryProfileForm({
           <input type="hidden" name="primaryColor" value={nursery.primaryColor ?? ''} />
           <input type="hidden" name="accentColor" value={nursery.accentColor ?? ''} />
           {nursery.stickyHeader && <input type="hidden" name="stickyHeader" value="on" />}
+          {carouselHidden}
         </>
       )}
 
@@ -177,6 +190,9 @@ export function NurseryProfileForm({
             <option value="centered">ממורכז</option>
             <option value="split">טקסט + תמונה</option>
             <option value="image">תמונת רקע מלאה</option>
+            {(showCarousel || nursery.hero.layout === 'carousel') && (
+              <option value="carousel">קרוסלת תמונות</option>
+            )}
           </select>
         </label>
         <label className="flex items-center gap-2 self-end text-sm">
@@ -210,6 +226,7 @@ export function NurseryProfileForm({
         </div>
         <Text name="primaryColor" label="צבע ראשי (hex)" defaultValue={nursery.primaryColor} dir="ltr" placeholder="#16a34a" />
         <Text name="accentColor" label="צבע משני (hex)" defaultValue={nursery.accentColor} dir="ltr" placeholder="#16a34a" />
+        {showCarousel ? <CarouselEditor carousel={nursery.carousel} /> : carouselHidden}
       </Section>
       )}
 

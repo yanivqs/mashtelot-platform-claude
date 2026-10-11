@@ -83,7 +83,7 @@ export function emailConfigStatus() {
     hasApiKey: Boolean(process.env.RESEND_API_KEY),
     from,
     /** כתובת resend.dev שולחת רק לבעל חשבון ה-Resend עצמו */
-    usesSandboxSender: Boolean(from && /@resend.dev/i.test(from)),
+    usesSandboxSender: Boolean(from && /@resend\.dev\b/i.test(from)),
     adminCopy: adminNotifyEmails(),
   };
 }
@@ -93,7 +93,7 @@ function adminNotifyEmails(): string[] {
   return (process.env.ORDER_NOTIFY_EMAILS ?? '')
     .split(',')
     .map((e) => e.trim().toLowerCase())
-    .filter((e) => /^[^s@]+@[^s@]+.[^s@]+$/.test(e));
+    .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
 }
 
 /** נמעני ההתראה על הזמנה חדשה: בעל המשתלה, אימייל יצירת הקשר, ועותק למנהל הפלטפורמה. */

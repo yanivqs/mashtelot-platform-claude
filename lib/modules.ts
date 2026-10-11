@@ -84,7 +84,7 @@ export const MODULES: ModuleDef[] = [
     key: 'design',
     label: 'שליטה בעיצוב',
     description: 'מאפשר לבעל המשתלה לערוך את חלקי העיצוב המסומנים למטה.',
-    defaultConfig: { colors: true, hero: true, carousel: false, popup: false, sticky: true },
+    defaultConfig: { colors: true, hero: true, carousel: true, popup: false, sticky: true },
   },
   {
     key: 'sales',

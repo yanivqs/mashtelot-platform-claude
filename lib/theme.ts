@@ -1,6 +1,25 @@
 import type { Nursery } from '@prisma/client';
 
-export type HeroLayout = 'centered' | 'split' | 'image';
+export type HeroLayout = 'centered' | 'split' | 'image' | 'carousel';
+
+export const HERO_LAYOUTS: HeroLayout[] = ['centered', 'split', 'image', 'carousel'];
+
+/** שקופית בקרוסלת התמונות (טקסט ריק = נלקח מכותרות ה-Hero הכלליות). */
+export interface CarouselSlide {
+  imageUrl: string;
+  headline: string | null;
+  subheadline: string | null;
+  ctaText: string | null;
+  ctaHref: string | null;
+}
+
+export interface CarouselConfig {
+  slides: CarouselSlide[];
+  /** שניות בין שקופיות */
+  intervalSec: number;
+}
+
+export const MAX_CAROUSEL_SLIDES = 8;
 
 export interface HeroConfig {
   layout: HeroLayout;
@@ -13,6 +32,7 @@ export interface HeroConfig {
 
 export interface ThemeConfig {
   hero: HeroConfig;
+  carousel: CarouselConfig;
   colors: { primary: string; accent: string };
   stickyHeader: boolean;
 }
@@ -40,8 +60,9 @@ export function getNurseryTheme(
   const rawHero = (raw.hero ?? {}) as Record<string, unknown>;
   const rawColors = (raw.colors ?? {}) as Record<string, unknown>;
 
-  const layout: HeroLayout =
-    rawHero.layout === 'split' || rawHero.layout === 'image' ? rawHero.layout : 'centered';
+  const layout: HeroLayout = HERO_LAYOUTS.includes(rawHero.layout as HeroLayout)
+    ? (rawHero.layout as HeroLayout)
+    : 'centered';
 
   const primary = isHexColor(rawColors.primary)
     ? rawColors.primary.trim()
@@ -60,8 +81,36 @@ export function getNurseryTheme(
       ctaText: str(rawHero.ctaText),
       ctaHref: str(rawHero.ctaHref),
     },
+    carousel: normalizeCarousel(raw.carousel),
     colors: { primary, accent },
     stickyHeader: raw.stickyHeader !== false, // ברירת מחדל: sticky פעיל
+  };
+}
+
+/** נירמול תצורת הקרוסלה (גם לקלט טופס וגם לקריאה מה-DB). */
+export function normalizeCarousel(json: unknown): CarouselConfig {
+  const raw = (json ?? {}) as Record<string, unknown>;
+  const slides: CarouselSlide[] = [];
+  if (Array.isArray(raw.slides)) {
+    for (const item of raw.slides) {
+      if (!item || typeof item !== 'object') continue;
+      const r = item as Record<string, unknown>;
+      const imageUrl = str(r.imageUrl);
+      if (!imageUrl || !/^https?:\/\//i.test(imageUrl)) continue;
+      slides.push({
+        imageUrl,
+        headline: str(r.headline)?.slice(0, 120) ?? null,
+        subheadline: str(r.subheadline)?.slice(0, 240) ?? null,
+        ctaText: str(r.ctaText)?.slice(0, 40) ?? null,
+        ctaHref: str(r.ctaHref)?.slice(0, 300) ?? null,
+      });
+      if (slides.length >= MAX_CAROUSEL_SLIDES) break;
+    }
+  }
+  const interval = Number(raw.intervalSec);
+  return {
+    slides,
+    intervalSec: Number.isFinite(interval) ? Math.min(20, Math.max(3, Math.round(interval))) : 6,
   };
 }
 

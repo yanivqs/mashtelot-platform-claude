@@ -1,5 +1,5 @@
 import { requireUser } from '@/lib/auth';
-import { isModuleEnabled } from '@/lib/module-access';
+import { isModuleEnabled, getModuleConfig } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
 import { NurseryProfileForm } from '../nurseries/profile-form';
 import { nurseryToFormValues } from '../nurseries/form-values';
@@ -27,6 +27,9 @@ export default async function NurserySettingsPage() {
 
   const canEditDesign =
     user.role === 'SUPER_ADMIN' || (await isModuleEnabled(nurseryId, 'design'));
+  const canEditCarousel =
+    user.role === 'SUPER_ADMIN' ||
+    (canEditDesign && (await getModuleConfig(nurseryId, 'design')).carousel !== false);
   const salesEnabled =
     user.role === 'SUPER_ADMIN' || (await isModuleEnabled(nurseryId, 'sales'));
   const shippingEnabled =
@@ -54,6 +57,7 @@ export default async function NurserySettingsPage() {
             nursery={nurseryToFormValues(nursery)}
             scope="owner"
             canEditDesign={canEditDesign}
+            canEditCarousel={canEditCarousel}
           />
         </div>
       </div>

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireUser, hashPassword } from '@/lib/auth';
-import { parseOpeningHoursText } from '@/lib/theme';
+import { parseOpeningHoursText, normalizeCarousel, HERO_LAYOUTS, type HeroLayout } from '@/lib/theme';
 import { MODULE_KEYS } from '@/lib/modules';
 import { syncMasterCategoriesToNursery } from '@/lib/category-provision';
 
@@ -99,16 +99,33 @@ export async function updateNursery(
     return { error: 'צבע משני חייב להיות קוד hex' };
   }
 
-  const heroLayout = String(formData.get('heroLayout') || 'centered');
+  const heroLayoutRaw = String(formData.get('heroLayout') || 'centered') as HeroLayout;
+  const heroLayout = HERO_LAYOUTS.includes(heroLayoutRaw) ? heroLayoutRaw : 'centered';
+
+  let slidesJson: unknown = [];
+  try {
+    slidesJson = JSON.parse(String(formData.get('carouselSlides') || '[]'));
+  } catch {
+    return { error: 'נתוני הקרוסלה לא תקינים' };
+  }
+  const carousel = normalizeCarousel({
+    slides: slidesJson,
+    intervalSec: formData.get('carouselInterval'),
+  });
+  if (heroLayout === 'carousel' && carousel.slides.length === 0) {
+    return { error: 'בפריסת קרוסלה יש להעלות לפחות תמונה אחת' };
+  }
+
   const themeConfig = {
     hero: {
-      layout: ['centered', 'split', 'image'].includes(heroLayout) ? heroLayout : 'centered',
+      layout: heroLayout,
       headline: s(formData, 'heroHeadline'),
       subheadline: s(formData, 'heroSubheadline'),
       imageUrl: s(formData, 'heroImageUrl'),
       ctaText: s(formData, 'heroCtaText'),
       ctaHref: s(formData, 'heroCtaHref'),
     },
+    carousel,
     colors: {
       primary: primaryColorRaw ?? '#16a34a',
       accent: accentColorRaw ?? primaryColorRaw ?? '#16a34a',

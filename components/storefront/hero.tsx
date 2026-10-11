@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import type { Nursery } from '@prisma/client';
 import type { ThemeConfig } from '@/lib/theme';
+import { HeroCarousel } from './hero-carousel';
 
 interface HeroProps {
   nursery: Nursery;
@@ -32,6 +33,21 @@ export function Hero({ nursery, theme }: HeroProps) {
     theme.hero.subheadline ||
     'צמחים, שתילים וציוד גינון מקצועי — עם מחירים מעודכנים והזמנה אונליין נוחה.';
   const image = theme.hero.imageUrl;
+
+  if (theme.hero.layout === 'carousel' && theme.carousel.slides.length > 0) {
+    return (
+      <HeroCarousel
+        slides={theme.carousel.slides}
+        intervalSec={theme.carousel.intervalSec}
+        fallback={{
+          headline,
+          subheadline,
+          ctaText: theme.hero.ctaText || 'לכל הקטלוג',
+          ctaHref: ctaHref(theme),
+        }}
+      />
+    );
+  }
 
   if (theme.hero.layout === 'image' && image) {
     return (
