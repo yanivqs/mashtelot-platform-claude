@@ -9,17 +9,22 @@ import { rateLimit, clientIp } from '@/lib/rate-limit';
 import { getEnabledPaymentMethods } from '@/lib/payment-access';
 import type { EnabledPaymentMethod } from '@/lib/payment-methods';
 import { resolveShippingZone, hasAnyShippingZone } from '@/lib/shipping';
+import { recordAudit } from '@/lib/audit';
 import {
   buildLineItems,
   calcSubtotal,
   assertCouponValid,
   applyDiscount,
   resolveShippingCost,
+  availableDeliveryMethods,
+  resolveDeliveryMethod,
+  type DeliveryChoice,
 } from '@/lib/checkout-calc';
 import {
   sendEmail,
   orderConfirmationEmail,
   newOrderNotificationEmail,
+  orderNotificationRecipients,
 } from '@/lib/email';
 
 export interface CheckoutInput {
@@ -27,6 +32,7 @@ export interface CheckoutInput {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  deliveryMethod?: DeliveryChoice;
   shippingAddress?: string;
   city?: string;
   couponCode?: string;
@@ -35,23 +41,46 @@ export interface CheckoutInput {
   items: Array<{ productId: string; quantity: number }>;
 }
 
-/** אמצעי התשלום הידניים הפעילים אצל המשתלה, לבניית טופס ה-checkout בצד הלקוח. */
-export async function getCheckoutPaymentMethods(tenant: string): Promise<EnabledPaymentMethod[]> {
-  const nursery = await getNurseryByTenant(tenant);
-  if (!nursery) return [];
-  return getEnabledPaymentMethods(nursery.id);
+export interface CheckoutShippingZone {
+  cities: string[];
+  shippingPrice: number;
+  freeShippingThreshold: number | null;
 }
 
-/** רשימת הערים הזמינות למשלוח אצל המשתלה (ריקה = לא מוגדרים אזורי משלוח). */
-export async function getCheckoutShippingCities(tenant: string): Promise<string[]> {
+export interface CheckoutOptions {
+  paymentMethods: EnabledPaymentMethod[];
+  deliveryMethods: DeliveryChoice[];
+  deliveryNote: string | null;
+  pickupAddress: string | null;
+  /** אזורי משלוח פעילים (ריק = עיר חופשית ועלות שתתואם מול המשתלה) */
+  zones: CheckoutShippingZone[];
+}
+
+/** כל מה שטופס ה-checkout צריך: אמצעי תשלום, אופני קבלה ואזורי משלוח. */
+export async function getCheckoutOptions(tenant: string): Promise<CheckoutOptions | null> {
   const nursery = await getNurseryByTenant(tenant);
-  if (!nursery) return [];
-  const zones = await prisma.shippingZone.findMany({
-    where: { nurseryId: nursery.id, isEnabled: true },
-    include: { cities: true },
-    orderBy: { sortOrder: 'asc' },
-  });
-  return zones.flatMap((z) => z.cities.map((c) => c.cityName));
+  if (!nursery) return null;
+  const [paymentMethods, zones] = await Promise.all([
+    getEnabledPaymentMethods(nursery.id),
+    prisma.shippingZone.findMany({
+      where: { nurseryId: nursery.id, isEnabled: true },
+      include: { cities: true },
+      orderBy: { sortOrder: 'asc' },
+    }),
+  ]);
+  return {
+    paymentMethods,
+    deliveryMethods: availableDeliveryMethods(nursery),
+    deliveryNote: nursery.deliveryNote,
+    pickupAddress: [nursery.addressLine, nursery.city].filter(Boolean).join(', ') || null,
+    zones: zones
+      .filter((z) => z.cities.length > 0)
+      .map((z) => ({
+        cities: z.cities.map((c) => c.cityName),
+        shippingPrice: Number(z.shippingPrice),
+        freeShippingThreshold: z.freeShippingThreshold !== null ? Number(z.freeShippingThreshold) : null,
+      })),
+  };
 }
 
 export interface CheckoutResult {
@@ -99,13 +128,28 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
   }
   const paymentReference = !isQuote ? input.paymentReference?.trim() || null : null;
 
-  // אזור משלוח: רק אם למשתלה מוגדר לפחות אזור אחד (לא פוגע במשתלות שלא הגדירו משלוחים)
+  // אופן קבלה: איסוף עצמי / משלוח (לפי מה שהמשתלה מאפשרת)
+  let deliveryMethod: DeliveryChoice;
+  try {
+    deliveryMethod = resolveDeliveryMethod(input.deliveryMethod, availableDeliveryMethods(nursery));
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'יש לבחור אופן קבלה' };
+  }
+
+  let shippingAddress: string | null = null;
   let shippingZone: Awaited<ReturnType<typeof resolveShippingZone>> = null;
-  if (!isQuote && (await hasAnyShippingZone(nursery.id))) {
+  if (deliveryMethod === 'DELIVERY') {
+    const street = input.shippingAddress?.trim();
     const city = input.city?.trim();
     if (!city) return { error: 'יש לבחור עיר למשלוח' };
-    shippingZone = await resolveShippingZone(nursery.id, city);
-    if (!shippingZone) return { error: 'משלוח לא זמין לעיר זו, צרו קשר עם המשתלה' };
+    if (!street) return { error: 'יש למלא כתובת למשלוח' };
+    shippingAddress = `${street}, ${city}`;
+
+    // אזור משלוח: רק אם למשתלה מוגדר לפחות אזור אחד; אחרת העלות מתואמת מול המשתלה
+    if (await hasAnyShippingZone(nursery.id)) {
+      shippingZone = await resolveShippingZone(nursery.id, city);
+      if (!shippingZone) return { error: 'משלוח לא זמין לעיר זו, צרו קשר עם המשתלה' };
+    }
   }
 
   try {
@@ -146,7 +190,7 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
       }
 
       let shippingCost = 0;
-      if (shippingZone) {
+      if (shippingZone && !isQuote) {
         shippingCost = resolveShippingCost(total, shippingZone);
         total += shippingCost;
       }
@@ -168,13 +212,14 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
           customerName: name,
           customerEmail: email,
           customerPhone: phone,
-          shippingAddress: input.shippingAddress?.trim() || null,
+          deliveryMethod,
+          shippingAddress,
           totalAmount: total.toFixed(2),
           status: isQuote ? 'QUOTE_REQUESTED' : 'PENDING',
           paymentMethod,
           paymentReference,
           shippingZoneId: shippingZone?.id ?? null,
-          shippingCost: shippingZone ? shippingCost.toFixed(2) : null,
+          shippingCost: shippingZone && !isQuote ? shippingCost.toFixed(2) : null,
           items: { create: lineItems },
         },
       });
@@ -192,10 +237,9 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
 
 async function sendOrderEmails(
   orderId: string,
-  nursery: Awaited<ReturnType<typeof getNurseryByTenant>>,
+  nursery: NonNullable<Awaited<ReturnType<typeof getNurseryByTenant>>>,
   isQuote: boolean,
 ): Promise<void> {
-  if (!nursery) return;
   try {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -209,6 +253,9 @@ async function sendOrderEmails(
       customerEmail: order.customerEmail,
       customerPhone: order.customerPhone,
       shippingAddress: order.shippingAddress,
+      deliveryMethod: order.deliveryMethod,
+      shippingCost: order.shippingCost?.toString() ?? null,
+      pickupAddress: [nursery.addressLine, nursery.city].filter(Boolean).join(', ') || null,
       totalAmount: order.totalAmount.toString(),
       items: order.items.map((i) => ({
         productTitle: i.productTitle,
@@ -222,21 +269,34 @@ async function sendOrderEmails(
 
     const customer = orderConfirmationEmail(data, isQuote);
     const owner = newOrderNotificationEmail(data, isQuote);
+    const ownerRecipients = orderNotificationRecipients(nursery);
 
-    await Promise.allSettled([
+    const [customerRes, ownerRes] = await Promise.all([
       sendEmail({
         to: order.customerEmail,
         subject: customer.subject,
         html: customer.html,
-        replyTo: nursery.ownerEmail,
+        replyTo: nursery.contactEmail || nursery.ownerEmail,
       }),
       sendEmail({
-        to: nursery.ownerEmail,
+        to: ownerRecipients,
         subject: owner.subject,
         html: owner.html,
         replyTo: order.customerEmail,
       }),
     ]);
+
+    // תיעוד תוצאת השליחה — מאפשר לאבחן תקלות מייל מתוך הפורטל
+    await recordAudit({
+      nurseryId: nursery.id,
+      action: 'order.emails',
+      entityType: 'order',
+      entityId: order.id,
+      metadata: {
+        customer: { to: order.customerEmail, ...customerRes },
+        owner: { to: ownerRecipients, ...ownerRes },
+      },
+    });
   } catch (e) {
     console.error('[checkout] שליחת מיילים נכשלה', e);
   }

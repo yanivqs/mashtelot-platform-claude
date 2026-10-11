@@ -82,3 +82,29 @@ export function resolveShippingCost(subtotal: number, zone: ShippingZoneForCheck
   if (zone.freeShippingThreshold !== null && subtotal >= zone.freeShippingThreshold) return 0;
   return zone.shippingPrice;
 }
+
+export type DeliveryChoice = 'PICKUP' | 'DELIVERY';
+
+/** אופני הקבלה שהמשתלה מאפשרת (אם שניהם כבויים — איסוף עצמי, כדי שההזמנה תמיד אפשרית). */
+export function availableDeliveryMethods(n: {
+  pickupEnabled: boolean;
+  deliveryEnabled: boolean;
+}): DeliveryChoice[] {
+  const out: DeliveryChoice[] = [];
+  if (n.pickupEnabled) out.push('PICKUP');
+  if (n.deliveryEnabled) out.push('DELIVERY');
+  return out.length ? out : ['PICKUP'];
+}
+
+/**
+ * אופן הקבלה הסופי: הבחירה של הלקוח אם מותרת; אם יש רק אפשרות אחת — היא;
+ * אחרת שגיאה (הלקוח חייב לבחור).
+ */
+export function resolveDeliveryMethod(
+  requested: string | undefined,
+  allowed: DeliveryChoice[],
+): DeliveryChoice {
+  if (requested && (allowed as string[]).includes(requested)) return requested as DeliveryChoice;
+  if (allowed.length === 1) return allowed[0];
+  throw new CheckoutError('יש לבחור איסוף עצמי או משלוח');
+}

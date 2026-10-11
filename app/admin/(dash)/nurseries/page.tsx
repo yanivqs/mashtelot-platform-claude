@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { tenantOrigin } from '@/lib/seo';
 import { CreateNurseryForm } from './create-form';
 import { toggleNurseryActive } from './actions';
 
@@ -48,6 +49,14 @@ export default async function AdminNurseriesPage() {
             >
               {n.isActive ? 'פעילה' : 'מושבתת'}
             </span>
+            <a
+              href={tenantOrigin(n)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-medium text-gray-600 hover:underline"
+            >
+              לחנות ↗
+            </a>
             <Link
               href={`/admin/nurseries/${n.id}`}
               className="text-xs font-medium text-brand-700 hover:underline"

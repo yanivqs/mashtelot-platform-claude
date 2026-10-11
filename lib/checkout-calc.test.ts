@@ -5,6 +5,8 @@ import {
   assertCouponValid,
   applyDiscount,
   resolveShippingCost,
+  availableDeliveryMethods,
+  resolveDeliveryMethod,
   CheckoutError,
   type ProductForCheckout,
 } from './checkout-calc';
@@ -117,5 +119,18 @@ describe('resolveShippingCost', () => {
   it('is free once the subtotal reaches the threshold', () => {
     expect(resolveShippingCost(100, { shippingPrice: 25, freeShippingThreshold: 100 })).toBe(0);
     expect(resolveShippingCost(150, { shippingPrice: 25, freeShippingThreshold: 100 })).toBe(0);
+  });
+});
+
+describe('delivery method', () => {
+  it('falls back to pickup when the nursery disabled both', () => {
+    expect(availableDeliveryMethods({ pickupEnabled: false, deliveryEnabled: false })).toEqual(['PICKUP']);
+  });
+  it('requires a choice only when both are offered', () => {
+    const both = availableDeliveryMethods({ pickupEnabled: true, deliveryEnabled: true });
+    expect(resolveDeliveryMethod('DELIVERY', both)).toBe('DELIVERY');
+    expect(() => resolveDeliveryMethod(undefined, both)).toThrow();
+    expect(resolveDeliveryMethod(undefined, ['DELIVERY'])).toBe('DELIVERY');
+    expect(resolveDeliveryMethod('PICKUP', ['DELIVERY'])).toBe('DELIVERY');
   });
 });

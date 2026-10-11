@@ -56,6 +56,24 @@ export default async function OrderSuccessPage({
               </span>
             </li>
           ))}
+          {order.deliveryMethod && (
+            <li className="flex justify-between gap-3 px-4 py-3 text-sm">
+              <span className="text-gray-700">
+                {order.deliveryMethod === 'PICKUP'
+                  ? `איסוף עצמי${[nursery.addressLine, nursery.city].filter(Boolean).length ? ` · ${[nursery.addressLine, nursery.city].filter(Boolean).join(', ')}` : ''}`
+                  : `משלוח · ${order.shippingAddress ?? ''}`}
+              </span>
+              <span className="shrink-0 text-gray-900">
+                {order.deliveryMethod === 'PICKUP'
+                  ? 'חינם'
+                  : order.shippingCost === null
+                    ? 'יתואם'
+                    : Number(order.shippingCost) === 0
+                      ? 'חינם'
+                      : formatPrice(order.shippingCost.toString())}
+              </span>
+            </li>
+          )}
           <li className="flex justify-between px-4 py-3 font-bold">
             <span>סה"כ</span>
             <span>{formatPrice(order.totalAmount.toString())}</span>

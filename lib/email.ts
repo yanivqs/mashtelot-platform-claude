@@ -57,7 +57,13 @@ export async function sendEmail({ to, subject, html, replyTo }: SendEmailInput):
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
       console.error('[email] שליחה נכשלה', res.status, detail);
-      return { ok: false, error: `resend ${res.status}` };
+      let message = detail;
+      try {
+        message = (JSON.parse(detail) as { message?: string }).message ?? detail;
+      } catch {
+        // תשובה שאינה JSON — נשמרת כמות שהיא
+      }
+      return { ok: false, error: `resend ${res.status}: ${message}`.slice(0, 400) };
     }
 
     const data = (await res.json().catch(() => ({}))) as { id?: string };
@@ -70,6 +76,37 @@ export async function sendEmail({ to, subject, html, replyTo }: SendEmailInput):
   }
 }
 
+/** מצב התצורה של שליחת המיילים (לעמוד האבחון בפורטל). */
+export function emailConfigStatus() {
+  const from = process.env.EMAIL_FROM ?? null;
+  return {
+    hasApiKey: Boolean(process.env.RESEND_API_KEY),
+    from,
+    /** כתובת resend.dev שולחת רק לבעל חשבון ה-Resend עצמו */
+    usesSandboxSender: Boolean(from && /@resend.dev/i.test(from)),
+    adminCopy: adminNotifyEmails(),
+  };
+}
+
+/** כתובות מנהל הפלטפורמה שמקבלות עותק מכל הזמנה (ORDER_NOTIFY_EMAILS, מופרד בפסיקים). */
+function adminNotifyEmails(): string[] {
+  return (process.env.ORDER_NOTIFY_EMAILS ?? '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => /^[^s@]+@[^s@]+.[^s@]+$/.test(e));
+}
+
+/** נמעני ההתראה על הזמנה חדשה: בעל המשתלה, אימייל יצירת הקשר, ועותק למנהל הפלטפורמה. */
+export function orderNotificationRecipients(nursery: {
+  ownerEmail: string;
+  contactEmail: string | null;
+}): string[] {
+  const all = [nursery.ownerEmail, nursery.contactEmail, ...adminNotifyEmails()]
+    .map((e) => e?.trim().toLowerCase())
+    .filter((e): e is string => Boolean(e));
+  return [...new Set(all)];
+}
+
 // ---------- תבניות ----------
 
 interface OrderEmailData {
@@ -78,6 +115,9 @@ interface OrderEmailData {
   customerEmail: string;
   customerPhone: string;
   shippingAddress: string | null;
+  deliveryMethod?: 'PICKUP' | 'DELIVERY' | null;
+  shippingCost?: string | number | null;
+  pickupAddress?: string | null;
   totalAmount: string | number;
   items: Array<{ productTitle: string; quantity: number; unitPrice: string | number }>;
   nurseryName: string;
@@ -102,6 +142,23 @@ function itemRows(items: OrderEmailData['items']): string {
       </tr>`,
     )
     .join('');
+}
+
+/** שורת "אופן קבלה" למייל (איסוף עצמי / משלוח + עלות). */
+function deliveryLine(o: OrderEmailData): string {
+  if (o.deliveryMethod === 'PICKUP') {
+    return `איסוף עצמי מהמשתלה${o.pickupAddress ? ` (${escapeHtml(o.pickupAddress)})` : ''}`;
+  }
+  if (o.deliveryMethod === 'DELIVERY' || o.shippingAddress) {
+    const cost =
+      o.shippingCost === null || o.shippingCost === undefined
+        ? 'עלות המשלוח תתואם מול המשתלה'
+        : Number(o.shippingCost) === 0
+          ? 'משלוח חינם'
+          : `עלות משלוח ${formatPrice(o.shippingCost)}`;
+    return `משלוח${o.shippingAddress ? ` לכתובת ${escapeHtml(o.shippingAddress)}` : ''} · ${cost}`;
+  }
+  return '';
 }
 
 function shell(title: string, body: string): string {
@@ -140,7 +197,7 @@ export function orderConfirmationEmail(
         <td style="padding:8px 0;text-align:left;font-weight:bold;color:#111827">${formatPrice(o.totalAmount)}</td>
       </tr>
     </table>
-    ${o.shippingAddress ? `<p style="color:#6b7280;font-size:13px">כתובת למשלוח: ${escapeHtml(o.shippingAddress)}</p>` : ''}
+    ${deliveryLine(o) ? `<p style="color:#374151;font-size:14px"><strong>אופן קבלה:</strong> ${deliveryLine(o)}</p>` : ''}
     <p style="color:#9ca3af;font-size:12px">מספר פנייה: ${escapeHtml(o.id)}</p>
     ${o.storeUrl ? `<a href="${escapeHtml(o.storeUrl)}" style="display:inline-block;margin-top:8px;background:#16a34a;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:14px">חזרה לחנות</a>` : ''}
   `);
@@ -162,7 +219,7 @@ export function newOrderNotificationEmail(
       <tr><td style="padding:4px 0;width:90px;color:#6b7280">לקוח</td><td>${escapeHtml(o.customerName)}</td></tr>
       <tr><td style="padding:4px 0;color:#6b7280">טלפון</td><td>${escapeHtml(o.customerPhone)}</td></tr>
       <tr><td style="padding:4px 0;color:#6b7280">אימייל</td><td>${escapeHtml(o.customerEmail)}</td></tr>
-      ${o.shippingAddress ? `<tr><td style="padding:4px 0;color:#6b7280">משלוח</td><td>${escapeHtml(o.shippingAddress)}</td></tr>` : ''}
+      ${deliveryLine(o) ? `<tr><td style="padding:4px 0;color:#6b7280">אופן קבלה</td><td>${deliveryLine(o)}</td></tr>` : ''}
     </table>
     <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:14px">
       ${itemRows(o.items)}

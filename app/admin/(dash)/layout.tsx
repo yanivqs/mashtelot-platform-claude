@@ -15,12 +15,15 @@ import {
   LogOut,
   Truck,
   Tags,
+  Mail,
+  ExternalLink,
   type LucideIcon,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getEnabledModuleKeys } from '@/lib/module-access';
 import { MODULES } from '@/lib/modules';
+import { tenantOrigin } from '@/lib/seo';
 import { logout } from './actions';
 
 export const metadata: Metadata = {
@@ -51,7 +54,8 @@ interface NavItem {
 const adminNav: NavItem[] = [
   { href: '/admin/catalog', label: 'קטלוג בוטני', icon: Sprout },
   { href: '/admin/nurseries', label: 'משתלות', icon: Store },
-  { href: '/admin/print-orders', label: 'הזמנות דפוס', icon: Printer },
+  { href: '/admin/print-orders', label: 'בית דפוס', icon: Printer },
+  { href: '/admin/system', label: 'מיילים ומערכת', icon: Mail },
 ];
 
 /** ניווט בעל משתלה — נבנה מתוך המודולים המשויכים בלבד. */
@@ -83,12 +87,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const isSuper = user.role === 'SUPER_ADMIN';
 
   let ownerNav: NavItem[] = [];
+  let storeUrl: string | null = null;
   if (!isSuper) {
-    const nurseryId =
-      user.nurseryId ??
-      (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id ??
-      null;
-    ownerNav = await buildOwnerNav(nurseryId);
+    const nursery =
+      user.nursery ?? (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }));
+    ownerNav = await buildOwnerNav(nursery?.id ?? null);
+    storeUrl = nursery ? tenantOrigin(nursery) : null;
   }
 
   return (
@@ -99,6 +103,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
             {isSuper ? 'ניהול פלטפורמה' : user.nursery?.name ?? 'המשתלה שלי'}
           </p>
           <p className="mt-0.5 truncate text-xs text-gray-500">{user.email}</p>
+          {storeUrl && (
+            <a
+              href={storeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 flex items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800 hover:bg-brand-100"
+            >
+              <ExternalLink className="h-4 w-4" />
+              צפייה בחנות שלי
+            </a>
+          )}
         </div>
 
         <nav className="flex-1 space-y-1 p-3">

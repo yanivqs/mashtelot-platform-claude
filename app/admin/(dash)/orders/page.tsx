@@ -45,8 +45,15 @@ export default async function AdminOrdersPage() {
                   <p className="text-sm text-gray-500">
                     {o.customerPhone} · {o.customerEmail}
                   </p>
-                  {o.shippingAddress && (
-                    <p className="text-sm text-gray-500">משלוח: {o.shippingAddress}</p>
+                  {o.deliveryMethod === 'PICKUP' && (
+                    <p className="text-sm font-medium text-gray-700">איסוף עצמי מהמשתלה</p>
+                  )}
+                  {(o.deliveryMethod === 'DELIVERY' || (!o.deliveryMethod && o.shippingAddress)) && (
+                    <p className="text-sm text-gray-500">
+                      <span className="font-medium text-gray-700">משלוח</span>
+                      {o.shippingAddress ? `: ${o.shippingAddress}` : ''}
+                      {o.deliveryMethod === 'DELIVERY' && !o.shippingZone && ' · עלות לתיאום'}
+                    </p>
                   )}
                   {o.paymentMethod && (
                     <p className="text-sm text-gray-500">
