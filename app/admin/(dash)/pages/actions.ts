@@ -6,24 +6,12 @@ import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
 import { requireModule } from '@/lib/module-access';
 import { sanitizeRichHtml } from '@/lib/sanitize';
+import { saveStaticPage, deleteStaticPage } from '@/lib/static-pages-admin';
 
 export interface PageFormState {
   ok?: boolean;
   error?: string;
 }
-
-const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,60}[a-z0-9])?$/;
-const RESERVED = new Set([
-  'catalog',
-  'cart',
-  'checkout',
-  'product',
-  'contact',
-  'blog',
-  'admin',
-  'api',
-  '_next',
-]);
 
 async function resolveNurseryId(): Promise<string | null> {
   const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
@@ -42,44 +30,18 @@ export async function savePage(
   const nurseryId = await resolveNurseryId();
   if (!nurseryId) return { error: 'אין משתלה משויכת' };
 
-  const id = String(formData.get('id') || '').trim();
-  const title = String(formData.get('title') || '').trim();
-  const slug = String(formData.get('slug') || '').trim().toLowerCase();
-  const contentHtml = sanitizeRichHtml(String(formData.get('contentHtml') || ''));
-  const isPublished = formData.get('isPublished') === 'on';
-  const showInNav = formData.get('showInNav') === 'on';
-  const sortOrder = parseInt(String(formData.get('sortOrder') || '0'), 10) || 0;
-  const seoMetaTitle = String(formData.get('seoMetaTitle') || '').trim() || null;
-  const seoMetaDescription = String(formData.get('seoMetaDescription') || '').trim() || null;
-
-  if (!title) return { error: 'כותרת היא שדה חובה' };
-  if (!SLUG_RE.test(slug)) {
-    return { error: 'מזהה כתובת (slug) לא תקין — אותיות אנגלית קטנות, ספרות ומקפים' };
-  }
-  if (RESERVED.has(slug)) return { error: `"${slug}" הוא מזהה שמור` };
-
-  const clash = await prisma.staticPage.findFirst({
-    where: { nurseryId, slug, NOT: id ? { id } : undefined },
-    select: { id: true },
+  const result = await saveStaticPage(prisma, nurseryId, {
+    id: String(formData.get('id') || ''),
+    title: String(formData.get('title') || ''),
+    slug: String(formData.get('slug') || ''),
+    contentHtml: sanitizeRichHtml(String(formData.get('contentHtml') || '')),
+    isPublished: formData.get('isPublished') === 'on',
+    showInNav: formData.get('showInNav') === 'on',
+    sortOrder: parseInt(String(formData.get('sortOrder') || '0'), 10) || 0,
+    seoMetaTitle: String(formData.get('seoMetaTitle') || '').trim() || null,
+    seoMetaDescription: String(formData.get('seoMetaDescription') || '').trim() || null,
   });
-  if (clash) return { error: 'כבר קיים עמוד עם מזהה כתובת זה' };
-
-  const data = {
-    title,
-    slug,
-    contentHtml,
-    isPublished,
-    showInNav,
-    sortOrder,
-    seoMetaTitle,
-    seoMetaDescription,
-  };
-
-  if (id) {
-    await prisma.staticPage.update({ where: { id }, data });
-  } else {
-    await prisma.staticPage.create({ data: { ...data, nurseryId } });
-  }
+  if (!result.ok) return { error: result.error };
 
   revalidatePath('/admin/pages');
   redirect('/admin/pages');
@@ -90,7 +52,7 @@ export async function deletePage(formData: FormData): Promise<void> {
   const nurseryId = await resolveNurseryId();
   const id = String(formData.get('id') || '');
   if (!nurseryId || !id) return;
-  await prisma.staticPage.deleteMany({ where: { id, nurseryId } });
+  await deleteStaticPage(prisma, nurseryId, id);
   revalidatePath('/admin/pages');
   redirect('/admin/pages');
 }
