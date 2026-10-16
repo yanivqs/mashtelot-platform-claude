@@ -19,7 +19,6 @@
 | S-11 | bucket אחסון ציבורי (כולל artwork של דפוס) | בינונית | VERIFIED | `lib/upload-actions.ts` | OPEN | C-PT-03 (PT-08) |
 | S-12 | `log: ['query']` ב-Prisma גם בפרודקשן | נמוכה | VERIFIED | `lib/prisma.ts` | OPEN | — |
 | S-13 | Vercel Functions ב-`iad1` מול DB ב-`eu-central-1` (ביצועים) | נמוכה (ביצועים) | VERIFIED (`x-vercel-id`, host ה-DB) | header חי + `.env` | OPEN | הצעה נפרדת |
-
 | S-14 | `next build` מקומי מבצע prerender שקורא (קריאה בלבד) מבסיס ה-Production דרך `.env` | נמוכה | VERIFIED (build של C-P0-01) | `app/page.tsx` (revalidate 3600) | OPEN | C-P0-05 |
 
 ## הנחות שטרם נבדקו
