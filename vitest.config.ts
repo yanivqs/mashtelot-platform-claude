@@ -1,6 +1,10 @@
 import path from 'path';
 import { defineConfig } from 'vitest/config';
 
+/**
+ * בדיקות יחידה בלבד — ללא בסיס נתונים וללא טעינת `.env`.
+ * בדיקות שנוגעות ב-DB נמצאות ב-test/db ורצות דרך vitest.db.config.ts.
+ */
 export default defineConfig({
   resolve: {
     alias: {
@@ -9,9 +13,8 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['**/*.test.ts'],
-    exclude: ['node_modules/**'],
-    setupFiles: ['./test/setup.ts'],
+    include: ['lib/**/*.test.ts', 'components/**/*.test.ts'],
+    exclude: ['node_modules/**', 'test/**'],
     testTimeout: 20000,
   },
 });

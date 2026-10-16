@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:db": "vitest run -c vitest.db.config.ts",
     "test:watch": "vitest",
     "postinstall": "prisma generate",
     "db:seed:plants": "npx prisma db seed",
