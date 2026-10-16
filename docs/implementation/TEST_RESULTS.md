@@ -33,3 +33,20 @@
 - יחידה: **47/47**. `tsc --noEmit`: ✅. `next build`: ✅.
 - הערה: `next build` המקומי קרא (קריאה בלבד) מבסיס ה-Production בזמן prerender — ראו S-14.
 - **לא נבדק:** בדיקה ידנית בממשק (Server Action דרך הדפדפן) — לא הורץ שרת מקומי.
+
+## 2026-10-16 — C-P0-02 (ענף `fix/c-p0-02-rls`)
+
+| # | בדיקה | לפני (`026f56e`, dev) | אחרי — local | אחרי — dev Supabase |
+|---|---|---|---|---|
+| 1 | אין טבלה ב-public בלי RLS | ❌ 12 טבלאות | ✅ | ✅ |
+| 2 | anon לא קורא שורות | ❌ `_prisma_migrations` (16), `blog_posts` (3) | ↓ דולג (אין תפקיד) | ✅ |
+| 3 | anon לא כותב/מוחק | ❌ `audit_events` INSERT, `blog_posts` DELETE, `_prisma_migrations` DELETE | ↓ | ✅ |
+| 4 | authenticated לא קורא | ❌ | ↓ | ✅ |
+| 5 | authenticated לא כותב/מוחק | ❌ | ↓ | ✅ |
+| 6 | רגרסיה: תפקיד האפליקציה קורא/כותב | ✅ | ✅ | ✅ |
+
+- סוויטה מלאה: local **20 + 4 דולגו**; dev Supabase **24/24** (כולל smoke, בידוד עמודים, fixtures).
+- SQL ב-dev אחרי המיגרציה: 0 הרשאות anon/authenticated בטבלאות public; 0 טבלאות ללא RLS; default ACL ללא anon/authenticated.
+- אחרי ה-probes: `_prisma_migrations`=16, ללא שאריות fixtures.
+- יחידה: **47/47**.
+- **לא נבדק:** קריאה דרך HTTP ל-PostgREST עם המפתח הציבורי (הבדיקה מדמה זאת ב-`SET LOCAL ROLE`, כפי ש-PostgREST עושה); מצב ההרשאות בפרודקשן עצמו (לא נקרא).

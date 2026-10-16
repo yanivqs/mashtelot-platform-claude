@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | E01 / C-P0-04 | סביבת בדיקות מבודדת: guard ל-TEST_DATABASE_URL, פיצול unit/db, fixtures A/B/C | §22.04, §2.05, §38 | — | IN_REVIEW (`chore/e01-test-isolation`) |
 | C-P0-01 | IDOR בעמודים סטטיים + בדיקות A/B | §4.07, §19.01 | E01 | IN_REVIEW (`fix/c-p0-01-static-pages-idor`) |
-| C-P0-02 | RLS ל-11 טבלאות + בדיקה שאוסרת טבלה חדשה בלי RLS; בדיקת anon/authenticated מול `mashtelot-dev` | §1.03, R10-03 | E01 | TODO |
+| C-P0-02 | RLS ל-11 טבלאות + בדיקה שאוסרת טבלה חדשה בלי RLS; בדיקת anon/authenticated מול `mashtelot-dev` | §1.03, R10-03 | E01 | IN_REVIEW (`fix/c-p0-02-rls`) — מיגרציה טרם הוחלה בפרודקשן |
 | C-P0-03 | הסרת סיסמאות קשיחות מ-seed, guard נגד seed בפרודקשן; אימות רוטציה (בעלים) | §19.02 | E01 | TODO |
 | C-P0-05 | מיגרציות רק במסלול מאושר; Preview → `mashtelot-dev` | §1.05, §22.07, §23.02 | E01 | TODO |
 | C-P1-01 | שכבת הרשאות מרוכזת: משתלה מפורשת לסופר-אדמין, אכיפת מודולים בכל Action, חסימת משתלה מושעית | §4.07, §16 קבלה, §2.03 | C-P0-01 | TODO |

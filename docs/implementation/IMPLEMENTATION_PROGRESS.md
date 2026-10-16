@@ -29,3 +29,11 @@
 2. תיקון — `updateMany({ where: { id, nurseryId } })`; 0 שורות → "העמוד לא נמצא". ה-Server Action נשאר דק (זיהוי משתמש, מודול, סניטציה, redirect).
 **מחוץ לתחום (מכוון):** fallback ל"משתלה הראשונה" ב-`resolveNurseryId` — C-P1-01.
 **סיכון רגרסיה:** נמוך — עמוד שלא שייך למשתלה כבר לא נטען בעורך, כך שמסלול המשתמש הלגיטימי לא משתנה.
+
+## 2026-10-16 — C-P0-02: RLS והרשאות תפקידים ציבוריים — IN_REVIEW
+**דרישה:** §1.03, §4.07, §19.01 (Least Privilege), R10-03, §38 ("כל טבלה רלוונטית מוגנת ונבדקה גם בגישת API ישירה"). ממצא P0-2.
+**אימות מצב:** ב-`mashtelot-dev` (Supabase, אותה תצורה כמו Production): `postgres` = `bypassrls=true`; default privileges של סכמת public מעניקים ל-anon/authenticated `arwdDxtm` על כל טבלה חדשה.
+**שחזור (`026f56e`):** 12 טבלאות ללא RLS (11 מהדוח + `_prisma_migrations`). כ-anon: קריאת `_prisma_migrations` ו-`blog_posts`, INSERT ל-`audit_events`, DELETE מ-`blog_posts` ומ-`_prisma_migrations` — הכול בטרנזקציות שבוטלו; אומת שאין שינוי ב-dev.
+**שינוי:** מיגרציה `20261016000000_rls_all_tables_revoke_public_roles`: (1) ENABLE RLS ל-12 הטבלאות; (2) כשהתפקידים קיימים — REVOKE מ-anon/authenticated על טבלאות ו-sequences קיימים, ו-ALTER DEFAULT PRIVILEGES כך שטבלאות עתידיות לא יקבלו הרשאות. Rollback מתועד בראש המיגרציה. `global-setup`: יעד Supabase → `migrate deploy` (לא reset).
+**בדיקות:** `test/db/rls.test.ts` — אינווריאנט "אין טבלה ב-public בלי RLS" (חוסם מיגרציות עתידיות), ו-probes קריאה/כתיבה כ-anon ו-authenticated.
+**השפעה על Production:** המיגרציה תרוץ אוטומטית ב-Vercel build ברגע שהענף ימוזג ל-main. האפליקציה אינה משתמשת ב-anon/authenticated (חיבור Prisma כ-postgres; העלאות עם service_role לסכמת storage) — לא צפויה השפעה. **דורש אישור נפרד.**
