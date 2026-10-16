@@ -68,8 +68,10 @@ export async function saveStaticPage(
   };
 
   if (id) {
-    // התנהגות מקורית (לפני התיקון) — מועברת כפי שהיא כדי לשחזר את הבאג בבדיקה
-    await db.staticPage.update({ where: { id }, data });
+    // העדכון מוגבל לעמודי המשתלה עצמה: מזהה של עמוד ממשתלה אחרת (או מזהה לא קיים)
+    // לא מתאים לאף שורה ונדחה — אין עדכון לפי id בלבד
+    const res = await db.staticPage.updateMany({ where: { id, nurseryId }, data });
+    if (res.count !== 1) return { ok: false, error: 'העמוד לא נמצא' };
     return { ok: true, id };
   }
   const created = await db.staticPage.create({ data: { ...data, nurseryId } });
