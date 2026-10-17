@@ -17,6 +17,7 @@ import {
   Tags,
   Mail,
   ExternalLink,
+  KeyRound,
   type LucideIcon,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
@@ -152,7 +153,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
           )}
         </nav>
 
-        <form action={logout} className="border-t border-gray-100 p-3">
+        <div className="border-t border-gray-100 p-3 pb-0">
+          <Link
+            href="/admin/account"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+          >
+            <KeyRound className="h-4 w-4" />
+            החשבון שלי
+          </Link>
+        </div>
+        <form action={logout} className="p-3">
           <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">
             <LogOut className="h-4 w-4" />
             התנתקות

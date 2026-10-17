@@ -36,8 +36,11 @@ afterAll(async () => {
 class Rollback extends Error {}
 
 /** מריץ פעולה בתפקיד נתון בתוך טרנזקציה שתמיד מבוטלת. מחזיר את התוצאה או את השגיאה. */
-async function asRole<T>(role: string, fn: (tx: typeof prisma) => Promise<T>) {
-  let outcome: { ok: true; value: T } | { ok: false; error: string } = { ok: false, error: 'not run' };
+type Outcome<T> = { ok: true; value: T } | { ok: false; error: string };
+
+async function asRole<T>(role: string, fn: (tx: typeof prisma) => Promise<T>): Promise<Outcome<T>> {
+  // ההשמה קורית בתוך ה-callback של הטרנזקציה; ה-cast מונע מ-TS לצמצם לערך ההתחלתי
+  let outcome = { ok: false, error: 'not run' } as Outcome<T>;
   try {
     await prisma.$transaction(async (tx) => {
       await tx.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);

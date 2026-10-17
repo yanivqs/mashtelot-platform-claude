@@ -2,15 +2,17 @@
  * Demo tenant seed: ensures a demo nursery exists and links a sample of the
  * master plant catalog to it as priced, in-stock NurseryProducts.
  *
- * Run:  node seed.js
+ * Run:  node seed.js   (רק מול יעד מקומי / SEED_ALLOWED_REFS — ראו scripts/seed-guard.js)
  */
 const { PrismaClient } = require('@prisma/client');
+const { assertSeedTargetAllowed } = require('./scripts/seed-guard');
 const prisma = new PrismaClient();
 
 const SUBDOMAIN = 'demo-nursery';
 const SAMPLE_SIZE = 60;
 
 async function main() {
+  console.log(`seed → ${assertSeedTargetAllowed()}`);
   const nursery = await prisma.nursery.upsert({
     where: { subdomain: SUBDOMAIN },
     update: {},

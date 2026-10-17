@@ -46,3 +46,15 @@
 - בעלים אישר החלה בפרודקשן. `main` → `81dacf0`, נדחף. Vercel: success תוך ~75 שנ׳ (`vercel-build` מריץ `migrate deploy` לפני `next build`).
 - אומת ב-Production (שאילתות READ ONLY, אגרגטים בלבד): המיגרציה רשומה ו-finished; 0 טבלאות ב-public ללא RLS; 0 הרשאות anon/authenticated.
 - הערה: ב-Production 18 רשומות `_prisma_migrations` מול 17 תיקיות — ככל הנראה רשומת rolled-back מספטמבר (ניסיון כושל במיגרציית profile theme). לא קשור לשינוי.
+
+## 2026-10-17 — C-P0-03: סיסמאות Seed — רוטציה בוצעה; קוד IN_REVIEW
+**ממצא מאומת:** הבעלים התחבר ל-Production עם `admin1234`. הריפו ב-GitHub **ציבורי** ו-`seed-admin.js` ניתן להורדה (HTTP 200). בנוסף: הרצה חוזרת של `seed-admin.js` (למשל `db:seed:all`) הייתה מחזירה את הסיסמה ל-`admin1234` ומדפיסה אותה.
+**הכלה (בוצעה, באישור בעלים):**
+1. רוטציית `password_hash` לשני החשבונות (סופר-אדמין + בעלי demo) בטרנזקציה אחת; אומת: סיסמה חדשה עובדת, ישנה לא. סיסמאות חדשות נשמרו רק ב-`.env.credentials.local` (מוחרג מ-git), לא הודפסו.
+2. הבעלים החליף `AUTH_SECRET` ב-Vercel וביצע Redeploy — כל ה-sessions נותקו; התחבר מחדש בהצלחה. האתר אומת (200).
+**שינוי קוד (ענף `fix/c-p0-03-seed-secrets`):**
+- `seed-admin.js`: סיסמאות רק ממשתני סביבה (≥12 תווים), לא דורס סיסמה קיימת בלי `--reset-password`, לא מדפיס סיסמאות.
+- `scripts/seed-guard.js`: `seed-admin.js` ו-`seed.js` רצים רק מול יעד מקומי או `SEED_ALLOWED_REFS`.
+- מסך "החשבון שלי" (`/admin/account`): החלפת סיסמה עם אימות סיסמה נוכחית, חוזק, rate limit, Audit (`auth.password_changed`), עדכון מותנה. לוגיקה ב-`lib/account.ts`.
+- תיקון טיפוסים ב-`test/db/rls.test.ts` (שגיאת `tsc` שנכנסה ב-C-P0-02 — שם לא הורץ typecheck; מעכשיו רץ בכל משימה).
+**נותר:** הסיסמה הישנה נשארת בהיסטוריית git (חסרת ערך אחרי הרוטציה). מומלץ לבעלים להחליף שוב סיסמה דרך המסך החדש (הסיסמה הנוכחית נחשפה בהקשר השיחה דרך בחירה ב-IDE). ממצאים חדשים: S-15, S-16.
