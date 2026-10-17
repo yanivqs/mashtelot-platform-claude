@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { planBuild, PRODUCTION_SUPABASE_REF } = require('./build');
 
 const PROD = `postgresql://postgres.${PRODUCTION_SUPABASE_REF}:x@aws-0-eu-central-1.pooler.supabase.com:6543/postgres`;

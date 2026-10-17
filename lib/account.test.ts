@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { validateNewPassword, MIN_PASSWORD_LENGTH } from './account';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { assertSeedTargetAllowed } = require('../scripts/seed-guard');
 
 describe('validateNewPassword', () => {

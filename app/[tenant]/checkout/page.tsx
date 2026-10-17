@@ -38,7 +38,7 @@ export default function CheckoutPage() {
     });
   }, [tenant]);
 
-  const zones = options?.zones ?? [];
+  const zones = useMemo(() => options?.zones ?? [], [options]);
   const zoneCities = useMemo(() => zones.flatMap((z) => z.cities), [zones]);
 
   /** עלות המשלוח המשוערת (לפני קופון): null = תתואם / לא רלוונטי */

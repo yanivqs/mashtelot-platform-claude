@@ -1,0 +1,74 @@
+# CI (C-P1-04, Master Spec V2 §22): Typecheck, Lint, Unit, בדיקות DB/בידוד ו-Build בכל PR ו-push ל-main.
+# - אין Secrets ואין גישה ל-Production: בדיקות ה-DB רצות מול Postgres זמני שנוצר בתוך ה-job
+#   (שומר הבטיחות ב-test/db מתיר רק בסיס מקומי שמסתיים ב-_test).
+# - הרשאות מינימליות ל-GITHUB_TOKEN (קריאה בלבד).
+# - חסימת מיזוג על כשל: מוגדרת ב-GitHub (Branch protection → Require status checks).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck · Lint · Unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npx next lint
+      - name: Unit tests
+        run: npm test
+
+  db:
+    name: DB integration · Tenant isolation · Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mashtelot_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mashtelot_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: DB integration & tenant isolation tests
+        run: npm run test:db
+      - name: Build (against the CI database, never production)
+        run: npm run build
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          DIRECT_URL: ${{ env.TEST_DATABASE_URL }}
+          AUTH_SECRET: ci-only-value-not-a-secret
+          ROOT_DOMAIN: localhost:3000
