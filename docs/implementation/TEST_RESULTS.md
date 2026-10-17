@@ -98,3 +98,17 @@
 | חנות: בית, קטלוג, דפדוף, checkout · `/admin/login` | ✅ 200 |
 | `/admin/account` ללא התחברות | ✅ 307 → login |
 | `seed-admin.js` ב-GitHub (raw, ציבורי) מכיל `admin1234` | ✅ 0 מופעים |
+
+## 2026-10-17 — C-P0-05 (ענף `fix/c-p0-05-migration-path`)
+
+| # | תרחיש | תוצאה |
+|---|---|---|
+| 1 | Production + ערכי `.env` האמיתיים (החלטה בלבד, ללא הרצה) | ✅ generate → migrate → next |
+| 2 | Production + בסיס פיתוח | ✅ נכשל (תצורה שגויה) |
+| 3 | Preview + Production (התצורה הנוכחית ב-Vercel) | ✅ נחסם |
+| 4 | Preview + mashtelot-dev (תצורת היעד) | ✅ migrate → dev |
+| 5 | `npm run build` מקומי עם `.env` (Production) — הרצה אמיתית | ✅ exit 1, נחסם לפני כל חיבור |
+| 6 | `npm run build` מול בסיס הבדיקות המקומי — הרצה אמיתית | ✅ build עבר, ללא מיגרציות |
+| 7 | יחידה (כולל 5 בדיקות `scripts/build.test.ts`) · tsc | ✅ 58/58 · ✅ |
+
+**הנחה שלא נבדקה ישירות:** ערכי Production ב-Vercel באותו פורמט כמו `.env` (אותו מקור). אם לא — ה-build של Production ייכשל (האתר נשאר על הפריסה הקודמת), לא ייפרס בשקט.

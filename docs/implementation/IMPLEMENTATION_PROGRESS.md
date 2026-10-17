@@ -58,3 +58,12 @@
 - מסך "החשבון שלי" (`/admin/account`): החלפת סיסמה עם אימות סיסמה נוכחית, חוזק, rate limit, Audit (`auth.password_changed`), עדכון מותנה. לוגיקה ב-`lib/account.ts`.
 - תיקון טיפוסים ב-`test/db/rls.test.ts` (שגיאת `tsc` שנכנסה ב-C-P0-02 — שם לא הורץ typecheck; מעכשיו רץ בכל משימה).
 **נותר:** הסיסמה הישנה נשארת בהיסטוריית git (חסרת ערך אחרי הרוטציה). מומלץ לבעלים להחליף שוב סיסמה דרך המסך החדש (הסיסמה הנוכחית נחשפה בהקשר השיחה דרך בחירה ב-IDE). ממצאים חדשים: S-15, S-16.
+
+## 2026-10-17 — C-P0-05: מסלול מיגרציות מבוקר — IN_REVIEW
+**ממצא מאומת:** ב-Vercel, `DATABASE_URL`/`DIRECT_URL` מסומנים ל-Production **וגם ל-Preview** (דווח ע"י הבעלים). `vercel-build` מריץ `migrate deploy` בכל build ⇒ כל push של ענף (Preview) היה מריץ מיגרציות על בסיס ה-Production. עד כה לא קרה — נדחף רק `main`.
+**שינוי (ענף `fix/c-p0-05-migration-path`):** `scripts/build.js` מחליף את `vercel-build` ואת `build`:
+- `VERCEL_ENV=production`: generate → migrate deploy → next build, רק אם שני ה-URLs מצביעים לפרויקט ה-Production (בדיקת שפיות).
+- `VERCEL_ENV=preview`: **נכשל** אם אחד ה-URLs מצביע ל-Production; אחרת migrate deploy לבסיס הפיתוח.
+- build מקומי: ללא מיגרציות; נחסם מול Production אלא אם `ALLOW_PRODUCTION_DB_BUILD=1` (סוגר S-14).
+**תלוי בבעלים:** הפרדת משתני Preview ב-Vercel (ראו הנחיות בתשובה/בהמשך). עד אז builds של Preview ייכשלו בכוונה — מצב בטוח.
+**סודות נוספים ב-Preview (§1 קבלה: "Preview אינה משתמשת בסודות Production"):** `AUTH_SECRET`, `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` (העלאות מ-Preview היו נכתבות ל-bucket של Production), `RESEND_API_KEY`/`EMAIL_FROM` (Preview היה שולח מיילים אמיתיים) — הומלצה הפרדה.
