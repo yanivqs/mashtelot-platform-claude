@@ -5,10 +5,10 @@
 # - חסימת מיזוג על כשל: מוגדרת ב-GitHub (Branch protection → Require status checks).
 name: CI
 
+# רץ על כל push לכל ענף — הבדיקה נרשמת על הקומיט, ו-PR מאותו ענף מקבל אותה (גם ל-Branch protection)
 on:
-  pull_request:
   push:
-    branches: [main]
+    branches: ['**']
 
 permissions:
   contents: read
