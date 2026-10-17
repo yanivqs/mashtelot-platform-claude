@@ -120,3 +120,13 @@
 | Vercel deployment status | ✅ success (~75 שנ׳) — מאשר שמסלול ה-production נבחר והפורמט של ערכי Vercel תואם (כל מסלול אחר היה נכשל מול בסיס ה-Production) |
 | חנות: בית, קטלוג, דפדוף, checkout, צור קשר · `/admin/login` | ✅ 200 |
 | **ממתין:** הפרדת משתני Preview ב-Vercel (בעלים), ואז build Preview מוצלח מול mashtelot-dev | — |
+
+## 2026-10-18 — אימות Preview (C-P0-05)
+
+| ניסיון | תוצאה | סיבה |
+|---|---|---|
+| 1–2 | ❌ נכשל ב-~45 שנ׳ | `[build] DATABASE_URL אינה כתובת תקינה` — ערך Preview הודבק עם תווים עודפים |
+| סימולציה מקומית (`VERCEL_ENV=preview` + ערכי dev) | ✅ | הקוד תקין: מסלול preview → `xsjwnqltgckkyycicqlc`, אין מיגרציות ממתינות, build עבר |
+| 3 (אחרי תיקון הערך ב-Vercel) | ✅ success (~135 שנ׳) | Preview בונה מול mashtelot-dev; מול Production היה נחסם |
+
+ענף הבדיקה `chore/preview-check` נמחק (מקומי + GitHub).

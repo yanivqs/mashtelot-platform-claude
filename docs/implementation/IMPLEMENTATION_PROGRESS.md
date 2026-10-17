@@ -67,3 +67,7 @@
 - build מקומי: ללא מיגרציות; נחסם מול Production אלא אם `ALLOW_PRODUCTION_DB_BUILD=1` (סוגר S-14).
 **תלוי בבעלים:** הפרדת משתני Preview ב-Vercel (ראו הנחיות בתשובה/בהמשך). עד אז builds של Preview ייכשלו בכוונה — מצב בטוח.
 **סודות נוספים ב-Preview (§1 קבלה: "Preview אינה משתמשת בסודות Production"):** `AUTH_SECRET`, `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` (העלאות מ-Preview היו נכתבות ל-bucket של Production), `RESEND_API_KEY`/`EMAIL_FROM` (Preview היה שולח מיילים אמיתיים) — הומלצה הפרדה.
+
+## 2026-10-18 — C-P0-05 → DONE
+- הבעלים הפריד את משתני Preview ב-Vercel (DATABASE_URL/DIRECT_URL → mashtelot-dev; AUTH_SECRET נפרד; Supabase/Resend ללא ערכי Preview). שני ניסיונות נכשלו על ערך שהודבק שגוי (הגנת הסקריפט עצרה לפני חיבור); השלישי הצליח.
+- **כל משימות P0 בתוכנית (C-P0-01..05) הושלמו ונפרסו.** פתוח: S-17 (reset סיסמת dev — בעלים).
