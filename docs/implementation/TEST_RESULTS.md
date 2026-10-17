@@ -50,3 +50,13 @@
 - אחרי ה-probes: `_prisma_migrations`=16, ללא שאריות fixtures.
 - יחידה: **47/47**.
 - **לא נבדק:** קריאה דרך HTTP ל-PostgREST עם המפתח הציבורי (הבדיקה מדמה זאת ב-`SET LOCAL ROLE`, כפי ש-PostgREST עושה); מצב ההרשאות בפרודקשן עצמו (לא נקרא).
+
+## 2026-10-17 — בדיקת Production אחרי פריסת `55d0415` (קריאה בלבד)
+
+| בדיקה | תוצאה |
+|---|---|
+| Vercel deployment status על הקומיט | ✅ success |
+| `/`, `/catalog`, `/catalog?page=2`, `/catalog?light=sun`, `/cart`, `/checkout`, `/contact`, דף מוצר | ✅ 200 (0.38–1.1 שנ׳) |
+| דפדוף: עמוד 1 ≠ עמוד 2 | ✅ |
+| `/admin` → `/admin/login` | ✅ 307 → 200 |
+| **לא נבדק:** שמירת עמוד סטטי ב-Admin החי (דורש התחברות) | — |

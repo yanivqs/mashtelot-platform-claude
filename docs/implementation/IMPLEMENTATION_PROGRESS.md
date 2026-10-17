@@ -37,3 +37,7 @@
 **שינוי:** מיגרציה `20261016000000_rls_all_tables_revoke_public_roles`: (1) ENABLE RLS ל-12 הטבלאות; (2) כשהתפקידים קיימים — REVOKE מ-anon/authenticated על טבלאות ו-sequences קיימים, ו-ALTER DEFAULT PRIVILEGES כך שטבלאות עתידיות לא יקבלו הרשאות. Rollback מתועד בראש המיגרציה. `global-setup`: יעד Supabase → `migrate deploy` (לא reset).
 **בדיקות:** `test/db/rls.test.ts` — אינווריאנט "אין טבלה ב-public בלי RLS" (חוסם מיגרציות עתידיות), ו-probes קריאה/כתיבה כ-anon ו-authenticated.
 **השפעה על Production:** המיגרציה תרוץ אוטומטית ב-Vercel build ברגע שהענף ימוזג ל-main. האפליקציה אינה משתמשת ב-anon/authenticated (חיבור Prisma כ-postgres; העלאות עם service_role לסכמת storage) — לא צפויה השפעה. **דורש אישור נפרד.**
+
+## 2026-10-17 — פריסה: E01 + C-P0-01 → DONE
+- בעלים אישר. `main` קודם ל-`55d0415` (fast-forward) ונדחף. Vercel: "Deployment has completed" על הקומיט (GitHub commit status).
+- ללא מיגרציה. C-P0-02 (`fix/c-p0-02-rls`, rebase על main) ממתין לאישור נפרד — כולל מיגרציה על Production.

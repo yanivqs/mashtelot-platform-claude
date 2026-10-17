@@ -6,10 +6,10 @@
 
 | ID | ממצא | חומרה | אימות | ראיה | סטטוס | משימה |
 |---|---|---|---|---|---|---|
-| P0-1 | IDOR: עדכון עמוד סטטי לפי `id` ללא בדיקת `nurseryId` | גבוהה | VERIFIED | `app/admin/(dash)/pages/actions.ts:79` | **FIXED בענף** `fix/c-p0-01-static-pages-idor` — ממתין למיזוג | C-P0-01 |
+| P0-1 | IDOR: עדכון עמוד סטטי לפי `id` ללא בדיקת `nurseryId` | גבוהה | VERIFIED | `app/admin/(dash)/pages/actions.ts:79` | **FIXED** — נפרס ב-`55d0415` (2026-10-17) | C-P0-01 |
 | P0-2 | 11 טבלאות ללא RLS: `nursery_payment_methods`, `audit_events`, `nursery_channels`, `shipping_zones`, `shipping_zone_cities`, `plant_categories`, `plant_category_assignments`, `import_jobs`, `nursery_categories`, `nursery_product_categories`, `blog_posts` | **קריטית** | VERIFIED — שוחזר ב-`mashtelot-dev`: anon קרא/כתב/מחק דרך default privileges של Supabase. בפרודקשן: UNKNOWN (אותה תצורת ברירת מחדל צפויה) | + `_prisma_migrations` (anon יכול היה למחוק את היסטוריית המיגרציות) | **FIXED בענף** `fix/c-p0-02-rls` — אומת ב-dev; ממתין לאישור החלה בפרודקשן | C-P0-02 |
 | P0-3 | סיסמאות קשיחות ב-seed (`admin1234`, `owner1234`) | גבוהה | VERIFIED בקוד · UNKNOWN בפרודקשן | `seed-admin.js:10-12` | OPEN — נדרש אימות בעלים | C-P0-03 |
-| P0-4 | בדיקות DB ללא הפרדה מ-Production; `test/setup.ts` טען את `.env` לכל ריצת בדיקות | גבוהה | VERIFIED | `test/setup.ts` (הוסר), `vitest.config.ts` | **FIXED בענף** `chore/e01-test-isolation` — ממתין למיזוג | E01 |
+| P0-4 | בדיקות DB ללא הפרדה מ-Production; `test/setup.ts` טען את `.env` לכל ריצת בדיקות | גבוהה | VERIFIED | `test/setup.ts` (הוסר), `vitest.config.ts` | **FIXED** — נפרס ב-`55d0415` (2026-10-17) | E01 |
 | P0-5 | `prisma migrate deploy` רץ בכל build, כולל Preview | גבוהה | VERIFIED בקוד · UNKNOWN אם ל-Preview יש DATABASE_URL נפרד | `package.json` `vercel-build` | OPEN | C-P0-05 |
 | P0-6 | אכיפת מודולים רק בדפים, לא ב-Server Actions | בינונית | VERIFIED | רק blog/pages/categories קוראים ל-`requireModule` | OPEN | C-P1-01 |
 | P0-7 | ברירת מחדל ל"משתלה הראשונה" בפעולות סופר-אדמין | בינונית | VERIFIED (24 מופעים) | `findFirst({ orderBy: { createdAt: 'asc' } })` | OPEN | C-P1-01 |
