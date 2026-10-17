@@ -112,3 +112,11 @@
 | 7 | יחידה (כולל 5 בדיקות `scripts/build.test.ts`) · tsc | ✅ 58/58 · ✅ |
 
 **הנחה שלא נבדקה ישירות:** ערכי Production ב-Vercel באותו פורמט כמו `.env` (אותו מקור). אם לא — ה-build של Production ייכשל (האתר נשאר על הפריסה הקודמת), לא ייפרס בשקט.
+
+## 2026-10-18 — בדיקת Production אחרי פריסת `e45fa46` (C-P0-05)
+
+| בדיקה | תוצאה |
+|---|---|
+| Vercel deployment status | ✅ success (~75 שנ׳) — מאשר שמסלול ה-production נבחר והפורמט של ערכי Vercel תואם (כל מסלול אחר היה נכשל מול בסיס ה-Production) |
+| חנות: בית, קטלוג, דפדוף, checkout, צור קשר · `/admin/login` | ✅ 200 |
+| **ממתין:** הפרדת משתני Preview ב-Vercel (בעלים), ואז build Preview מוצלח מול mashtelot-dev | — |
