@@ -60,3 +60,15 @@
 | דפדוף: עמוד 1 ≠ עמוד 2 | ✅ |
 | `/admin` → `/admin/login` | ✅ 307 → 200 |
 | **לא נבדק:** שמירת עמוד סטטי ב-Admin החי (דורש התחברות) | — |
+
+## 2026-10-17 — בדיקת Production אחרי פריסת `81dacf0` (C-P0-02)
+
+| בדיקה | תוצאה |
+|---|---|
+| Vercel deployment status | ✅ success |
+| מיגרציה `20261016000000_rls_all_tables_revoke_public_roles` ב-`_prisma_migrations` | ✅ applied + finished |
+| טבלאות ב-public ללא RLS | ✅ 0 |
+| הרשאות anon/authenticated על טבלאות public | ✅ 0 |
+| חנות: בית, קטלוג (62 מוצרים), דפדוף, קטגוריה, מוצר, עגלה, checkout, צור קשר, landing, admin/login | ✅ 200 |
+| `/blog` | 404 — צפוי: מודול הבלוג כבוי למשתלת ההדגמה (`blog/page.tsx:27`), לא קשור ל-RLS |
+| **לא נבדק:** קריאה ל-Data API של Production עם המפתח הציבורי; Security Advisor בדשבורד (בידי הבעלים) | — |
