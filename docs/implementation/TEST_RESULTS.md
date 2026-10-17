@@ -89,3 +89,12 @@
 | 10 | `tsc --noEmit` · `next build` | — | ✅ · ✅ |
 
 **לא נבדק:** מסך החלפת הסיסמה בדפדפן (Server Action חי).
+
+## 2026-10-17 — בדיקת Production אחרי פריסת `15ac17d` (C-P0-03)
+
+| בדיקה | תוצאה |
+|---|---|
+| Vercel deployment status | ✅ success (~90 שנ׳) |
+| חנות: בית, קטלוג, דפדוף, checkout · `/admin/login` | ✅ 200 |
+| `/admin/account` ללא התחברות | ✅ 307 → login |
+| `seed-admin.js` ב-GitHub (raw, ציבורי) מכיל `admin1234` | ✅ 0 מופעים |
