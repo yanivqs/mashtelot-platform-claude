@@ -2,29 +2,17 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import { requireUser } from '@/lib/auth';
-import { requireAnyModule } from '@/lib/module-access';
+import { requireNurseryAction } from '@/lib/nursery-scope';
+import { assertOwnedBy } from '@/lib/ownership';
 
 async function ownedCategory(categoryId: string): Promise<string> {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  await requireAnyModule(['plant_catalog', 'supplies']);
-  const cat = await prisma.nurseryCategory.findUnique({
-    where: { id: categoryId },
-    select: { nurseryId: true },
-  });
-  if (!cat) throw new Error('הקטגוריה לא נמצאה');
-  if (user.role !== 'SUPER_ADMIN' && cat.nurseryId !== user.nurseryId) {
-    throw new Error('אין הרשאה');
-  }
-  return cat.nurseryId;
+  const { nurseryId } = await requireNurseryAction({ any: ['plant_catalog', 'supplies'] });
+  await assertOwnedBy(prisma, 'nurseryCategory', categoryId, nurseryId);
+  return nurseryId;
 }
 
 async function ownedProduct(productId: string, nurseryId: string): Promise<void> {
-  const p = await prisma.nurseryProduct.findUnique({
-    where: { id: productId },
-    select: { nurseryId: true },
-  });
-  if (!p || p.nurseryId !== nurseryId) throw new Error('המוצר לא שייך למשתלה');
+  await assertOwnedBy(prisma, 'nurseryProduct', productId, nurseryId);
 }
 
 /** מסדר מחדש את כל השיוכים הישירים של הקטגוריה לפי רצף נקי (0..n-1). */

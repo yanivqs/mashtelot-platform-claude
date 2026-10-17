@@ -1,8 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowRight, ArrowUp, ArrowDown, X } from 'lucide-react';
-import { requireUser } from '@/lib/auth';
-import { requireAnyModule } from '@/lib/module-access';
+import { requireNurseryPage } from '@/lib/nursery-scope';
 import { prisma } from '@/lib/prisma';
 import { resolveProductContent } from '@/lib/seo';
 import { moveProductInCategory, removeProductFromCategory, addProductToCategory } from './actions';
@@ -10,12 +9,11 @@ import { moveProductInCategory, removeProductFromCategory, addProductToCategory 
 export const dynamic = 'force-dynamic';
 
 export default async function CategoryManagerPage({ params }: { params: { id: string } }) {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  await requireAnyModule(['plant_catalog', 'supplies']);
+  const { nurseryId } = await requireNurseryPage({ any: ['plant_catalog', 'supplies'] });
 
-  const category = await prisma.nurseryCategory.findUnique({ where: { id: params.id } });
+  // קטגוריה של משתלה אחרת = לא נמצאה (אין חשיפת קיום)
+  const category = await prisma.nurseryCategory.findFirst({ where: { id: params.id, nurseryId } });
   if (!category) notFound();
-  if (user.role !== 'SUPER_ADMIN' && category.nurseryId !== user.nurseryId) notFound();
 
   const [allCategories, assignments, allProducts] = await Promise.all([
     prisma.nurseryCategory.findMany({ where: { nurseryId: category.nurseryId } }),

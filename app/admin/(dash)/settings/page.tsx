@@ -1,5 +1,5 @@
-import { requireUser } from '@/lib/auth';
 import { isModuleEnabled, getModuleConfig } from '@/lib/module-access';
+import { requireNurseryPage } from '@/lib/nursery-scope';
 import { prisma } from '@/lib/prisma';
 import { NurseryProfileForm } from '../nurseries/profile-form';
 import { nurseryToFormValues } from '../nurseries/form-values';
@@ -10,32 +10,19 @@ import { DeliveryForm } from './delivery-form';
 export const dynamic = 'force-dynamic';
 
 export default async function NurserySettingsPage() {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-
-  const nurseryId =
-    user.nurseryId ??
-    (user.role === 'SUPER_ADMIN'
-      ? (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id
-      : undefined);
-
-  if (!nurseryId) {
-    return <p className="text-gray-500">אין משתלה משויכת.</p>;
-  }
+  const { nurseryId } = await requireNurseryPage();
 
   const nursery = await prisma.nursery.findUnique({ where: { id: nurseryId } });
   if (!nursery) return <p className="text-gray-500">המשתלה לא נמצאה.</p>;
 
-  const canEditDesign =
-    user.role === 'SUPER_ADMIN' || (await isModuleEnabled(nurseryId, 'design'));
+  // הדף זמין לבעל המשתלה בלבד (סופר-אדמין עורך משתלות ב-/admin/nurseries/[id]);
+  // כל מקטע מוצג רק כשהמודול שלו פעיל — ואותה בדיקה נאכפת גם ב-Server Action
+  const canEditDesign = await isModuleEnabled(nurseryId, 'design');
   const canEditCarousel =
-    user.role === 'SUPER_ADMIN' ||
-    (canEditDesign && (await getModuleConfig(nurseryId, 'design')).carousel !== false);
-  const salesEnabled =
-    user.role === 'SUPER_ADMIN' || (await isModuleEnabled(nurseryId, 'sales'));
-  const shippingEnabled =
-    user.role === 'SUPER_ADMIN' || (await isModuleEnabled(nurseryId, 'shipping'));
-  const socialEnabled =
-    user.role === 'SUPER_ADMIN' || (await isModuleEnabled(nurseryId, 'social'));
+    canEditDesign && (await getModuleConfig(nurseryId, 'design')).carousel !== false;
+  const salesEnabled = await isModuleEnabled(nurseryId, 'sales');
+  const shippingEnabled = await isModuleEnabled(nurseryId, 'shipping');
+  const socialEnabled = await isModuleEnabled(nurseryId, 'social');
 
   const paymentMethods = salesEnabled
     ? await prisma.nurseryPaymentMethod.findMany({ where: { nurseryId } })

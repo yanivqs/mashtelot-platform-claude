@@ -6,6 +6,7 @@ import { SignJWT, jwtVerify } from 'jose';
 import bcrypt from 'bcryptjs';
 import type { Role } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { isSessionAllowed } from '@/lib/nursery-access';
 
 const SESSION_COOKIE = 'mashtelot_session';
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -54,10 +55,22 @@ export const getSessionUser = cache(async () => {
   try {
     const { payload } = await jwtVerify(token, secret);
     if (!payload.sub) return null;
-    return await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: payload.sub },
       include: { nursery: true },
     });
+    // בעלים של משתלה מושעית — ה-session מבוטל מיד (C-P1-01, אפיון §2.03)
+    if (
+      user &&
+      !isSessionAllowed({
+        role: user.role,
+        nurseryId: user.nurseryId,
+        nurseryActive: user.nursery ? user.nursery.isActive : null,
+      })
+    ) {
+      return null;
+    }
+    return user;
   } catch {
     return null;
   }

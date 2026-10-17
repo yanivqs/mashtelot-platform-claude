@@ -2,28 +2,20 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import { requireUser } from '@/lib/auth';
+import { requireNurseryAction } from '@/lib/nursery-scope';
+import { assertOwnedBy } from '@/lib/ownership';
 
+/** הקשר המשתלה של המשתמש המחובר בלבד + אכיפת המודול (C-P1-01). */
 async function resolveNurseryId(): Promise<string> {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  if (user.nurseryId) return user.nurseryId;
-  if (user.role === 'SUPER_ADMIN') {
-    const first = await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } });
-    if (first) return first.id;
-  }
-  throw new Error('אין משתלה משויכת');
+  return (await requireNurseryAction({ all: ['promotions'] })).nurseryId;
 }
 
 async function assertOwnsCoupon(id: string): Promise<void> {
-  const nurseryId = await resolveNurseryId();
-  const row = await prisma.coupon.findUnique({ where: { id }, select: { nurseryId: true } });
-  if (!row || row.nurseryId !== nurseryId) throw new Error('אין הרשאה');
+  await assertOwnedBy(prisma, 'coupon', id, await resolveNurseryId());
 }
 
 async function assertOwnsPromotion(id: string): Promise<void> {
-  const nurseryId = await resolveNurseryId();
-  const row = await prisma.promotion.findUnique({ where: { id }, select: { nurseryId: true } });
-  if (!row || row.nurseryId !== nurseryId) throw new Error('אין הרשאה');
+  await assertOwnedBy(prisma, 'promotion', id, await resolveNurseryId());
 }
 
 export interface MarketingState {

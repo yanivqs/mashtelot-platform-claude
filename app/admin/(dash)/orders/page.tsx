@@ -1,5 +1,4 @@
-import { requireUser } from '@/lib/auth';
-import { requireModule } from '@/lib/module-access';
+import { requireNurseryPage } from '@/lib/nursery-scope';
 import { prisma } from '@/lib/prisma';
 import { formatPrice } from '@/lib/utils';
 import { PAYMENT_METHOD_LABELS } from '@/lib/payment-methods';
@@ -8,13 +7,13 @@ import { OrderStatusSelect } from './order-status';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminOrdersPage() {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  await requireModule('orders');
-  const where = user.role === 'SUPER_ADMIN' ? {} : { nurseryId: user.nurseryId ?? '__none__' };
+  // הזמנות ופרטי לקוחות — לבעל המשתלה בלבד (אפיון §15.05); סופר-אדמין אינו רואה אותם
+  const { nurseryId } = await requireNurseryPage({ all: ['orders'] });
+  const where = { nurseryId };
 
   const orders = await prisma.order.findMany({
     where,
-    include: { items: true, nursery: { select: { name: true } }, shippingZone: true },
+    include: { items: true, shippingZone: true },
     orderBy: { createdAt: 'desc' },
     take: 100,
   });
@@ -71,7 +70,6 @@ export default async function AdminOrdersPage() {
                   )}
                   <p className="mt-1 text-xs text-gray-400">
                     {o.createdAt.toLocaleString('he-IL')}
-                    {user.role === 'SUPER_ADMIN' ? ` · ${o.nursery.name}` : ''}
                   </p>
                 </div>
                 <div className="text-left">

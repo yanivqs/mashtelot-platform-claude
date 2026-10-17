@@ -2,6 +2,17 @@ import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { scoreProductSeo } from '@/lib/seo-score';
+import { denialMessage } from '@/lib/nursery-scope';
+
+function Notice({ reason }: { reason?: string }) {
+  const message = denialMessage(reason);
+  if (!message) return null;
+  return (
+    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      {message}
+    </div>
+  );
+}
 
 function Stat({ label, value, href }: { label: string; value: number | string; href?: string }) {
   const body = (
@@ -19,7 +30,11 @@ function Stat({ label, value, href }: { label: string; value: number | string; h
   );
 }
 
-export default async function AdminOverviewPage() {
+export default async function AdminOverviewPage({
+  searchParams,
+}: {
+  searchParams: { notice?: string };
+}) {
   const user = await requireUser();
 
   if (user.role === 'SUPER_ADMIN') {
@@ -32,6 +47,7 @@ export default async function AdminOverviewPage() {
     ]);
     return (
       <div>
+        <Notice reason={searchParams.notice} />
         <h1 className="mb-6 text-2xl font-bold">סקירת פלטפורמה</h1>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Stat label="משתלות" value={nurseries} href="/admin/nurseries" />
@@ -74,6 +90,7 @@ export default async function AdminOverviewPage() {
 
   return (
     <div>
+      <Notice reason={searchParams.notice} />
       <h1 className="mb-1 text-2xl font-bold">{user.nursery?.name}</h1>
       <p className="mb-6 text-sm text-gray-500">סקירת החנות שלך</p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

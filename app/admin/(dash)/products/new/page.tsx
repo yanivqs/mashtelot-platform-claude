@@ -1,7 +1,6 @@
 import Link from 'next/link';
+import { requireNurseryPage } from '@/lib/nursery-scope';
 import { ArrowRight } from 'lucide-react';
-import { requireUser } from '@/lib/auth';
-import { requireAnyModule } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
 import { flattenCategoryTree } from '@/lib/category-tree';
 import { NewProductForm } from './new-product-form';
@@ -9,15 +8,7 @@ import { NewProductForm } from './new-product-form';
 export const dynamic = 'force-dynamic';
 
 export default async function NewProductPage() {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  await requireAnyModule(['plant_catalog', 'supplies']);
-
-  const nurseryId =
-    user.nurseryId ??
-    (user.role === 'SUPER_ADMIN'
-      ? (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id
-      : undefined);
-  if (!nurseryId) return <p className="text-gray-500">אין משתלה משויכת.</p>;
+  const { nurseryId } = await requireNurseryPage({ any: ['plant_catalog', 'supplies'] });
 
   const categories = await prisma.nurseryCategory.findMany({ where: { nurseryId } });
 

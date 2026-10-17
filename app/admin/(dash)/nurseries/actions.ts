@@ -7,6 +7,9 @@ import { requireUser, hashPassword } from '@/lib/auth';
 import { parseOpeningHoursText, normalizeCarousel, HERO_LAYOUTS, type HeroLayout } from '@/lib/theme';
 import { MODULE_KEYS } from '@/lib/modules';
 import { syncMasterCategoriesToNursery } from '@/lib/category-provision';
+import { nurseryActionScope } from '@/lib/nursery-scope';
+import { isModuleEnabled, getModuleConfig } from '@/lib/module-access';
+import { resolveDesignUpdate } from '@/lib/design-lock';
 
 export interface NurseryFormState {
   ok?: boolean;
@@ -83,8 +86,11 @@ export async function updateNursery(
   if (!id) return { error: 'מזהה חסר' };
 
   const isSuper = user.role === 'SUPER_ADMIN';
-  if (!isSuper && user.nurseryId !== id) {
-    return { error: 'אין הרשאה לערוך משתלה זו' };
+  if (!isSuper) {
+    // בעלים: רק המשתלה שלו, ורק כשהיא פעילה (C-P1-01)
+    const scope = await nurseryActionScope();
+    if (!scope.ok) return { error: scope.error };
+    if (scope.nurseryId !== id) return { error: 'אין הרשאה לערוך משתלה זו' };
   }
 
   const name = String(formData.get('name') || '').trim();
@@ -171,6 +177,7 @@ export async function updateNursery(
   }
 
   try {
+    if (!isSuper) await keepLockedDesignFields(id, data);
     await prisma.nursery.update({ where: { id }, data });
   } catch {
     return { error: 'שגיאה בשמירה (ייתכן שהדומיין המותאם כבר תפוס)' };
@@ -180,6 +187,31 @@ export async function updateNursery(
   revalidatePath(`/admin/nurseries/${id}`);
   revalidatePath('/admin/settings');
   return { ok: true };
+}
+
+/**
+ * בעלים ללא מודול "שליטה בעיצוב" (או ללא הרשאת קרוסלה) אינו רשאי לשנות את העיצוב.
+ * הטופס שולח את הערכים הקיימים כשדות נסתרים, אבל השרת לא סומך עליהם: שומרים את
+ * הערכים השמורים במקום ערכי הטופס (C-P1-01, אפיון §3.02, §16 קבלה).
+ */
+async function keepLockedDesignFields(id: string, data: Prisma.NurseryUpdateInput): Promise<void> {
+  const current = await prisma.nursery.findUnique({
+    where: { id },
+    select: { themeConfig: true, primaryColor: true },
+  });
+  if (!current) return;
+  const designEnabled = await isModuleEnabled(id, 'design');
+  const carouselAllowed = designEnabled && (await getModuleConfig(id, 'design')).carousel !== false;
+  const next = resolveDesignUpdate(
+    { themeConfig: data.themeConfig, primaryColor: (data.primaryColor as string | null | undefined) ?? null },
+    { themeConfig: current.themeConfig, primaryColor: current.primaryColor },
+    { designEnabled, carouselAllowed },
+  );
+  data.themeConfig =
+    next.themeConfig === null || next.themeConfig === undefined
+      ? Prisma.JsonNull
+      : (next.themeConfig as Prisma.InputJsonValue);
+  if (!designEnabled) data.primaryColor = next.primaryColor;
 }
 
 const DESIGN_FLAGS = ['colors', 'hero', 'carousel', 'popup', 'sticky'] as const;

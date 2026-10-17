@@ -3,22 +3,17 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import { requireUser } from '@/lib/auth';
+import { requireNurseryAction } from '@/lib/nursery-scope';
+import { assertOwnedBy } from '@/lib/ownership';
 import { recordAudit } from '@/lib/audit';
 
+/** המוצר שייך למשתלת המשתמש המחובר (ללא עקיפה לסופר-אדמין — C-P1-01). */
 async function ownedProduct(
   productId: string,
 ): Promise<{ nurseryId: string; actorEmail: string | null }> {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  const product = await prisma.nurseryProduct.findUnique({
-    where: { id: productId },
-    select: { nurseryId: true },
-  });
-  if (!product) throw new Error('המוצר לא נמצא');
-  if (user.role !== 'SUPER_ADMIN' && product.nurseryId !== user.nurseryId) {
-    throw new Error('אין הרשאה לערוך מוצר זה');
-  }
-  return { nurseryId: product.nurseryId, actorEmail: user.email };
+  const { user, nurseryId } = await requireNurseryAction({ any: ['plant_catalog', 'supplies'] });
+  await assertOwnedBy(prisma, 'nurseryProduct', productId, nurseryId);
+  return { nurseryId, actorEmail: user.email };
 }
 
 function toDecimalString(v: FormDataEntryValue | null): string | null {
@@ -121,11 +116,7 @@ export async function createCustomProduct(
   _prev: ProductFormState,
   formData: FormData,
 ): Promise<ProductFormState> {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  const nurseryId =
-    user.nurseryId ??
-    (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id;
-  if (!nurseryId) return { error: 'אין משתלה משויכת' };
+  const { nurseryId } = await requireNurseryAction({ any: ['plant_catalog', 'supplies'] });
 
   const title = String(formData.get('customTitle') || '').trim();
   if (!title) return { error: 'יש להזין שם למוצר' };

@@ -1,6 +1,5 @@
 import Link from 'next/link';
-import { requireUser } from '@/lib/auth';
-import { requireAnyModule } from '@/lib/module-access';
+import { requireNurseryPage } from '@/lib/nursery-scope';
 import { prisma } from '@/lib/prisma';
 import { resolveProductContent } from '@/lib/seo';
 import { scoreProductSeo } from '@/lib/seo-score';
@@ -17,17 +16,8 @@ export default async function AdminProductsPage({
 }: {
   searchParams: { q?: string; letter?: string };
 }) {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  await requireAnyModule(['plant_catalog', 'supplies']);
+  const { nurseryId } = await requireNurseryPage({ any: ['plant_catalog', 'supplies'] });
 
-  const nurseryId =
-    user.role === 'SUPER_ADMIN'
-      ? (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id
-      : user.nurseryId;
-
-  if (!nurseryId) {
-    return <p className="text-gray-500">אין משתלה משויכת.</p>;
-  }
 
   const [products, nurseryCategories] = await Promise.all([
     prisma.nurseryProduct.findMany({

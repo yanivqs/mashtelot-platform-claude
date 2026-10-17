@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { requireUser } from '@/lib/auth';
+import { nurseryActionScope } from '@/lib/nursery-scope';
 import { parsePriceTiers, printLinePrice, type SelectedOption } from '@/lib/print-pricing';
 
 export interface PrintOrderInput {
@@ -19,13 +19,10 @@ export interface PrintOrderResult {
 }
 
 export async function createPrintOrder(input: PrintOrderInput): Promise<PrintOrderResult> {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  const nurseryId =
-    user.nurseryId ??
-    (user.role === 'SUPER_ADMIN'
-      ? (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id
-      : undefined);
-  if (!nurseryId) return { error: 'אין משתלה משויכת' };
+  // הזמנת רכש B2B — של בעל המשתלה בלבד, כשמודול בית הדפוס פעיל (C-P1-01)
+  const scope = await nurseryActionScope({ all: ['print_shop'] });
+  if (!scope.ok) return { error: scope.error };
+  const { user, nurseryId } = scope;
 
   const lines = (input.items ?? []).filter(
     (i) => i.productId && Number.isInteger(i.quantity) && i.quantity > 0,

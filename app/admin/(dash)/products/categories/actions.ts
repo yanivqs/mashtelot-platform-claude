@@ -2,8 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import { requireUser } from '@/lib/auth';
-import { requireAnyModule } from '@/lib/module-access';
+import { requireNurseryAction } from '@/lib/nursery-scope';
 
 function slugify(name: string): string {
   return name
@@ -13,15 +12,9 @@ function slugify(name: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+/** הקשר המשתלה של המשתמש המחובר בלבד + אכיפת המודול (C-P1-01). */
 async function resolveNurseryId(): Promise<string> {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  await requireAnyModule(['plant_catalog', 'supplies']);
-  if (user.nurseryId) return user.nurseryId;
-  if (user.role === 'SUPER_ADMIN') {
-    const first = await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } });
-    if (first) return first.id;
-  }
-  throw new Error('אין משתלה משויכת');
+  return (await requireNurseryAction({ any: ['plant_catalog', 'supplies'] })).nurseryId;
 }
 
 export interface NurseryCategoryState {

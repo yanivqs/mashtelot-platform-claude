@@ -1,22 +1,13 @@
 import Link from 'next/link';
+import { requireNurseryPage } from '@/lib/nursery-scope';
 import { Plus } from 'lucide-react';
-import { requireUser } from '@/lib/auth';
-import { requireModule } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPagesList() {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  await requireModule('static_pages');
+  const { nurseryId } = await requireNurseryPage({ all: ['static_pages'] });
 
-  const nurseryId =
-    user.nurseryId ??
-    (user.role === 'SUPER_ADMIN'
-      ? (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id
-      : undefined);
-
-  if (!nurseryId) return <p className="text-gray-500">אין משתלה משויכת.</p>;
 
   const pages = await prisma.staticPage.findMany({
     where: { nurseryId },

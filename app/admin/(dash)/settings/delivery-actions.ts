@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import { requireUser } from '@/lib/auth';
+import { nurseryActionScope } from '@/lib/nursery-scope';
 
 export interface SaveDeliveryState {
   ok?: boolean;
@@ -14,13 +14,9 @@ export async function saveDeliverySettings(
   _prev: SaveDeliveryState,
   formData: FormData,
 ): Promise<SaveDeliveryState> {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  const nurseryId =
-    user.nurseryId ??
-    (user.role === 'SUPER_ADMIN'
-      ? (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id
-      : undefined);
-  if (!nurseryId) return { error: 'אין משתלה משויכת' };
+  const scope = await nurseryActionScope({ all: ['sales'] });
+  if (!scope.ok) return { error: scope.error };
+  const { nurseryId } = scope;
 
   const pickupEnabled = formData.get('pickupEnabled') === 'on';
   const deliveryEnabled = formData.get('deliveryEnabled') === 'on';

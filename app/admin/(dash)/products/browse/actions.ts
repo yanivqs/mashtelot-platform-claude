@@ -2,22 +2,15 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import { requireUser } from '@/lib/auth';
+import { requireNurseryAction } from '@/lib/nursery-scope';
 import { assignPlantCategoriesToProduct } from '@/lib/category-provision';
 
-async function resolveNurseryId(): Promise<string> {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  if (user.nurseryId) return user.nurseryId;
-  if (user.role === 'SUPER_ADMIN') {
-    const first = await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } });
-    if (first) return first.id;
-  }
-  throw new Error('אין משתלה משויכת');
-}
-
 export async function addCatalogItem(formData: FormData): Promise<void> {
-  const nurseryId = await resolveNurseryId();
   const kind = String(formData.get('kind'));
+  // צמח דורש את מודול קטלוג הצמחים, ציוד — את מודול הציוד (לא "אחד מהם")
+  const { nurseryId } = await requireNurseryAction({
+    all: [kind === 'supply' ? 'supplies' : 'plant_catalog'],
+  });
   const refId = String(formData.get('refId') || '');
   const priceRaw = Number(String(formData.get('price') || ''));
   const price = Number.isFinite(priceRaw) && priceRaw > 0 ? priceRaw.toFixed(2) : '0.00';

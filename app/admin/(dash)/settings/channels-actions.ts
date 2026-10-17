@@ -2,17 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import { requireUser } from '@/lib/auth';
+import { requireNurseryAction } from '@/lib/nursery-scope';
 import { CHANNEL_PROVIDERS } from '@/lib/channels';
 
+/** הקשר המשתלה של המשתמש המחובר בלבד + אכיפת המודול (C-P1-01). */
 async function resolveNurseryId(): Promise<string> {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  if (user.nurseryId) return user.nurseryId;
-  if (user.role === 'SUPER_ADMIN') {
-    const first = await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } });
-    if (first) return first.id;
-  }
-  throw new Error('אין משתלה משויכת');
+  return (await requireNurseryAction({ all: ['social'] })).nurseryId;
 }
 
 export interface SaveChannelsState {

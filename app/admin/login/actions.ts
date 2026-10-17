@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword, createSession } from '@/lib/auth';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
+import { canUseAdminPortal } from '@/lib/nursery-access';
 
 export interface LoginState {
   error?: string;
@@ -24,7 +25,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   if (!rateLimit(`login:ip:${ip}`, 10, 10 * 60_000).ok) return { error: TOO_MANY };
   if (!rateLimit(`login:email:${email}`, 5, 15 * 60_000).ok) return { error: TOO_MANY };
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({ where: { email }, include: { nursery: true } });
   const ok =
     user?.passwordHash && (await verifyPassword(password, user.passwordHash));
 
@@ -32,9 +33,12 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     return { error: 'פרטי התחברות שגויים' };
   }
 
-  if (user.role !== 'SUPER_ADMIN' && user.role !== 'NURSERY_OWNER') {
-    return { error: 'אין לך הרשאת גישה לפורטל הניהול' };
-  }
+  const portal = canUseAdminPortal({
+    role: user.role,
+    nurseryId: user.nurseryId,
+    nurseryActive: user.nursery ? user.nursery.isActive : null,
+  });
+  if (!portal.ok) return { error: portal.error };
 
   await createSession(user.id);
   redirect('/admin');

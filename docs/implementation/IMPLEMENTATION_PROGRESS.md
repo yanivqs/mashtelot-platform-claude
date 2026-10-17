@@ -71,3 +71,16 @@
 ## 2026-10-18 — C-P0-05 → DONE
 - הבעלים הפריד את משתני Preview ב-Vercel (DATABASE_URL/DIRECT_URL → mashtelot-dev; AUTH_SECRET נפרד; Supabase/Resend ללא ערכי Preview). שני ניסיונות נכשלו על ערך שהודבק שגוי (הגנת הסקריפט עצרה לפני חיבור); השלישי הצליח.
 - **כל משימות P0 בתוכנית (C-P0-01..05) הושלמו ונפרסו.** פתוח: S-17 (reset סיסמת dev — בעלים).
+
+## 2026-10-18 — C-P1-01: שכבת הרשאות מרוכזת — IN_REVIEW
+**החלטות בעלים:** Q1=(a) סופר-אדמין מנהל פלטפורמה בלבד, ללא גישה לנתונים תפעוליים של חנות (מוצרים, הזמנות, לקוחות, הגדרות) — אפיון §4.06, §15.02, §15.05. Q2=(a) משתלה מושעית — חסימה מלאה.
+**שינוי (ענף `fix/c-p1-01-nursery-scope`):**
+- `lib/nursery-access.ts` (טהור): `decideNurseryAccess`, `isSessionAllowed`, `canUseAdminPortal`.
+- `lib/nursery-scope.ts` (שרת): `requireNurseryPage` (הפניה ל-`/admin?notice=<סיבה>`), `requireNurseryAction` / `nurseryActionScope` (שגיאה).
+- `lib/ownership.ts`: `assertOwnedBy(db, model, id, nurseryId)` ל-8 סוגי רשומות.
+- `lib/auth.ts`: session של בעלים של משתלה מושעית מבוטל מיד. `login`: נחסם עם הודעה.
+- 13 דפים + layout עברו ל-`requireNurseryPage`; 15 קובצי actions ל-`requireNurseryAction` עם המודול הנכון (כולל צמח/ציוד בנפרד ב-browse). **0 מופעים** של "המשתלה הראשונה". הוסרה עקיפת סופר-אדמין ב-ownedProduct/ownedCategory/orders. דף ההזמנות לבעלים בלבד.
+- `updateNursery` (בעלים): שדות עיצוב נשמרים מהשרת כשמודול העיצוב/הקרוסלה כבוי (`lib/design-lock.ts`, טהור).
+- לוח הבקרה מציג את סיבת ההפניה.
+**תקלה בדרך (תוקנה):** `pages/actions.ts` היה בקידוד CRLF אחרי checkout, וסקריפט ה-patch שכפל תוכן; שוחזר מ-HEAD ותוקן. מעכשיו כל patch מנרמל שורות לפני חיפוש.
+**השפעה על משתמשים:** סופר-אדמין שנכנס למסכי חנות יופנה ללוח הבקרה עם הסבר (היום הוא עורך בשקט את המשתלה הוותיקה). בעלי משתלות פעילות — ללא שינוי, למעט מודול כבוי שכעת נחסם גם בפעולה.

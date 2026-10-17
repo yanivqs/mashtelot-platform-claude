@@ -1,6 +1,5 @@
-import { requireUser } from '@/lib/auth';
-import { requireModule } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
+import { requireNurseryPage } from '@/lib/nursery-scope';
 import { formatPrice } from '@/lib/utils';
 import { parsePriceTiers } from '@/lib/print-pricing';
 import { PrintOrderForm, type PrintProductVM } from './order-form';
@@ -16,13 +15,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default async function PrintShopPage() {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  await requireModule('print_shop');
-  const nurseryId =
-    user.nurseryId ??
-    (user.role === 'SUPER_ADMIN'
-      ? (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id
-      : undefined);
+  const { nurseryId } = await requireNurseryPage({ all: ['print_shop'] });
 
   const [products, options, orders] = await Promise.all([
     prisma.printProduct.findMany({

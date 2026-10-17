@@ -3,8 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import { requireUser } from '@/lib/auth';
-import { requireModule } from '@/lib/module-access';
+import { requireNurseryAction } from '@/lib/nursery-scope';
 import { sanitizeRichHtml } from '@/lib/sanitize';
 import { saveStaticPage, deleteStaticPage } from '@/lib/static-pages-admin';
 
@@ -13,20 +12,15 @@ export interface PageFormState {
   error?: string;
 }
 
-async function resolveNurseryId(): Promise<string | null> {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  if (user.nurseryId) return user.nurseryId;
-  if (user.role === 'SUPER_ADMIN') {
-    return (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id ?? null;
-  }
-  return null;
+/** הקשר המשתלה של המשתמש המחובר בלבד + אכיפת המודול (C-P1-01). */
+async function resolveNurseryId(): Promise<string> {
+  return (await requireNurseryAction({ all: ['static_pages'] })).nurseryId;
 }
 
 export async function savePage(
   _prev: PageFormState,
   formData: FormData,
 ): Promise<PageFormState> {
-  await requireModule('static_pages');
   const nurseryId = await resolveNurseryId();
   if (!nurseryId) return { error: 'אין משתלה משויכת' };
 
@@ -48,7 +42,6 @@ export async function savePage(
 }
 
 export async function deletePage(formData: FormData): Promise<void> {
-  await requireModule('static_pages');
   const nurseryId = await resolveNurseryId();
   const id = String(formData.get('id') || '');
   if (!nurseryId || !id) return;

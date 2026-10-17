@@ -1,8 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
-import { requireUser } from '@/lib/auth';
-import { requireModule } from '@/lib/module-access';
+import { requireNurseryPage } from '@/lib/nursery-scope';
 import { prisma } from '@/lib/prisma';
 import { PageForm, type PageFormValues } from '../page-form';
 
@@ -21,21 +20,14 @@ const EMPTY: PageFormValues = {
 };
 
 export default async function EditPagePage({ params }: { params: { id: string } }) {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  await requireModule('static_pages');
+  const { nurseryId } = await requireNurseryPage({ all: ['static_pages'] });
 
   const isNew = params.id === 'new';
   let values = EMPTY;
 
   if (!isNew) {
-    const nurseryId =
-      user.nurseryId ??
-      (user.role === 'SUPER_ADMIN'
-        ? (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id
-        : undefined);
-
     const page = await prisma.staticPage.findFirst({
-      where: { id: params.id, nurseryId: nurseryId ?? '__none__' },
+      where: { id: params.id, nurseryId },
     });
     if (!page) notFound();
 

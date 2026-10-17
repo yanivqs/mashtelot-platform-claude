@@ -1,21 +1,13 @@
-import { requireUser } from '@/lib/auth';
-import { requireModule } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
+import { requireNurseryPage } from '@/lib/nursery-scope';
 import { CouponForm, PromotionForm } from './forms';
 import { toggleCoupon, deleteCoupon, togglePromotion, deletePromotion } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MarketingPage() {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  await requireModule('promotions');
-  const nurseryId =
-    user.nurseryId ??
-    (user.role === 'SUPER_ADMIN'
-      ? (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id
-      : undefined);
+  const { nurseryId } = await requireNurseryPage({ all: ['promotions'] });
 
-  if (!nurseryId) return <p className="text-gray-500">אין משתלה משויכת.</p>;
 
   const [coupons, promotions] = await Promise.all([
     prisma.coupon.findMany({ where: { nurseryId }, orderBy: { createdAt: 'desc' } }),

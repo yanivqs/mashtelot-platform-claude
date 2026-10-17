@@ -1,7 +1,6 @@
 import Link from 'next/link';
+import { requireNurseryPage } from '@/lib/nursery-scope';
 import { Search } from 'lucide-react';
-import { requireUser } from '@/lib/auth';
-import { requireAnyModule } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
 import { parseLetter } from '@/lib/alphabet';
 import {
@@ -23,15 +22,8 @@ interface Props {
 }
 
 export default async function BrowseCatalogPage({ searchParams }: Props) {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  await requireAnyModule(['plant_catalog', 'supplies']);
-  const nurseryId =
-    user.nurseryId ??
-    (user.role === 'SUPER_ADMIN'
-      ? (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id
-      : undefined);
+  const { nurseryId } = await requireNurseryPage({ any: ['plant_catalog', 'supplies'] });
 
-  if (!nurseryId) return <p className="text-gray-500">אין משתלה משויכת.</p>;
 
   const tab = searchParams.tab === 'supplies' ? 'supplies' : 'plants';
   const q = searchParams.q?.trim() || '';

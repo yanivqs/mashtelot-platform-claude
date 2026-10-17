@@ -21,7 +21,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
 import { getEnabledModuleKeys } from '@/lib/module-access';
 import { MODULES } from '@/lib/modules';
 import { tenantOrigin } from '@/lib/seo';
@@ -90,8 +89,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let ownerNav: NavItem[] = [];
   let storeUrl: string | null = null;
   if (!isSuper) {
-    const nursery =
-      user.nursery ?? (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }));
+    const nursery = user.nursery; // לעולם לא "המשתלה הראשונה" (C-P1-01)
     ownerNav = await buildOwnerNav(nursery?.id ?? null);
     storeUrl = nursery ? tenantOrigin(nursery) : null;
   }

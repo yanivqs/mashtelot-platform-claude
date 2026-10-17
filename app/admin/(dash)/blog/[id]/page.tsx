@@ -1,8 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
-import { requireUser } from '@/lib/auth';
-import { requireModule } from '@/lib/module-access';
+import { requireNurseryPage } from '@/lib/nursery-scope';
 import { prisma } from '@/lib/prisma';
 import { BlogForm, type BlogFormValues } from '../blog-form';
 
@@ -21,21 +20,14 @@ const EMPTY: BlogFormValues = {
 };
 
 export default async function EditBlogPostPage({ params }: { params: { id: string } }) {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  await requireModule('blog');
+  const { nurseryId } = await requireNurseryPage({ all: ['blog'] });
 
   const isNew = params.id === 'new';
   let values = EMPTY;
 
   if (!isNew) {
-    const nurseryId =
-      user.nurseryId ??
-      (user.role === 'SUPER_ADMIN'
-        ? (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id
-        : undefined);
-
     const post = await prisma.blogPost.findFirst({
-      where: { id: params.id, nurseryId: nurseryId ?? '__none__' },
+      where: { id: params.id, nurseryId },
     });
     if (!post) notFound();
 

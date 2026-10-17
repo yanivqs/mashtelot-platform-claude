@@ -3,8 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import { requireUser } from '@/lib/auth';
-import { requireModule } from '@/lib/module-access';
+import { requireNurseryAction } from '@/lib/nursery-scope';
 import { sanitizeRichHtml } from '@/lib/sanitize';
 
 export interface BlogFormState {
@@ -13,17 +12,12 @@ export interface BlogFormState {
 
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,80}[a-z0-9])?$/;
 
-async function resolveNurseryId(): Promise<string | null> {
-  const user = await requireUser(['NURSERY_OWNER', 'SUPER_ADMIN']);
-  if (user.nurseryId) return user.nurseryId;
-  if (user.role === 'SUPER_ADMIN') {
-    return (await prisma.nursery.findFirst({ orderBy: { createdAt: 'asc' } }))?.id ?? null;
-  }
-  return null;
+/** הקשר המשתלה של המשתמש המחובר בלבד + אכיפת המודול (C-P1-01). */
+async function resolveNurseryId(): Promise<string> {
+  return (await requireNurseryAction({ all: ['blog'] })).nurseryId;
 }
 
 export async function saveBlogPost(_prev: BlogFormState, formData: FormData): Promise<BlogFormState> {
-  await requireModule('blog');
   const nurseryId = await resolveNurseryId();
   if (!nurseryId) return { error: 'אין משתלה משויכת' };
 
@@ -76,7 +70,6 @@ export async function saveBlogPost(_prev: BlogFormState, formData: FormData): Pr
 }
 
 export async function deleteBlogPost(formData: FormData): Promise<void> {
-  await requireModule('blog');
   const nurseryId = await resolveNurseryId();
   const id = String(formData.get('id') || '');
   if (!nurseryId || !id) return;
