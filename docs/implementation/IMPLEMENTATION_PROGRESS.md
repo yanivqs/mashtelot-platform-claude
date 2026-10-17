@@ -84,3 +84,13 @@
 - לוח הבקרה מציג את סיבת ההפניה.
 **תקלה בדרך (תוקנה):** `pages/actions.ts` היה בקידוד CRLF אחרי checkout, וסקריפט ה-patch שכפל תוכן; שוחזר מ-HEAD ותוקן. מעכשיו כל patch מנרמל שורות לפני חיפוש.
 **השפעה על משתמשים:** סופר-אדמין שנכנס למסכי חנות יופנה ללוח הבקרה עם הסבר (היום הוא עורך בשקט את המשתלה הוותיקה). בעלי משתלות פעילות — ללא שינוי, למעט מודול כבוי שכעת נחסם גם בפעולה.
+
+## 2026-10-18 — C-P1-04: CI — IN_REVIEW
+**דרישה:** §22.01 (Build, Typecheck, Lint, Unit, בדיקות אבטחה/בידוד בכל PR), §22.04 (ללא Production), §22.06 (הרשאות CI מינימליות).
+**ממצא:** lint מעולם לא רץ — `eslint.config.mjs` הוא flat config ל-ESLint 9 / Next חדש, והמותקן הוא ESLint 8 + Next 14, ולכן `next lint` נעצר בבקשת הגדרה ו-`next build` דילג על lint.
+**שינוי (ענף `chore/c-p1-04-ci`):**
+- `.github/workflows/ci.yml`: job מהיר (typecheck, lint, unit) ו-job DB (Postgres 17 זמני בתוך ה-job → `test:db` → `npm run build`). ללא secrets, `contents: read`. רץ על כל push לכל ענף.
+- `.eslintrc.json` (next/core-web-vitals) במקום `eslint.config.mjs`. `react/no-unescaped-entities` כבוי — גרשיים לגיטימיים בעברית (13 מתוך 16 הממצאים). תוקנו: תלות useMemo לא יציבה ב-checkout, הפניה לכלל לא טעון ב-2 בדיקות.
+- `next build` מריץ כעת lint.
+**אימות:** CI ירוק על הענף (54 שנ׳ + 93 שנ׳). **בדיקה שלילית:** ענף זמני עם באג חוצה-משתלות מכוון ב-`lib/ownership.ts` → job ה-DB נכשל (בדיקות הבידוד תפסו), ה-job המהיר עבר; הענף נמחק.
+**פתוח (החלטת בעלים):** חסימת מיזוג בפועל — Branch protection ב-GitHub דורש עבודה דרך PR; כרגע הדחיפה ל-main ישירה.

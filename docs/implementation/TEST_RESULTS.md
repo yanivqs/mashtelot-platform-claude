@@ -155,3 +155,14 @@
 | חנות: בית, קטלוג, דפדוף, מוצר, עגלה, checkout, צור קשר | ✅ 200 |
 | `/admin`, `/admin/products`, `/admin/orders`, `/admin/account` ללא התחברות | ✅ 307 → login |
 | **ממתין:** בדיקה ידנית של הבעלים — התחברות כסופר-אדמין וכבעלי demo | — |
+
+## 2026-10-18 — C-P1-04 (ענף `chore/c-p1-04-ci`)
+
+| # | בדיקה | סביבה | תוצאה |
+|---|---|---|---|
+| 1 | `next lint` | local | ✅ אין שגיאות/אזהרות (אחרי הגדרה) |
+| 2 | Typecheck · Unit · build (כולל lint) | local | ✅ · 67/67 · ✅ |
+| 3 | CI: Typecheck · Lint · Unit | GitHub Actions | ✅ 54 שנ׳ |
+| 4 | CI: DB integration · Tenant isolation · Build (Postgres 17 זמני) | GitHub Actions | ✅ 93 שנ׳ |
+| 5 | **שלילי:** באג מכוון (בדיקת בעלות קופון מתעלמת מהמשתלה) | GitHub Actions | ✅ job ה-DB **נכשל**; ה-job המהיר עבר (צפוי — אין לו DB). הענף נמחק |
+| 6 | Preview של הענף ב-Vercel | Vercel | ✅ success |
