@@ -14,7 +14,7 @@
 | P0-6 | אכיפת מודולים רק בדפים, לא ב-Server Actions | בינונית | VERIFIED | רק blog/pages/categories קוראים ל-`requireModule` | **FIXED** — נפרס ב-`58e3d00` | C-P1-01 |
 | P0-7 | ברירת מחדל ל"משתלה הראשונה" בפעולות סופר-אדמין | בינונית | VERIFIED (24 מופעים) | `findFirst({ orderBy: { createdAt: 'asc' } })` | **FIXED** — נפרס ב-`58e3d00` — 0 מופעים | C-P1-01 |
 | P0-8 | בעלים של משתלה מושעית מתחבר לפורטל | בינונית | VERIFIED | `app/admin/login/actions.ts` אינו בודק `nursery.isActive` | **FIXED** — נפרס ב-`58e3d00` — גם sessions קיימים | C-P1-01 |
-| P0-9 | אין Idempotency ביצירת הזמנה (שליחה כפולה = שתי הזמנות) | בינונית | VERIFIED | `app/[tenant]/checkout/actions.ts` | **FIXED בענף** `feat/c-p1-02-orders-inventory` | C-P1-02 |
+| P0-9 | אין Idempotency ביצירת הזמנה (שליחה כפולה = שתי הזמנות) | בינונית | VERIFIED | `app/[tenant]/checkout/actions.ts` | **FIXED** — נפרס ב-`2c76406` | C-P1-02 |
 | S-10 | Next.js 14.2.35 — advisories שתיקונם רק ב-16.x; `images.remotePatterns: '**'` | גבוהה | REPORTED (npm audit, 2026-09-18) | `package.json`, `next.config.js` | OPEN | C-P1-03 |
 | S-11 | bucket אחסון ציבורי (כולל artwork של דפוס) | בינונית | VERIFIED | `lib/upload-actions.ts` | OPEN | C-PT-03 (PT-08) |
 | S-12 | `log: ['query']` ב-Prisma גם בפרודקשן | נמוכה | VERIFIED | `lib/prisma.ts` | OPEN | — |
