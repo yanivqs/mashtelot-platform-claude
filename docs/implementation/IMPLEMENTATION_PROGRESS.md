@@ -137,7 +137,7 @@
 **מגבלה:** אין נתוני עבר — SEC-01 לא יכול לענות בדיעבד אם הסיסמה החשופה נוצלה לפני הרוטציה (לוגים של Vercel נשמרים לזמן קצר בלבד).
 **החלטות בעלים (2026-10-19):** Q1-א יומן לסופר-אדמין בלבד · Q2-א IP מלא · Q3-א תיקון S-21 במסגרת המשימה · **מיגרציה אושרה** (הוספת `users.session_version` תרוץ ב-Production עם הפריסה).
 
-## 2026-10-19 — SEC-01 + SEC-02 + S-21: מימוש — IN_REVIEW (ענף `feat/sec-01-02-login-log-sessions`)
+## 2026-10-19 — SEC-01 + SEC-02 + S-21: מימוש — DONE (נפרס `6f5ee36`, המיגרציה הוחלה ב-Production ואומתה)
 **SEC-01:** `lib/login.ts` — `authenticateAdmin` (סיבת כישלון: unknown_email / bad_password / portal_denied; אותה הודעה גנרית ללקוח) ו-`loginAuditEvent`. נרשמים ל-`audit_events`: `auth.login_success`, `auth.login_failed`, `auth.login_blocked` (פעם אחת לחלון הגבלה — מניעת ניפוח), `auth.logout`, `auth.sessions_revoked`. metadata: IP מלא, User-Agent (200 תווים), סיבה. הסיסמה לעולם אינה נרשמת. מסך `/admin/security` (סופר-אדמין בלבד): סינון לפי אירוע ואימייל, עימוד, שעון ישראל.
 **SEC-02:** מיגרציה `20261019000000_user_session_version` (תוספת בלבד, ברירת מחדל 0; שחזור: הקוד הקודם מתעלם מהעמודה). JWT כולל `sv`; `getSessionUser` דוחה גרסה ישנה; JWT ללא `sv` = גרסה 0 (אין ניתוק בפריסה). החלפת סיסמה מעלה את הגרסה באותו עדכון אטומי ומנפיקה session חדש למכשיר הנוכחי. כפתור "נתק את כל המכשירים האחרים" ב-`/admin/account`.
 **S-21:** `createNursery` — אימייל של משתמש קיים נדחה לפני יצירת המשתלה; `upsert` הוחלף ב-`create` (מרוץ → שגיאה, לא דריסה).
