@@ -32,3 +32,4 @@
 - S-17: סיסמת בסיס הפיתוח (`mashtelot-dev`) נחשפה בהקשר השיחה דרך בחירה ב-IDE. חומרה נמוכה (סביבת פיתוח ריקה). פעולה: Reset ב-Supabase + עדכון `.env.test` ו-Vercel Preview — **ממתין לבעלים**.
 - S-18: npm ב-Vercel אינו מריץ install scripts (כולל `postinstall` של Prisma) — `scripts/build.js` מריץ `prisma generate` במפורש, כך שאין השפעה. לתיעוד בלבד.
 - S-19 (SEO/תוכן כפול): החנות הוגשה גם בדומיין הראשי (`mashtelot.net/demo-nursery/catalog` → 200, אומת חי). **FIXED** — `f1c5914`, אומת חי (404).
+- S-20: `sanitize-html` 2.17.5 — 2 advisories XSS (GHSA-g8qq-57p8-ggw5 SVG SMIL, GHSA-jxwj-j7wr-gfrw textarea). חשיפה בפועל נמוכה (רשימת ההיתר אינה כוללת svg/textarea; תוכן נכתב רק בידי בעלי משתלות). **FIXED בענף** `feat/c-p1-03-next16` — שודרג ל-2.18.1; payloads של שני ה-advisories ותבניות XSS נפוצות נבדקו מול התצורה שלנו — כולם נוטרלו, תוכן לגיטימי נשמר.
