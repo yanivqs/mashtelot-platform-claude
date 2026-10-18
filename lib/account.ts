@@ -31,6 +31,14 @@ export function validateNewPassword(next: string, current?: string): string | nu
 
 export type ChangePasswordResult = { ok: true } | { ok: false; error: string };
 
+/**
+ * S-21: אימייל של משתמש קיים אינו משויך מחדש למשתלה חדשה — אחרת יצירת משתלה הייתה
+ * מעבירה בעלים של משתלה אחרת (או את הסופר-אדמין), משנה את תפקידו ודורסת את סיסמתו.
+ */
+export async function isEmailTaken(db: PrismaClient, email: string): Promise<boolean> {
+  return (await db.user.count({ where: { email: email.trim().toLowerCase() } })) > 0;
+}
+
 export async function changePassword(
   db: PrismaClient,
   userId: string,
@@ -46,10 +54,11 @@ export async function changePassword(
   }
 
   const passwordHash = await bcrypt.hash(input.next, 12);
-  // עדכון מותנה בגיבוב הישן — שתי החלפות מקבילות לא ידרסו זו את זו בשקט
+  // עדכון מותנה בגיבוב הישן — שתי החלפות מקבילות לא ידרסו זו את זו בשקט.
+  // העלאת גרסת ה-session מנתקת את כל המכשירים האחרים (SEC-02).
   const res = await db.user.updateMany({
     where: { id: userId, passwordHash: user.passwordHash },
-    data: { passwordHash },
+    data: { passwordHash, sessionVersion: { increment: 1 } },
   });
   if (res.count !== 1) return { ok: false, error: 'הסיסמה שונתה במקביל — נסו שוב' };
   return { ok: true };

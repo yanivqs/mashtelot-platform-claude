@@ -21,8 +21,8 @@
 | S-13 | Vercel Functions ב-`iad1` מול DB ב-`eu-central-1` (ביצועים) | נמוכה (ביצועים) | VERIFIED (`x-vercel-id`, host ה-DB) | header חי + `.env` | OPEN | הצעה נפרדת |
 | S-14 | `next build` מקומי מבצע prerender שקורא (קריאה בלבד) מבסיס ה-Production דרך `.env` | נמוכה | VERIFIED (build של C-P0-01) | `app/page.tsx` (revalidate 3600) | **FIXED** — `e45fa46`: build מקומי נחסם מול Production | C-P0-05 |
 
-| S-15 | אין יומן התחברויות — לא ניתן לדעת אם הסיסמה החשופה נוצלה לפני הרוטציה | בינונית | VERIFIED (אין רישום ב-`login/actions.ts`) | — | OPEN | חדש — לבקלוג |
-| S-16 | החלפת סיסמה אינה מנתקת sessions קיימים של אותו משתמש (JWT 7 ימים ללא גרסת session) | בינונית | VERIFIED | `lib/auth.ts` | OPEN — עקיפה: החלפת `AUTH_SECRET` מנתקת את כולם | חדש — לבקלוג |
+| S-15 | אין יומן התחברויות — לא ניתן לדעת אם הסיסמה החשופה נוצלה לפני הרוטציה | בינונית | VERIFIED (אין רישום ב-`login/actions.ts`) | — | **FIXED בענף** `feat/sec-01-02-login-log-sessions` — יומן התחברויות מעכשיו והלאה (אין נתוני עבר) | SEC-01 |
+| S-16 | החלפת סיסמה אינה מנתקת sessions קיימים של אותו משתמש (JWT 7 ימים ללא גרסת session) | בינונית | VERIFIED | `lib/auth.ts` | **FIXED בענף** `feat/sec-01-02-login-log-sessions` — `session_version` | SEC-02 |
 
 ## הנחות שטרם נבדקו
 - ה-anon key של פרויקט ה-Production לא דלף (אינו בריפו; לא נבדק מעבר לזה).
@@ -33,3 +33,5 @@
 - S-18: npm ב-Vercel אינו מריץ install scripts (כולל `postinstall` של Prisma) — `scripts/build.js` מריץ `prisma generate` במפורש, כך שאין השפעה. לתיעוד בלבד.
 - S-19 (SEO/תוכן כפול): החנות הוגשה גם בדומיין הראשי (`mashtelot.net/demo-nursery/catalog` → 200, אומת חי). **FIXED** — `f1c5914`, אומת חי (404).
 - S-20: `sanitize-html` 2.17.5 — 2 advisories XSS (GHSA-g8qq-57p8-ggw5 SVG SMIL, GHSA-jxwj-j7wr-gfrw textarea). חשיפה בפועל נמוכה (רשימת ההיתר אינה כוללת svg/textarea; תוכן נכתב רק בידי בעלי משתלות). **FIXED** — נפרס ב-`7ea00a1` — שודרג ל-2.18.1; payloads של שני ה-advisories ותבניות XSS נפוצות נבדקו מול התצורה שלנו — כולם נוטרלו, תוכן לגיטימי נשמר.
+- S-21 (נמצא ב-Audit של SEC-01/02): יצירת משתלה ב-`app/admin/(dash)/nurseries/actions.ts` מבצעת `user.upsert` לפי אימייל הבעלים — אם האימייל שייך למשתמש קיים (בעלים של משתלה אחרת, או סופר-אדמין) הוא **מועבר למשתלה החדשה, תפקידו הופך ל-NURSERY_OWNER וסיסמתו נדרסת**. VERIFIED (קוד). חומרה בינונית-נמוכה (רק סופר-אדמין מפעיל). **FIXED בענף** `feat/sec-01-02-login-log-sessions` (אושר Q3-א).
+- S-22: הגבלת הקצב (`lib/rate-limit.ts`) נשמרת בזיכרון של מופע ה-Function — ב-Vercel כל מופע סופר בנפרד, כך שההגבלה חלקית. VERIFIED (קוד). חומרה נמוכה-בינונית. OPEN — משימה נפרדת (דורש אחסון משותף).

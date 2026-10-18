@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import type { Role } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { isSessionAllowed } from '@/lib/nursery-access';
+import { isTokenVersionCurrent } from '@/lib/login';
 
 const SESSION_COOKIE = 'mashtelot_session';
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -27,8 +28,9 @@ export function verifyPassword(plain: string, hash: string): Promise<boolean> {
   return bcrypt.compare(plain, hash);
 }
 
-export async function createSession(userId: string): Promise<void> {
-  const token = await new SignJWT({ sub: userId })
+/** מנפיק session. `sv` = גרסת ה-session של המשתמש (SEC-02) — העלאתה מבטלת את ה-session. */
+export async function createSession(user: { id: string; sessionVersion: number }): Promise<void> {
+  const token = await new SignJWT({ sub: user.id, sv: user.sessionVersion })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(`${MAX_AGE}s`)
@@ -59,6 +61,8 @@ export const getSessionUser = cache(async () => {
       where: { id: payload.sub },
       include: { nursery: true },
     });
+    // session שבוטל (החלפת סיסמה / "נתק את כל המכשירים") — SEC-02
+    if (user && !isTokenVersionCurrent(payload.sv, user.sessionVersion)) return null;
     // בעלים של משתלה מושעית — ה-session מבוטל מיד (C-P1-01, אפיון §2.03)
     if (
       user &&

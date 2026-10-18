@@ -1,16 +1,21 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import { verifyPassword, createSession } from '@/lib/auth';
+import { createSession } from '@/lib/auth';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
-import { canUseAdminPortal } from '@/lib/nursery-access';
+import { recordAudit } from '@/lib/audit';
+import { authenticateAdmin, loginAuditEvent, LOGIN_ACTIONS, type LoginContext } from '@/lib/login';
 
 export interface LoginState {
   error?: string;
 }
 
 const TOO_MANY = 'יותר מדי ניסיונות התחברות. נסו שוב בעוד מספר דקות.';
+
+const IP_WINDOW = 10 * 60_000;
+const EMAIL_WINDOW = 15 * 60_000;
 
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const email = String(formData.get('email') || '').trim().toLowerCase();
@@ -20,26 +25,35 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     return { error: 'יש להזין אימייל וסיסמה' };
   }
 
-  // הגבלת קצב: לפי כתובת IP ולפי כתובת האימייל הנתקפת
-  const ip = await clientIp();
-  if (!rateLimit(`login:ip:${ip}`, 10, 10 * 60_000).ok) return { error: TOO_MANY };
-  if (!rateLimit(`login:email:${email}`, 5, 15 * 60_000).ok) return { error: TOO_MANY };
+  const ctx: LoginContext = {
+    ip: await clientIp(),
+    userAgent: (await headers()).get('user-agent'),
+  };
 
-  const user = await prisma.user.findUnique({ where: { email }, include: { nursery: true } });
-  const ok =
-    user?.passwordHash && (await verifyPassword(password, user.passwordHash));
-
-  if (!user || !ok) {
-    return { error: 'פרטי התחברות שגויים' };
+  // הגבלת קצב: לפי כתובת IP ולפי כתובת האימייל הנתקפת.
+  // חסימה נרשמת ביומן פעם אחת לכל חלון — כדי שהתקפה לא תנפח את הטבלה (SEC-01).
+  const limits = [
+    { key: `login:ip:${ctx.ip}`, limit: 10, windowMs: IP_WINDOW, reason: 'rate_limit_ip' },
+    { key: `login:email:${email}`, limit: 5, windowMs: EMAIL_WINDOW, reason: 'rate_limit_email' },
+  ];
+  for (const l of limits) {
+    if (!rateLimit(l.key, l.limit, l.windowMs).ok) {
+      if (rateLimit(`login-blocked-logged:${l.key}`, 1, l.windowMs).ok) {
+        await recordAudit(loginAuditEvent(LOGIN_ACTIONS.blocked, { email, reason: l.reason, ctx }));
+      }
+      return { error: TOO_MANY };
+    }
   }
 
-  const portal = canUseAdminPortal({
-    role: user.role,
-    nurseryId: user.nurseryId,
-    nurseryActive: user.nursery ? user.nursery.isActive : null,
-  });
-  if (!portal.ok) return { error: portal.error };
+  const res = await authenticateAdmin(prisma, email, password);
+  if (!res.ok) {
+    await recordAudit(
+      loginAuditEvent(LOGIN_ACTIONS.failed, { email, user: res.user, reason: res.reason, ctx }),
+    );
+    return { error: res.error };
+  }
 
-  await createSession(user.id);
+  await recordAudit(loginAuditEvent(LOGIN_ACTIONS.success, { email, user: res.user, ctx }));
+  await createSession(res.user);
   redirect('/admin');
 }

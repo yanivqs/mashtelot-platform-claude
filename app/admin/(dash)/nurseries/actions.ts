@@ -10,6 +10,7 @@ import { syncMasterCategoriesToNursery } from '@/lib/category-provision';
 import { nurseryActionScope } from '@/lib/nursery-scope';
 import { isModuleEnabled, getModuleConfig } from '@/lib/module-access';
 import { resolveDesignUpdate } from '@/lib/design-lock';
+import { isEmailTaken } from '@/lib/account';
 
 export interface NurseryFormState {
   ok?: boolean;
@@ -45,6 +46,10 @@ export async function createNursery(
 
   const existing = await prisma.nursery.findUnique({ where: { subdomain } });
   if (existing) return { error: 'תת-הדומיין כבר תפוס' };
+  // S-21: לא משייכים מחדש משתמש קיים (בעלים של משתלה אחרת / סופר-אדמין)
+  if (ownerPassword && (await isEmailTaken(prisma, ownerEmail))) {
+    return { error: 'האימייל כבר משויך למשתמש קיים — יש לבחור אימייל אחר לבעלים' };
+  }
 
   const nursery = await prisma.nursery.create({
     data: { name, subdomain, ownerEmail, logoUrl },
@@ -56,16 +61,14 @@ export async function createNursery(
       return { error: 'המשתלה נוצרה, אך הסיסמה קצרה מ-8 תווים - לא נוצר משתמש בעלים' };
     }
     const passwordHash = await hashPassword(ownerPassword);
-    await prisma.user.upsert({
-      where: { email: ownerEmail },
-      update: { passwordHash, role: 'NURSERY_OWNER', nurseryId: nursery.id },
-      create: {
-        email: ownerEmail,
-        passwordHash,
-        role: 'NURSERY_OWNER',
-        nurseryId: nursery.id,
-      },
-    });
+    try {
+      await prisma.user.create({
+        data: { email: ownerEmail, passwordHash, role: 'NURSERY_OWNER', nurseryId: nursery.id },
+      });
+    } catch {
+      // מרוץ: האימייל נתפס בין הבדיקה ליצירה — לא דורסים
+      return { error: 'המשתלה נוצרה, אך האימייל כבר משויך למשתמש קיים — לא נוצר משתמש בעלים' };
+    }
   }
 
   revalidatePath('/admin/nurseries');

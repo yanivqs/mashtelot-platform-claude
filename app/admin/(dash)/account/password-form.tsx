@@ -58,7 +58,9 @@ export function PasswordForm({ minLength }: { minLength: number }) {
       </label>
       <div className="flex items-center gap-3">
         <SubmitButton />
-        {state.ok && <span className="text-sm text-green-700">הסיסמה הוחלפה ✓</span>}
+        {state.ok && (
+          <span className="text-sm text-green-700">הסיסמה הוחלפה ✓ — שאר המכשירים נותקו</span>
+        )}
         {state.error && <span className="text-sm text-red-600">{state.error}</span>}
       </div>
     </form>

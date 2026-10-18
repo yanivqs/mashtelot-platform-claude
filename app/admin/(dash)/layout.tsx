@@ -18,6 +18,7 @@ import {
   Mail,
   ExternalLink,
   KeyRound,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
@@ -56,6 +57,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/nurseries', label: 'משתלות', icon: Store },
   { href: '/admin/print-orders', label: 'בית דפוס', icon: Printer },
   { href: '/admin/system', label: 'מיילים ומערכת', icon: Mail },
+  { href: '/admin/security', label: 'יומן התחברויות', icon: ShieldCheck },
 ];
 
 /** ניווט בעל משתלה — נבנה מתוך המודולים המשויכים בלבד. */
