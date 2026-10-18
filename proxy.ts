@@ -5,7 +5,10 @@ import { resolveHost } from '@/lib/tenant-host';
 // דומיין הבסיס של הפלטפורמה (ללא פרוטוקול). לדוגמה: mashtelot.net
 const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'localhost:3000';
 
-export function middleware(request: NextRequest) {
+/**
+ * Proxy (לשעבר middleware — Next.js 16). רץ ב-Node.js runtime; הקוד אינו תלוי ב-Edge.
+ */
+export function proxy(request: NextRequest) {
   const url = request.nextUrl;
   const host = (request.headers.get('host') || '').toLowerCase();
 

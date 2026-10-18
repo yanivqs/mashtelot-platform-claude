@@ -119,3 +119,9 @@
 **Audit:** 23 advisories על `next@14.2.35` (2 קריטיים). כל ה-advisories מתוקנים ב-15.5.24+ וב-16.3.3+. שאר 20 הממצאים — כלי פיתוח/build בלבד (vitest, vite, tailwind, eslint). היקף: useFormState ב-22 קבצים, params ב-20 קבצים, cookies×3, headers×1, clientIp×4, middleware→proxy, next lint→ESLint 9 flat, Turbopack. ללא next/image, revalidateTag, unstable_cache, AMP, runtimeConfig, webpack מותאם.
 **החלטות בעלים:** יעד 16.4.2; פריסה אחת בסוף; שלב 0 עכשיו בנפרד.
 **שלב 0:** הוסר `images.remotePatterns: [{ hostname: '**' }]` (next/image אינו בשימוש). לפני: `/_next/image` עם תמונה חיצונית → 200 (חי). אחרי: 400 (local). ממתין: גרסת Node ב-Vercel (≥20.9) לפני שלב 2.
+
+## 2026-10-18 — C-P1-03 שלבים 1–2: Next.js 16.4.2 + React 19 — IN_REVIEW
+**שלב 1 (`f6ae051`):** next 15.5.28 + react 19.3.1. codemod רשמי `next-async-request-api` (22 קבצים, 0 שגיאות); 2 מקרים שה-codemod לא סיים (`destroySession`, `clientIp`) — הושלמו ידנית והקוראים ממתינים. `useFormState` → `useActionState` ב-22 קבצים. React 19 types: `JSX` → `React.JSX`.
+**שלב 2:** next 16.4.2, eslint 9.39.5, eslint-config-next 16.4.2. `middleware.ts` → `proxy.ts` (Node runtime; הקוד אינו תלוי ב-Edge). `next lint` הוסר → `eslint.config.mjs` (flat) + `npm run lint` ב-CI. Turbopack ב-build (ללא webpack מותאם). `tsconfig` — `jsx: react-jsx` (שינוי אוטומטי של Next 16). כלל חדש `react-hooks/set-state-in-effect` — יחיד ב-cart-provider (טעינת localStorage אחרי hydration, מכוון) — הותר מקומית עם הסבר. `serverActions.bodySizeLimit` נשאר ב-`experimental` (אומת בטיפוסים).
+**התקנה:** הניסיון הראשון ל-next 16 נכשל ב-ERESOLVE (eslint 8 מול eslint-config-next 16 שדורש ≥9) — הותקן eslint 9 תחילה והניסיון החוזר הצליח; `npm ls` נקי.
+**הערה:** `AGENTS.md` מפנה ל-`node_modules/next/dist/docs` — קיים כעת עם Next 16.

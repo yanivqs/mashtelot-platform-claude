@@ -46,6 +46,9 @@ export function CartProvider({
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
+  // טעינת העגלה מ-localStorage אחרי ה-hydration בכוונה: השרת מרנדר עגלה ריקה, וקריאה
+  // מוקדמת יותר הייתה יוצרת אי-התאמה בין ה-HTML של השרת לדפדפן. זה סנכרון ממערכת חיצונית.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     try {
       const raw = localStorage.getItem(storageKey);
@@ -55,6 +58,7 @@ export function CartProvider({
     }
     setHydrated(true);
   }, [storageKey]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!hydrated) return;
