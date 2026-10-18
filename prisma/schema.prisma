@@ -621,3 +621,14 @@ model BlogPost {
   @@unique([nurseryId, slug])
   @@map("blog_posts")
 }
+
+/// S-22: מוני הגבלת קצב משותפים לכל מופעי השרת (חלון קבוע). נכתב רק דרך lib/rate-limit-store.ts.
+model RateLimit {
+  key         String   @id
+  windowStart DateTime @map("window_start") @db.Timestamptz(3)
+  count       Int
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz(3)
+
+  @@index([expiresAt])
+  @@map("rate_limits")
+}

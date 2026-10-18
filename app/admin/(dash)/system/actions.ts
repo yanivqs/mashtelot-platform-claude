@@ -18,7 +18,7 @@ export async function sendTestEmail(
   const user = await requireUser(['SUPER_ADMIN']);
   const to = String(formData.get('to') || '').trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { ok: false, message: 'כתובת לא תקינה' };
-  if (!rateLimit(`test-email:${user.id}`, 10, 10 * 60_000).ok) {
+  if (!(await rateLimit(`test-email:${user.id}`, 10, 10 * 60_000)).ok) {
     return { ok: false, message: 'יותר מדי ניסיונות, נסו שוב בעוד כמה דקות' };
   }
 

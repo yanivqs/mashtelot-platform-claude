@@ -104,7 +104,7 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
   if (cart.length === 0) return { error: 'העגלה ריקה' };
 
   // הגבלת קצב לפי כתובת IP כדי לבלום הצפת הזמנות
-  if (!rateLimit(`checkout:ip:${await clientIp()}`, 6, 10 * 60_000).ok) {
+  if (!(await rateLimit(`checkout:ip:${await clientIp()}`, 6, 10 * 60_000)).ok) {
     return { error: 'יותר מדי הזמנות בזמן קצר. נסו שוב מאוחר יותר.' };
   }
 

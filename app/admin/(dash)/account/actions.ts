@@ -27,7 +27,7 @@ export async function changePasswordAction(
   formData: FormData,
 ): Promise<ChangePasswordState> {
   const user = await requireUser(['SUPER_ADMIN', 'NURSERY_OWNER']);
-  if (!rateLimit(`change-password:${user.id}`, 5, 15 * 60_000).ok) {
+  if (!(await rateLimit(`change-password:${user.id}`, 5, 15 * 60_000)).ok) {
     return { error: 'יותר מדי ניסיונות. נסו שוב בעוד כמה דקות.' };
   }
 
@@ -60,7 +60,7 @@ export async function revokeOtherSessionsAction(
   _formData: FormData,
 ): Promise<RevokeSessionsState> {
   const user = await requireUser(['SUPER_ADMIN', 'NURSERY_OWNER']);
-  if (!rateLimit(`revoke-sessions:${user.id}`, 5, 15 * 60_000).ok) {
+  if (!(await rateLimit(`revoke-sessions:${user.id}`, 5, 15 * 60_000)).ok) {
     return { error: 'יותר מדי ניסיונות. נסו שוב בעוד כמה דקות.' };
   }
 

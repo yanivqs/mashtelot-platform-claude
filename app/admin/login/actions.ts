@@ -37,8 +37,8 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     { key: `login:email:${email}`, limit: 5, windowMs: EMAIL_WINDOW, reason: 'rate_limit_email' },
   ];
   for (const l of limits) {
-    if (!rateLimit(l.key, l.limit, l.windowMs).ok) {
-      if (rateLimit(`login-blocked-logged:${l.key}`, 1, l.windowMs).ok) {
+    if (!(await rateLimit(l.key, l.limit, l.windowMs)).ok) {
+      if ((await rateLimit(`login-blocked-logged:${l.key}`, 1, l.windowMs)).ok) {
         await recordAudit(loginAuditEvent(LOGIN_ACTIONS.blocked, { email, reason: l.reason, ctx }));
       }
       return { error: TOO_MANY };
