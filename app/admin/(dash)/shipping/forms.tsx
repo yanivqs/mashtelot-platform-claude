@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { createZone, type ShippingZoneState } from './actions';
 
 const initial: ShippingZoneState = {};
@@ -20,7 +21,7 @@ function Submit() {
 }
 
 export function ZoneForm() {
-  const [state, action] = useFormState(createZone, initial);
+  const [state, action] = useActionState(createZone, initial);
   return (
     <form action={action} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-3">

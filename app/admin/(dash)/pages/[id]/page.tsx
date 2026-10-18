@@ -19,7 +19,8 @@ const EMPTY: PageFormValues = {
   seoMetaDescription: null,
 };
 
-export default async function EditPagePage({ params }: { params: { id: string } }) {
+export default async function EditPagePage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { nurseryId } = await requireNurseryPage({ all: ['static_pages'] });
 
   const isNew = params.id === 'new';

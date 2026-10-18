@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { MODULES } from '@/lib/modules';
 import { setNurseryModules, type NurseryFormState } from './actions';
 
@@ -37,7 +38,7 @@ export function NurseryModulesForm({
   nurseryId: string;
   states: Record<string, ModuleStateVM>;
 }) {
-  const [state, formAction] = useFormState(setNurseryModules, initial);
+  const [state, formAction] = useActionState(setNurseryModules, initial);
 
   return (
     <form action={formAction} className="space-y-3">

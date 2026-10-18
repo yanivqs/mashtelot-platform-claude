@@ -9,13 +9,14 @@ import { deletePlant } from './actions';
 
 export const dynamic = 'force-dynamic';
 
-export default async function EditPlantPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams: { error?: string };
-}) {
+export default async function EditPlantPage(
+  props: {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<{ error?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   await requireUser(['SUPER_ADMIN']);
 
   const plant = await prisma.plant.findUnique({

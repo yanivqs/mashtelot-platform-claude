@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { Leaf } from 'lucide-react';
 import { login, type LoginState } from './actions';
 
@@ -20,7 +21,7 @@ function SubmitButton() {
 }
 
 export default function LoginPage() {
-  const [state, formAction] = useFormState(login, initial);
+  const [state, formAction] = useActionState(login, initial);
 
   return (
     <div dir="rtl" className="flex min-h-screen items-center justify-center bg-gray-50 px-6">

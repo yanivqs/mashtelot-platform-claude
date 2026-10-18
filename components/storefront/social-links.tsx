@@ -1,3 +1,4 @@
+import type React from 'react';
 import type { ChannelProvider } from '@prisma/client';
 import type { EnabledChannel } from '@/lib/channels';
 
@@ -57,7 +58,7 @@ const GoogleBusiness = ({ className }: IconProps) => (
   </svg>
 );
 
-const ICONS: Record<ChannelProvider, (p: IconProps) => JSX.Element> = {
+const ICONS: Record<ChannelProvider, (p: IconProps) => React.JSX.Element> = {
   WHATSAPP: WhatsApp,
   FACEBOOK: Facebook,
   INSTAGRAM: Instagram,

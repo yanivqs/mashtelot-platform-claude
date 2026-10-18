@@ -17,14 +17,13 @@ import {
 export const revalidate = 300;
 
 interface CatalogPageProps {
-  params: { tenant: string };
-  searchParams: Record<string, string | undefined>;
+  params: Promise<{ tenant: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }
 
-export async function generateMetadata({
-  params,
-  searchParams,
-}: CatalogPageProps): Promise<Metadata> {
+export async function generateMetadata(props: CatalogPageProps): Promise<Metadata> {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) return {};
 
@@ -53,7 +52,9 @@ export async function generateMetadata({
   };
 }
 
-export default async function CatalogPage({ params, searchParams }: CatalogPageProps) {
+export default async function CatalogPage(props: CatalogPageProps) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) notFound();
 

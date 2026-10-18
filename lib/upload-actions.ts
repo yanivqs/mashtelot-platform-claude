@@ -30,7 +30,7 @@ const BUCKET = 'uploads';
 export async function uploadImage(formData: FormData): Promise<UploadResult> {
   await requireUser(['SUPER_ADMIN', 'NURSERY_OWNER']);
 
-  if (!rateLimit(`upload:ip:${clientIp()}`, 40, 10 * 60_000).ok) {
+  if (!rateLimit(`upload:ip:${await clientIp()}`, 40, 10 * 60_000).ok) {
     return { error: 'יותר מדי העלאות בזמן קצר. נסו שוב בעוד מספר דקות.' };
   }
 

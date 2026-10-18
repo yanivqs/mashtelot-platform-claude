@@ -11,11 +11,12 @@ import { ProductRow, type RowProduct } from './product-row';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminProductsPage({
-  searchParams,
-}: {
-  searchParams: { q?: string; letter?: string };
-}) {
+export default async function AdminProductsPage(
+  props: {
+    searchParams: Promise<{ q?: string; letter?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const { nurseryId } = await requireNurseryPage({ any: ['plant_catalog', 'supplies'] });
 
 

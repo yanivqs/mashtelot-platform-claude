@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { ImageUpload } from '@/components/admin/image-upload';
 import { createNursery, type NurseryFormState } from './actions';
 
@@ -21,7 +22,7 @@ function SubmitButton() {
 }
 
 export function CreateNurseryForm() {
-  const [state, formAction] = useFormState(createNursery, initial);
+  const [state, formAction] = useActionState(createNursery, initial);
 
   return (
     <form action={formAction} className="grid gap-4 sm:grid-cols-2">

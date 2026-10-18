@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useRef } from 'react';
+import { useFormStatus } from 'react-dom';
 import {
   updatePrintOrderStatus,
   savePrintOption,
@@ -59,7 +59,7 @@ export function PrintOptionForm({
 }: {
   option?: { id: string; optionName: string; extraPrice: string };
 }) {
-  const [state, action] = useFormState(savePrintOption, initial);
+  const [state, action] = useActionState(savePrintOption, initial);
   return (
     <div className="flex flex-wrap items-center gap-2">
       <form action={action} className="flex flex-wrap items-center gap-2">

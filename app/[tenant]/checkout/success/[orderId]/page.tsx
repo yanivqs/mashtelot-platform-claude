@@ -11,11 +11,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function OrderSuccessPage({
-  params,
-}: {
-  params: { tenant: string; orderId: string };
-}) {
+export default async function OrderSuccessPage(
+  props: {
+    params: Promise<{ tenant: string; orderId: string }>;
+  }
+) {
+  const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) notFound();
 

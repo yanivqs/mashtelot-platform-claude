@@ -11,11 +11,12 @@ export const dynamic = 'force-dynamic';
 
 const PAGE_SIZE = 30;
 
-export default async function AdminCatalogPage({
-  searchParams,
-}: {
-  searchParams: { q?: string; page?: string; letter?: string };
-}) {
+export default async function AdminCatalogPage(
+  props: {
+    searchParams: Promise<{ q?: string; page?: string; letter?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   await requireUser(['SUPER_ADMIN']);
 
   const q = searchParams.q?.trim() || '';

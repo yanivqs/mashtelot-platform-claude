@@ -34,7 +34,7 @@ export async function createSession(userId: string): Promise<void> {
     .setExpirationTime(`${MAX_AGE}s`)
     .sign(secret);
 
-  cookies().set(SESSION_COOKIE, token, {
+  (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
@@ -43,13 +43,13 @@ export async function createSession(userId: string): Promise<void> {
   });
 }
 
-export function destroySession(): void {
-  cookies().delete(SESSION_COOKIE);
+export async function destroySession(): Promise<void> {
+  (await cookies()).delete(SESSION_COOKIE);
 }
 
 /** Current authenticated user (with nursery), or null. Cached per request. */
 export const getSessionUser = cache(async () => {
-  const token = cookies().get(SESSION_COOKIE)?.value;
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
   try {

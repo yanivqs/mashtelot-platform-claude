@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import { savePage, deletePage, type PageFormState } from './actions';
 
@@ -33,7 +34,7 @@ function SaveButton() {
 }
 
 export function PageForm({ page }: { page: PageFormValues }) {
-  const [state, formAction] = useFormState(savePage, initial);
+  const [state, formAction] = useActionState(savePage, initial);
 
   return (
     <>

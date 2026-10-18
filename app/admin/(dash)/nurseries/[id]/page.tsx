@@ -10,7 +10,8 @@ import { NurseryModulesForm, type ModuleStateVM } from '../modules-form';
 
 export const dynamic = 'force-dynamic';
 
-export default async function EditNurseryPage({ params }: { params: { id: string } }) {
+export default async function EditNurseryPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   await requireUser(['SUPER_ADMIN']);
 
   const nursery = await prisma.nursery.findUnique({ where: { id: params.id } });

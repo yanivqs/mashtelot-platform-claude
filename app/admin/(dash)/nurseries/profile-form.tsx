@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { ImageUpload } from '@/components/admin/image-upload';
 import type { CarouselConfig } from '@/lib/theme';
 import { updateNursery, type NurseryFormState } from './actions';
@@ -101,7 +102,7 @@ export function NurseryProfileForm({
   canEditDesign?: boolean;
   canEditCarousel?: boolean;
 }) {
-  const [state, formAction] = useFormState(updateNursery, initial);
+  const [state, formAction] = useActionState(updateNursery, initial);
   const isSuper = scope === 'super';
   const showDesign = isSuper || canEditDesign;
   const showCarousel = showDesign && (isSuper || canEditCarousel);

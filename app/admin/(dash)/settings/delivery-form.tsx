@@ -1,7 +1,8 @@
 'use client';
 
+import { useActionState } from 'react';
 import Link from 'next/link';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
 import { saveDeliverySettings, type SaveDeliveryState } from './delivery-actions';
 
 const initial: SaveDeliveryState = {};
@@ -29,7 +30,7 @@ export function DeliveryForm({
   deliveryNote: string | null;
   showZonesLink: boolean;
 }) {
-  const [state, action] = useFormState(saveDeliverySettings, initial);
+  const [state, action] = useActionState(saveDeliverySettings, initial);
   return (
     <form action={action} className="space-y-4">
       <label className="flex items-start gap-3 text-sm">

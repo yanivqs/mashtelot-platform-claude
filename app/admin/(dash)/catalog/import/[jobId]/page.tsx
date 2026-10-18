@@ -7,7 +7,8 @@ import { commitImport, type ImportPayload } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ImportReportPage({ params }: { params: { jobId: string } }) {
+export default async function ImportReportPage(props: { params: Promise<{ jobId: string }> }) {
+  const params = await props.params;
   await requireUser(['SUPER_ADMIN']);
 
   const job = await prisma.importJob.findUnique({ where: { id: params.jobId } });

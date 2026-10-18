@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { ChevronDown, Trash2, AlertCircle } from 'lucide-react';
 import type { Plant } from '@prisma/client';
 import { ImageUpload } from '@/components/admin/image-upload';
@@ -62,7 +62,7 @@ export function ProductRow({
   categoryOptions: CategoryOption[];
 }) {
   const [open, setOpen] = useState(false);
-  const [state, formAction] = useFormState(updateProduct, initial);
+  const [state, formAction] = useActionState(updateProduct, initial);
   const [imageUrl, setImageUrl] = useState(product.customImageUrl ?? '');
 
   return (

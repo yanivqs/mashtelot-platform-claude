@@ -8,7 +8,8 @@ import { moveProductInCategory, removeProductFromCategory, addProductToCategory 
 
 export const dynamic = 'force-dynamic';
 
-export default async function CategoryManagerPage({ params }: { params: { id: string } }) {
+export default async function CategoryManagerPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { nurseryId } = await requireNurseryPage({ any: ['plant_catalog', 'supplies'] });
 
   // קטגוריה של משתלה אחרת = לא נמצאה (אין חשיפת קיום)

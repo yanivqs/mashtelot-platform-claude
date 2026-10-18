@@ -21,7 +21,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   }
 
   // הגבלת קצב: לפי כתובת IP ולפי כתובת האימייל הנתקפת
-  const ip = clientIp();
+  const ip = await clientIp();
   if (!rateLimit(`login:ip:${ip}`, 10, 10 * 60_000).ok) return { error: TOO_MANY };
   if (!rateLimit(`login:email:${email}`, 5, 15 * 60_000).ok) return { error: TOO_MANY };
 

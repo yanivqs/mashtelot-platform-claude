@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { createCoupon, createPromotion, type MarketingState } from './actions';
 
 const initial: MarketingState = {};
@@ -20,7 +21,7 @@ function Submit({ label }: { label: string }) {
 }
 
 export function CouponForm() {
-  const [state, action] = useFormState(createCoupon, initial);
+  const [state, action] = useActionState(createCoupon, initial);
   return (
     <form action={action} className="flex flex-wrap items-end gap-3">
       <label className="text-sm">
@@ -59,7 +60,7 @@ export function CouponForm() {
 }
 
 export function PromotionForm() {
-  const [state, action] = useFormState(createPromotion, initial);
+  const [state, action] = useActionState(createPromotion, initial);
   return (
     <form action={action} className="space-y-3">
       <label className="block text-sm">

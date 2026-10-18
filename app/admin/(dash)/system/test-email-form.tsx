@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { sendTestEmail, type TestEmailState } from './actions';
 
 const initial: TestEmailState = {};
@@ -18,7 +19,7 @@ function SendButton() {
 }
 
 export function TestEmailForm({ defaultTo }: { defaultTo: string }) {
-  const [state, action] = useFormState(sendTestEmail, initial);
+  const [state, action] = useActionState(sendTestEmail, initial);
   return (
     <form action={action} className="space-y-3">
       <div className="flex flex-wrap gap-2">

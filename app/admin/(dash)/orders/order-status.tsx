@@ -1,7 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
-import { useFormState } from 'react-dom';
+import { useActionState, useRef } from 'react';
 import type { OrderStatus, PaymentStatus } from '@prisma/client';
 import {
   ORDER_STATUS_LABELS,
@@ -19,7 +18,7 @@ const select =
 /** מציג את הסטטוס הנוכחי ומאפשר רק את המעברים החוקיים ממנו. */
 export function OrderStatusSelect({ id, status }: { id: string; status: OrderStatus }) {
   const formRef = useRef<HTMLFormElement>(null);
-  const [state, action] = useFormState(updateOrderStatus, initial);
+  const [state, action] = useActionState(updateOrderStatus, initial);
   const current = normalizeStatus(status);
   const next = allowedNextStatuses(status);
 
@@ -51,7 +50,7 @@ export function OrderStatusSelect({ id, status }: { id: string; status: OrderSta
 
 export function PaymentStatusSelect({ id, status }: { id: string; status: PaymentStatus }) {
   const formRef = useRef<HTMLFormElement>(null);
-  const [state, action] = useFormState(updatePaymentStatus, initial);
+  const [state, action] = useActionState(updatePaymentStatus, initial);
   const next = allowedNextPaymentStatuses(status);
 
   return (

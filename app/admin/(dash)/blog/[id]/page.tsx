@@ -19,7 +19,8 @@ const EMPTY: BlogFormValues = {
   seoMetaDescription: null,
 };
 
-export default async function EditBlogPostPage({ params }: { params: { id: string } }) {
+export default async function EditBlogPostPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { nurseryId } = await requireNurseryPage({ all: ['blog'] });
 
   const isNew = params.id === 'new';

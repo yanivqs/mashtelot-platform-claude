@@ -14,10 +14,11 @@ export const revalidate = 300;
 export const dynamicParams = true;
 
 interface ProductPageProps {
-  params: { tenant: string; slug: string };
+  params: Promise<{ tenant: string; slug: string }>;
 }
 
-export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
+export async function generateMetadata(props: ProductPageProps): Promise<Metadata> {
+  const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) return {};
 
@@ -41,7 +42,8 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   };
 }
 
-export default async function ProductPage({ params }: ProductPageProps) {
+export default async function ProductPage(props: ProductPageProps) {
+  const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) notFound();
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useMemo, useState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { Plus, Trash2 } from 'lucide-react';
 import { ImageUpload } from '@/components/admin/image-upload';
 import { formatPrice } from '@/lib/utils';
@@ -58,7 +58,7 @@ export function PrintProductForm({
   product: PrintProductFormValues;
   categories: string[];
 }) {
-  const [state, action] = useFormState(savePrintProduct, initial);
+  const [state, action] = useActionState(savePrintProduct, initial);
   const [basePrice, setBasePrice] = useState(product.basePrice);
   const [minQty, setMinQty] = useState(String(product.minQuantity));
   const [tiers, setTiers] = useState<Array<{ minQty: string; unitPrice: string }>>(

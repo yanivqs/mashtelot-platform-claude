@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { createCategory, type CategoryState } from './actions';
 
 const initial: CategoryState = {};
@@ -20,7 +21,7 @@ function Submit() {
 }
 
 export function CategoryForm({ options }: { options: Array<{ id: string; name: string; depth: number }> }) {
-  const [state, action] = useFormState(createCategory, initial);
+  const [state, action] = useActionState(createCategory, initial);
   return (
     <form action={action} className="flex flex-wrap items-end gap-3">
       <label className="text-sm">

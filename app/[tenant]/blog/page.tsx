@@ -7,11 +7,12 @@ import { prisma } from '@/lib/prisma';
 
 export const revalidate = 300;
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { tenant: string };
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ tenant: string }>;
+  }
+): Promise<Metadata> {
+  const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) return {};
   return {
@@ -21,7 +22,8 @@ export async function generateMetadata({
   };
 }
 
-export default async function BlogIndex({ params }: { params: { tenant: string } }) {
+export default async function BlogIndex(props: { params: Promise<{ tenant: string }> }) {
+  const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) notFound();
   if (!(await isModuleEnabled(nursery.id, 'blog'))) notFound();

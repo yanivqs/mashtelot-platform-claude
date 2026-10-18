@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { createNurseryCategory, type NurseryCategoryState } from './actions';
 
 const initial: NurseryCategoryState = {};
@@ -24,7 +25,7 @@ export function NurseryCategoryForm({
 }: {
   options: Array<{ id: string; name: string; depth: number }>;
 }) {
-  const [state, action] = useFormState(createNurseryCategory, initial);
+  const [state, action] = useActionState(createNurseryCategory, initial);
   return (
     <form action={action} className="flex flex-wrap items-end gap-3">
       <label className="text-sm">

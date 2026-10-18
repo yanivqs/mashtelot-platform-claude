@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { dryRunImport, type DryRunState } from './actions';
 
 const initial: DryRunState = {};
@@ -18,7 +19,7 @@ function Submit() {
 }
 
 export function UploadForm() {
-  const [state, action] = useFormState(dryRunImport, initial);
+  const [state, action] = useActionState(dryRunImport, initial);
   return (
     <form action={action} className="space-y-4">
       <label className="block text-sm">

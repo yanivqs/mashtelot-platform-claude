@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { ImageUpload } from '@/components/admin/image-upload';
 import { updatePlant, type PlantFormState } from './actions';
 
@@ -65,7 +65,7 @@ export function PlantForm({
   categories?: Array<{ id: string; name: string; depth: number }>;
   selectedCategoryIds?: string[];
 }) {
-  const [state, formAction] = useFormState(updatePlant, initial);
+  const [state, formAction] = useActionState(updatePlant, initial);
   const [imageUrl, setImageUrl] = useState(plant.imageUrl ?? '');
 
   const groups = ['זיהוי', 'מאפיינים', 'תיאור וטיפול'] as const;

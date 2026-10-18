@@ -8,7 +8,8 @@ import { Hero } from '@/components/storefront/hero';
 
 export const revalidate = 300;
 
-export default async function TenantHomePage({ params }: { params: { tenant: string } }) {
+export default async function TenantHomePage(props: { params: Promise<{ tenant: string }> }) {
+  const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) notFound();
 

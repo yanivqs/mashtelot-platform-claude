@@ -30,11 +30,12 @@ function Stat({ label, value, href }: { label: string; value: number | string; h
   );
 }
 
-export default async function AdminOverviewPage({
-  searchParams,
-}: {
-  searchParams: { notice?: string };
-}) {
+export default async function AdminOverviewPage(
+  props: {
+    searchParams: Promise<{ notice?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await requireUser();
 
   if (user.role === 'SUPER_ADMIN') {

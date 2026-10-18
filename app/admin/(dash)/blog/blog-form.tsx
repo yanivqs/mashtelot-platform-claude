@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import { ImageUpload } from '@/components/admin/image-upload';
 import { saveBlogPost, deleteBlogPost, type BlogFormState } from './actions';
@@ -34,7 +35,7 @@ function SaveButton() {
 }
 
 export function BlogForm({ post }: { post: BlogFormValues }) {
-  const [state, formAction] = useFormState(saveBlogPost, initial);
+  const [state, formAction] = useActionState(saveBlogPost, initial);
 
   return (
     <>

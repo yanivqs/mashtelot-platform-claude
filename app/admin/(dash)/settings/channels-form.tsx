@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import type { NurseryChannel } from '@prisma/client';
 import { saveChannels, type SaveChannelsState } from './channels-actions';
 import { CHANNEL_PROVIDERS, CHANNEL_LABELS, CHANNEL_VALUE_PLACEHOLDERS } from '@/lib/channels';
@@ -22,7 +23,7 @@ function Submit() {
 }
 
 export function ChannelsForm({ channels }: { channels: NurseryChannel[] }) {
-  const [state, action] = useFormState(saveChannels, initial);
+  const [state, action] = useActionState(saveChannels, initial);
   const byProvider = new Map(channels.map((c) => [c.provider, c]));
 
   return (

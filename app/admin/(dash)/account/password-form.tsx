@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useRef, useEffect } from 'react';
+import { useFormStatus } from 'react-dom';
 import { changePasswordAction, type ChangePasswordState } from './actions';
 
 const initial: ChangePasswordState = {};
@@ -21,7 +21,7 @@ function SubmitButton() {
 }
 
 export function PasswordForm({ minLength }: { minLength: number }) {
-  const [state, action] = useFormState(changePasswordAction, initial);
+  const [state, action] = useActionState(changePasswordAction, initial);
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (state.ok) ref.current?.reset();

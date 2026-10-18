@@ -8,10 +8,11 @@ export const revalidate = 300;
 export const dynamicParams = true;
 
 interface Props {
-  params: { tenant: string; pageSlug: string };
+  params: Promise<{ tenant: string; pageSlug: string }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) return {};
   const page = await getPublishedPage(nursery.id, params.pageSlug);
@@ -24,7 +25,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function StaticPageView({ params }: Props) {
+export default async function StaticPageView(props: Props) {
+  const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) notFound();
 

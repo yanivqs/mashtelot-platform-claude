@@ -18,10 +18,11 @@ export const dynamic = 'force-dynamic';
 const PAGE_SIZE = 24;
 
 interface Props {
-  searchParams: { q?: string; tab?: string; category?: string; page?: string; letter?: string };
+  searchParams: Promise<{ q?: string; tab?: string; category?: string; page?: string; letter?: string }>;
 }
 
-export default async function BrowseCatalogPage({ searchParams }: Props) {
+export default async function BrowseCatalogPage(props: Props) {
+  const searchParams = await props.searchParams;
   const { nurseryId } = await requireNurseryPage({ any: ['plant_catalog', 'supplies'] });
 
 

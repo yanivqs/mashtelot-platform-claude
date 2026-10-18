@@ -9,11 +9,12 @@ import { SocialLinks } from '@/components/storefront/social-links';
 
 export const revalidate = 300;
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { tenant: string };
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ tenant: string }>;
+  }
+): Promise<Metadata> {
+  const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) return {};
   return {
@@ -28,7 +29,8 @@ function mapEmbedSrc(link: string): string | null {
   return null;
 }
 
-export default async function ContactPage({ params }: { params: { tenant: string } }) {
+export default async function ContactPage(props: { params: Promise<{ tenant: string }> }) {
+  const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) notFound();
 

@@ -17,11 +17,12 @@ async function loadPost(tenant: string, slug: string) {
   return post;
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { tenant: string; slug: string };
-}): Promise<Metadata> {
+export async function generateMetadata(
+  props: {
+    params: Promise<{ tenant: string; slug: string }>;
+  }
+): Promise<Metadata> {
+  const params = await props.params;
   const post = await loadPost(params.tenant, params.slug);
   if (!post) return { title: 'פוסט לא נמצא' };
   return {
@@ -31,11 +32,12 @@ export async function generateMetadata({
   };
 }
 
-export default async function BlogPostView({
-  params,
-}: {
-  params: { tenant: string; slug: string };
-}) {
+export default async function BlogPostView(
+  props: {
+    params: Promise<{ tenant: string; slug: string }>;
+  }
+) {
+  const params = await props.params;
   const post = await loadPost(params.tenant, params.slug);
   if (!post) notFound();
 

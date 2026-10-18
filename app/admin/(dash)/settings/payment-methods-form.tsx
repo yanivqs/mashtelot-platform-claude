@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import type { NurseryPaymentMethod } from '@prisma/client';
 import { savePaymentMethods, type SavePaymentMethodsState } from './payment-actions';
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '@/lib/payment-methods';
@@ -22,7 +23,7 @@ function Submit() {
 }
 
 export function PaymentMethodsForm({ methods }: { methods: NurseryPaymentMethod[] }) {
-  const [state, action] = useFormState(savePaymentMethods, initial);
+  const [state, action] = useActionState(savePaymentMethods, initial);
   const byMethod = new Map(methods.map((m) => [m.method, m]));
 
   return (

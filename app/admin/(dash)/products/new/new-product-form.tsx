@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { ImageUpload } from '@/components/admin/image-upload';
 import { createCustomProduct, type ProductFormState } from '../actions';
 
@@ -25,7 +25,7 @@ export function NewProductForm({
 }: {
   categoryOptions: Array<{ id: string; name: string; depth: number }>;
 }) {
-  const [state, formAction] = useFormState(createCustomProduct, initial);
+  const [state, formAction] = useActionState(createCustomProduct, initial);
   const [imageUrl, setImageUrl] = useState('');
 
   return (

@@ -8,7 +8,8 @@ import { PrintProductForm, type PrintProductFormValues } from '../product-form';
 
 export const dynamic = 'force-dynamic';
 
-export default async function EditPrintProductPage({ params }: { params: { id: string } }) {
+export default async function EditPrintProductPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   await requireUser(['SUPER_ADMIN']);
   const isNew = params.id === 'new';
 

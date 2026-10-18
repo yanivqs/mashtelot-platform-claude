@@ -16,10 +16,11 @@ import { PromoPopup } from '@/components/storefront/promo-popup';
 
 interface LayoutProps {
   children: React.ReactNode;
-  params: { tenant: string };
+  params: Promise<{ tenant: string }>;
 }
 
-export async function generateMetadata({ params }: LayoutProps): Promise<Metadata> {
+export async function generateMetadata(props: LayoutProps): Promise<Metadata> {
+  const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) return { title: 'משתלה לא נמצאה' };
 
@@ -41,7 +42,13 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
   };
 }
 
-export default async function TenantLayout({ children, params }: LayoutProps) {
+export default async function TenantLayout(props: LayoutProps) {
+  const params = await props.params;
+
+  const {
+    children
+  } = props;
+
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) notFound();
 
