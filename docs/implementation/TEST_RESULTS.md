@@ -208,3 +208,13 @@
 | 7 | sitemap למשתלה מושעית / דומיין לא מוכר | 〃 | ✅ 404 / 404 |
 | 8 | תוכן כפול: `/seoshop/catalog` בדומיין הראשי → 404; דף נחיתה, קטלוג ועמוד חנות → 200 | 〃 | ✅ |
 | 9 | יחידה · DB local · tsc · lint · build | — | ✅ 81/81 · ✅ · ✅ · ✅ · ✅ |
+
+## 2026-10-18 — בדיקת Production אחרי פריסת `f1c5914` (C-P1-05)
+
+| בדיקה | תוצאה |
+|---|---|
+| Vercel Production | ✅ success (~105 שנ׳) |
+| `demo-nursery.mashtelot.net/robots.txt` | ✅ Allow + Disallow admin/api/cart/checkout + Sitemap |
+| `demo-nursery.mashtelot.net/sitemap.xml` | ✅ 80 כתובות (62 מוצרים, 14 קטגוריות) |
+| `mashtelot.net/demo-nursery/catalog` (תוכן כפול) | ✅ 404 |
+| חנות (בית, קטלוג, checkout) · דף נחיתה · `/admin/login` · `mashtelot.net/robots.txt` | ✅ 200 |
