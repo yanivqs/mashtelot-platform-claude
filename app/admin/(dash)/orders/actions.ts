@@ -1,45 +1,63 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import type { OrderStatus } from '@prisma/client';
+import type { OrderStatus, PaymentStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
 import { recordAudit } from '@/lib/audit';
+import { setPaymentStatus, transitionOrder } from '@/lib/order-service';
 
-const VALID: OrderStatus[] = [
-  'QUOTE_REQUESTED',
-  'PENDING',
-  'PAID',
-  'PROCESSING',
-  'SHIPPED',
-  'DELIVERED',
-  'CANCELLED',
-];
+export interface OrderActionState {
+  ok?: boolean;
+  error?: string;
+}
 
-export async function updateOrderStatus(formData: FormData): Promise<void> {
+/** מעבר סטטוס טיפול — רק מעברים חוקיים (C-P1-02), כולל השפעות המלאי והקופון. */
+export async function updateOrderStatus(
+  _prev: OrderActionState,
+  formData: FormData,
+): Promise<OrderActionState> {
   const { user, nurseryId } = await requireNurseryAction({ all: ['orders'] });
-  const id = String(formData.get('id') || '');
-  const status = String(formData.get('status') || '') as OrderStatus;
-  if (!id || !VALID.includes(status)) return;
+  const orderId = String(formData.get('id') || '');
+  const to = String(formData.get('status') || '') as OrderStatus;
+  if (!orderId || !to) return { error: 'בקשה לא תקינה' };
 
-  // רק הזמנה של המשתלה עצמה; הזמנה של משתלה אחרת = לא נמצאה
-  const order = await prisma.order.findFirst({
-    where: { id, nurseryId },
-    select: { nurseryId: true, status: true },
+  const res = await transitionOrder(prisma, { nurseryId, orderId, to, actorEmail: user.email });
+  if (!res.ok) return { error: res.error };
+
+  await recordAudit({
+    nurseryId,
+    actorEmail: user.email,
+    action: 'order.status_changed',
+    entityType: 'Order',
+    entityId: orderId,
+    metadata: { from: res.from, to },
   });
-  if (!order) return;
-
-  await prisma.order.update({ where: { id }, data: { status } });
-
-  if (status === 'PAID' && order.status !== 'PAID') {
-    await recordAudit({
-      nurseryId: order.nurseryId,
-      actorEmail: user.email,
-      action: 'order.payment_confirmed',
-      entityType: 'Order',
-      entityId: id,
-    });
-  }
-
   revalidatePath('/admin/orders');
+  return { ok: true };
+}
+
+/** סטטוס תשלום — ציר נפרד מהטיפול (אפיון §9.04). */
+export async function updatePaymentStatus(
+  _prev: OrderActionState,
+  formData: FormData,
+): Promise<OrderActionState> {
+  const { user, nurseryId } = await requireNurseryAction({ all: ['orders'] });
+  const orderId = String(formData.get('id') || '');
+  const to = String(formData.get('paymentStatus') || '') as PaymentStatus;
+  if (!orderId || !to) return { error: 'בקשה לא תקינה' };
+
+  const res = await setPaymentStatus(prisma, { nurseryId, orderId, to });
+  if (!res.ok) return { error: res.error };
+
+  await recordAudit({
+    nurseryId,
+    actorEmail: user.email,
+    action: to === 'PAID' ? 'order.payment_confirmed' : 'order.payment_status_changed',
+    entityType: 'Order',
+    entityId: orderId,
+    metadata: { from: res.from, to },
+  });
+  revalidatePath('/admin/orders');
+  return { ok: true };
 }

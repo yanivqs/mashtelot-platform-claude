@@ -68,6 +68,13 @@ export function assertCouponValid(coupon: CouponForCheckout, now: Date = new Dat
   if (coupon.endsAt && coupon.endsAt < now) throw new CheckoutError('קוד קופון פג תוקף');
 }
 
+/** מינימום הזמנה לקופון (§12.01): סכום המוצרים לפני הנחה ומשלוח. */
+export function assertCouponMinOrder(minOrderAmount: number | null, subtotal: number): void {
+  if (minOrderAmount !== null && subtotal < minOrderAmount) {
+    throw new CheckoutError(`הקופון תקף בהזמנה מעל ₪${minOrderAmount.toFixed(2)}`);
+  }
+}
+
 export function applyDiscount(subtotal: number, discountPct: number): number {
   return subtotal * (1 - discountPct / 100);
 }

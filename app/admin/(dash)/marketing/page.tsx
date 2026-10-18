@@ -44,6 +44,12 @@ export default async function MarketingPage() {
                     שימושים: {c.usageCount}/{c.usageLimit}
                   </span>
                 )}
+                {c.perCustomerLimit !== null && (
+                  <span className="text-xs text-gray-400">עד {c.perCustomerLimit} ללקוח</span>
+                )}
+                {c.minOrderAmount !== null && (
+                  <span className="text-xs text-gray-400">מינימום ₪{Number(c.minOrderAmount).toFixed(0)}</span>
+                )}
                 <span
                   className={`ms-auto rounded-full px-2 py-0.5 text-xs font-medium ${
                     c.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'

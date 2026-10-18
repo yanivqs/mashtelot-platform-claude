@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
 import { assertOwnedBy } from '@/lib/ownership';
+import { setOnHandStock } from '@/lib/order-service';
 import { recordAudit } from '@/lib/audit';
 
 /** המוצר שייך למשתלת המשתמש המחובר (ללא עקיפה לסופר-אדמין — C-P1-01). */
@@ -68,12 +69,15 @@ export async function updateProduct(
     const stock = parseInt(String(formData.get('stockQuantity') || '0'), 10);
     const nextStock = Number.isFinite(stock) && stock >= 0 ? stock : 0;
 
+    // מלאי: דרך שירות המלאי — לא מתחת לכמות השמורה להזמנות, ונרשם כתנועת מלאי (C-P1-02)
+    const stockRes = await setOnHandStock(prisma, { nurseryId, productId: id, quantity: nextStock, actorEmail });
+    if (!stockRes.ok) return { error: stockRes.error };
+
     await prisma.nurseryProduct.update({
       where: { id },
       data: {
         price,
         compareAtPrice: toDecimalString(formData.get('compareAtPrice')),
-        stockQuantity: nextStock,
         isActive: formData.get('isActive') === 'on',
         customTitle: (String(formData.get('customTitle') || '').trim() || null),
         customDescription: (String(formData.get('customDescription') || '').trim() || null),

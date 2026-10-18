@@ -19,6 +19,8 @@ export interface RowProduct {
   price: string;
   compareAtPrice: string | null;
   stockQuantity: number;
+  /** יחידות שמורות להזמנות פתוחות */
+  reservedQuantity: number;
   isActive: boolean;
   customTitle: string | null;
   customDescription: string | null;
@@ -86,6 +88,9 @@ export function ProductRow({
         <div className="hidden w-24 text-sm text-gray-700 sm:block">{formatPrice(product.price)}</div>
         <div className="hidden w-20 text-sm text-gray-700 sm:block">
           {product.stockQuantity} יח׳
+          {product.reservedQuantity > 0 && (
+            <span className="text-sky-700"> · {product.reservedQuantity} שמורות</span>
+          )}
         </div>
         <span
           className={`hidden rounded-full px-2 py-0.5 text-xs font-medium sm:inline ${

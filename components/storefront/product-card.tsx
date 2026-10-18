@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { availableQuantity } from '@/lib/stock';
 import { formatPrice, productSlug } from '@/lib/utils';
 import { resolveProductContent } from '@/lib/seo';
 import type { CatalogProduct } from '@/lib/catalog';
@@ -18,7 +19,7 @@ export function ProductCard({
   const price = Number(product.price);
   const compareAt = product.compareAtPrice ? Number(product.compareAtPrice) : null;
   const onSale = compareAt !== null && compareAt > price;
-  const outOfStock = product.stockQuantity <= 0;
+  const outOfStock = availableQuantity(product) <= 0;
   const kicker = product.plant?.plantType || product.supply?.brand || null;
 
   return (

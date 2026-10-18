@@ -43,6 +43,14 @@ export function CouponForm() {
         <span className="mb-1 block font-medium text-gray-700">מגבלת שימושים</span>
         <input name="usageLimit" type="number" min="1" placeholder="ללא הגבלה" className={`${field} w-32`} />
       </label>
+      <label className="text-sm">
+        <span className="mb-1 block font-medium text-gray-700">מגבלה ללקוח</span>
+        <input name="perCustomerLimit" type="number" min="1" placeholder="ללא הגבלה" className={`${field} w-32`} />
+      </label>
+      <label className="text-sm">
+        <span className="mb-1 block font-medium text-gray-700">מינימום הזמנה (₪)</span>
+        <input name="minOrderAmount" type="number" min="0" step="0.01" placeholder="ללא" className={`${field} w-32`} />
+      </label>
       <Submit label="הוספת קופון" />
       {state.ok && <span className="text-sm text-green-700">נוסף ✓</span>}
       {state.error && <span className="text-sm text-red-600">{state.error}</span>}

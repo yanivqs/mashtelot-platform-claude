@@ -1,4 +1,5 @@
 import type { Nursery, Plant, MasterSupply, NurseryProduct } from '@prisma/client';
+import { availableQuantity } from '@/lib/stock';
 
 const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'localhost:3000';
 const PROTOCOL = ROOT_DOMAIN.startsWith('localhost') ? 'http' : 'https';
@@ -95,7 +96,7 @@ export function productJsonLd(params: {
       priceCurrency: 'ILS',
       price,
       availability:
-        product.stockQuantity > 0
+        availableQuantity(product) > 0
           ? 'https://schema.org/InStock'
           : 'https://schema.org/OutOfStock',
       seller: { '@type': 'Organization', name: nursery.name },

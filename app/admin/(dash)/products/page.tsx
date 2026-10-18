@@ -41,6 +41,7 @@ export default async function AdminProductsPage({
       price: p.price.toString(),
       compareAtPrice: p.compareAtPrice?.toString() ?? null,
       stockQuantity: p.stockQuantity,
+      reservedQuantity: p.reservedQuantity,
       isActive: p.isActive,
       customTitle: p.customTitle,
       customDescription: p.customDescription,

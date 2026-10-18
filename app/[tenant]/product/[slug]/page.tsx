@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { availableQuantity } from '@/lib/stock';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getNurseryByTenant } from '@/lib/tenant';
@@ -51,7 +52,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const price = Number(product.price);
   const compareAt = product.compareAtPrice ? Number(product.compareAtPrice) : null;
   const onSale = compareAt !== null && compareAt > price;
-  const outOfStock = product.stockQuantity <= 0;
+  const available = availableQuantity(product);
+  const outOfStock = available <= 0;
   const plant = product.plant;
   const kicker = plant?.plantType || product.supply?.brand || null;
   const canonicalPath = `/product/${productSlug(product.id, title)}`;
@@ -100,7 +102,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             )}
           </div>
           <p className={`mt-1 text-sm ${outOfStock ? 'text-rose-600' : 'text-brand-700'}`}>
-            {outOfStock ? 'אזל מהמלאי' : `במלאי (${product.stockQuantity} יח')`}
+            {outOfStock ? 'אזל מהמלאי' : `במלאי (${available} יח')`}
           </p>
 
           <div className="mt-6 max-w-sm">

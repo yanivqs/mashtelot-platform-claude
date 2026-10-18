@@ -30,6 +30,8 @@ export default function CheckoutPage() {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | ''>('');
   const [delivery, setDelivery] = useState<DeliveryChoice | ''>('');
   const [city, setCity] = useState('');
+  // מפתח קבוע לניסיון ה-checkout הזה: לחיצה כפולה / ניסיון חוזר מחזירים את אותה הזמנה (C-P1-02)
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
     getCheckoutOptions(tenant).then((o) => {
@@ -83,6 +85,7 @@ export default function CheckoutPage() {
       paymentMethod: selectedMethod || undefined,
       paymentReference: String(fd.get('paymentReference') || ''),
       items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+      idempotencyKey,
     });
 
     if (res.ok && res.orderId) {

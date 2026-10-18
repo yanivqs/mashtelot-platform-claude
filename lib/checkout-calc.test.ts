@@ -7,6 +7,7 @@ import {
   resolveShippingCost,
   availableDeliveryMethods,
   resolveDeliveryMethod,
+  assertCouponMinOrder,
   CheckoutError,
   type ProductForCheckout,
 } from './checkout-calc';
@@ -132,5 +133,13 @@ describe('delivery method', () => {
     expect(() => resolveDeliveryMethod(undefined, both)).toThrow();
     expect(resolveDeliveryMethod(undefined, ['DELIVERY'])).toBe('DELIVERY');
     expect(resolveDeliveryMethod('PICKUP', ['DELIVERY'])).toBe('DELIVERY');
+  });
+});
+
+describe('coupon minimum order (§12.01)', () => {
+  it('rejects an order below the minimum and accepts at or above it', () => {
+    expect(() => assertCouponMinOrder(200, 199.99)).toThrow(CheckoutError);
+    expect(() => assertCouponMinOrder(200, 200)).not.toThrow();
+    expect(() => assertCouponMinOrder(null, 1)).not.toThrow();
   });
 });

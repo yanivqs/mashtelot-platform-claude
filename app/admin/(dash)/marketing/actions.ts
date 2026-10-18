@@ -55,11 +55,28 @@ export async function createCoupon(
     }
   }
 
+  // §12.01: מגבלה ללקוח (לפי אימייל) ומינימום הזמנה — נאכפים בשרת ב-lib/order-service.ts
+  const perCustomerRaw = String(formData.get('perCustomerLimit') || '').trim();
+  let perCustomerLimit: number | null = null;
+  if (perCustomerRaw) {
+    perCustomerLimit = Number(perCustomerRaw);
+    if (!Number.isInteger(perCustomerLimit) || perCustomerLimit <= 0) {
+      return { error: 'מגבלה ללקוח חייבת להיות מספר שלם חיובי' };
+    }
+  }
+  const minOrderRaw = String(formData.get('minOrderAmount') || '').trim();
+  let minOrderAmount: string | null = null;
+  if (minOrderRaw) {
+    const n = Number(minOrderRaw);
+    if (!Number.isFinite(n) || n < 0) return { error: 'מינימום הזמנה לא תקין' };
+    minOrderAmount = n.toFixed(2);
+  }
+
   const exists = await prisma.coupon.findFirst({ where: { nurseryId, code } });
   if (exists) return { error: 'קוד קופון זה כבר קיים' };
 
   await prisma.coupon.create({
-    data: { nurseryId, code, discountPct: pct.toFixed(2), startsAt, endsAt, usageLimit },
+    data: { nurseryId, code, discountPct: pct.toFixed(2), startsAt, endsAt, usageLimit, perCustomerLimit, minOrderAmount },
   });
   revalidatePath('/admin/marketing');
   return { ok: true };

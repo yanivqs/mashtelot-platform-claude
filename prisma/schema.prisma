@@ -62,6 +62,7 @@ model Nursery {
   shippingZones   ShippingZone[]
   categories      NurseryCategory[]
   blogPosts       BlogPost[]
+  stockMovements  StockMovement[]
 
   @@map("nurseries")
 }
@@ -242,7 +243,10 @@ model NurseryProduct {
   customImageUrl     String?                  @map("custom_image_url")
   price              Decimal                  @db.Decimal(10, 2)
   compareAtPrice     Decimal?                 @map("compare_at_price") @db.Decimal(10, 2)
+  /// on_hand — יחידות פיזיות במלאי
   stockQuantity      Int                      @default(0) @map("stock_quantity")
+  /// יחידות שמורות להזמנות פתוחות; זמין = stockQuantity - reservedQuantity
+  reservedQuantity   Int                      @default(0) @map("reserved_quantity")
   isActive           Boolean                  @default(true) @map("is_active")
   customDescription  String?                  @map("custom_description")
   seoMetaTitle       String?                  @map("seo_meta_title")
@@ -254,6 +258,7 @@ model NurseryProduct {
   supply             MasterSupply?            @relation(fields: [supplyId], references: [id])
   orderItems         OrderItem[]
   categories         NurseryProductCategory[]
+  stockMovements     StockMovement[]
 
   @@unique([nurseryId, plantId])
   @@unique([nurseryId, supplyId])
@@ -289,27 +294,41 @@ model ShippingZoneCity {
 }
 
 model Order {
-  id               String          @id @default(uuid())
-  nurseryId        String          @map("nursery_id")
-  userId           String?         @map("user_id")
-  customerName     String          @map("customer_name")
-  customerEmail    String          @map("customer_email")
-  customerPhone    String          @map("customer_phone")
-  shippingAddress  String?         @map("shipping_address")
-  deliveryMethod   DeliveryMethod? @map("delivery_method")
-  totalAmount      Decimal         @map("total_amount") @db.Decimal(10, 2)
-  status           OrderStatus     @default(PENDING)
-  paymentMethod    PaymentMethod?  @map("payment_method")
-  paymentReference String?         @map("payment_reference")
-  shippingZoneId   String?         @map("shipping_zone_id")
-  shippingCost     Decimal?        @map("shipping_cost") @db.Decimal(10, 2)
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
-  items            OrderItem[]
-  nursery          Nursery         @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
-  user             User?           @relation(fields: [userId], references: [id])
-  shippingZone     ShippingZone?   @relation(fields: [shippingZoneId], references: [id], onDelete: SetNull)
+  id                   String          @id @default(uuid())
+  nurseryId            String          @map("nursery_id")
+  userId               String?         @map("user_id")
+  customerName         String          @map("customer_name")
+  customerEmail        String          @map("customer_email")
+  customerPhone        String          @map("customer_phone")
+  shippingAddress      String?         @map("shipping_address")
+  deliveryMethod       DeliveryMethod? @map("delivery_method")
+  totalAmount          Decimal         @map("total_amount") @db.Decimal(10, 2)
+  status               OrderStatus     @default(RECEIVED)
+  paymentStatus        PaymentStatus   @default(UNPAID) @map("payment_status")
+  stockState           StockState      @default(NONE) @map("stock_state")
+  /// עד מתי המלאי שמור להזמנה שטרם אושרה (null = ללא פקיעה)
+  reservationExpiresAt DateTime?       @map("reservation_expires_at")
+  idempotencyKey       String?         @map("idempotency_key")
+  subtotalAmount       Decimal?        @map("subtotal_amount") @db.Decimal(10, 2)
+  discountAmount       Decimal?        @map("discount_amount") @db.Decimal(10, 2)
+  discountPct          Decimal?        @map("discount_pct") @db.Decimal(5, 2)
+  couponCode           String?         @map("coupon_code")
+  couponId             String?         @map("coupon_id")
+  paymentMethod        PaymentMethod?  @map("payment_method")
+  paymentReference     String?         @map("payment_reference")
+  shippingZoneId       String?         @map("shipping_zone_id")
+  shippingCost         Decimal?        @map("shipping_cost") @db.Decimal(10, 2)
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
+  items                OrderItem[]
+  nursery              Nursery         @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  user                 User?           @relation(fields: [userId], references: [id])
+  shippingZone         ShippingZone?   @relation(fields: [shippingZoneId], references: [id], onDelete: SetNull)
+  coupon               Coupon?         @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  stockMovements       StockMovement[]
 
+  @@unique([nurseryId, idempotencyKey])
+  @@index([stockState, reservationExpiresAt])
   @@map("orders")
 }
 
@@ -327,17 +346,20 @@ model OrderItem {
 }
 
 model Coupon {
-  id          String    @id @default(uuid())
-  nurseryId   String    @map("nursery_id")
-  code        String
-  discountPct Decimal   @map("discount_pct") @db.Decimal(5, 2)
-  isActive    Boolean   @default(true) @map("is_active")
-  startsAt    DateTime? @map("starts_at")
-  endsAt      DateTime? @map("ends_at")
-  usageLimit  Int?      @map("usage_limit")
-  usageCount  Int       @default(0) @map("usage_count")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  nursery     Nursery   @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  id               String    @id @default(uuid())
+  nurseryId        String    @map("nursery_id")
+  code             String
+  discountPct      Decimal   @map("discount_pct") @db.Decimal(5, 2)
+  isActive         Boolean   @default(true) @map("is_active")
+  startsAt         DateTime? @map("starts_at")
+  endsAt           DateTime? @map("ends_at")
+  usageLimit       Int?      @map("usage_limit")
+  usageCount       Int       @default(0) @map("usage_count")
+  minOrderAmount   Decimal?  @map("min_order_amount") @db.Decimal(10, 2)
+  perCustomerLimit Int?      @map("per_customer_limit")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  nursery          Nursery   @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  orders           Order[]
 
   @@unique([nurseryId, code])
   @@map("coupons")
@@ -470,6 +492,7 @@ enum SupplyCategory {
   GENERAL
 }
 
+/// R05-07. PENDING/PAID/PROCESSING — ערכים ישנים (Expand–Migrate–Contract), לא בשימוש בקוד חדש.
 enum OrderStatus {
   PENDING
   QUOTE_REQUESTED
@@ -478,6 +501,55 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+  RECEIVED
+  CONFIRMED
+  PREPARING
+  READY
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+}
+
+/// מצב המלאי של הזמנה: NONE (הצעת מחיר) · RESERVED · RELEASED (פג/בוטל) · COMMITTED (ירד מהמלאי)
+enum StockState {
+  NONE
+  RESERVED
+  RELEASED
+  COMMITTED
+}
+
+enum StockMovementReason {
+  RESERVE
+  RELEASE_EXPIRED
+  RELEASE_CANCELLED
+  COMMIT
+  RESTORE_CANCELLED
+  MANUAL_ADJUST
+}
+
+/// תנועת מלאי — רשומה בלתי ניתנת לשינוי (אפיון §8.02). אין קוד שמעדכן או מוחק שורות.
+model StockMovement {
+  id               String              @id @default(uuid())
+  nurseryId        String              @map("nursery_id")
+  nurseryProductId String              @map("nursery_product_id")
+  orderId          String?             @map("order_id")
+  reason           StockMovementReason
+  /// שינוי ב-on_hand (stockQuantity)
+  onHandDelta      Int                 @default(0) @map("on_hand_delta")
+  /// שינוי ב-reservedQuantity
+  reservedDelta    Int                 @default(0) @map("reserved_delta")
+  actorEmail       String?             @map("actor_email")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  nursery          Nursery             @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  nurseryProduct   NurseryProduct      @relation(fields: [nurseryProductId], references: [id], onDelete: Cascade)
+  order            Order?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([nurseryId, createdAt])
+  @@index([nurseryProductId, createdAt])
+  @@map("stock_movements")
 }
 
 enum DeliveryMethod {

@@ -4,18 +4,15 @@ import type { PaymentMethod } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getNurseryByTenant } from '@/lib/tenant';
 import { getSalesMode } from '@/lib/sales';
-import { resolveProductContent, tenantUrl } from '@/lib/seo';
+import { tenantUrl } from '@/lib/seo';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
 import { getEnabledPaymentMethods } from '@/lib/payment-access';
 import type { EnabledPaymentMethod } from '@/lib/payment-methods';
 import { resolveShippingZone, hasAnyShippingZone } from '@/lib/shipping';
 import { recordAudit } from '@/lib/audit';
+import { createOrderRecord } from '@/lib/order-service';
 import {
-  buildLineItems,
-  calcSubtotal,
-  assertCouponValid,
-  applyDiscount,
-  resolveShippingCost,
+  CheckoutError,
   availableDeliveryMethods,
   resolveDeliveryMethod,
   type DeliveryChoice,
@@ -39,6 +36,8 @@ export interface CheckoutInput {
   paymentMethod?: PaymentMethod;
   paymentReference?: string;
   items: Array<{ productId: string; quantity: number }>;
+  /** מפתח ייחודי לניסיון checkout — ניסיון חוזר לא ייצור הזמנה שנייה */
+  idempotencyKey?: string;
 }
 
 export interface CheckoutShippingZone {
@@ -153,85 +152,32 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
   }
 
   try {
-    const orderId = await prisma.$transaction(async (tx) => {
-      const products = await tx.nurseryProduct.findMany({
-        where: { id: { in: cart.map((c) => c.productId) }, nurseryId: nursery.id, isActive: true },
-        include: { plant: true, supply: true },
-      });
-      const byId = new Map(
-        products.map((p) => {
-          const { title } = resolveProductContent(p);
-          return [p.id, { id: p.id, title, price: Number(p.price), stockQuantity: p.stockQuantity }];
-        }),
-      );
-
-      const lineItems = buildLineItems(cart, byId, { isQuote });
-      let total = calcSubtotal(lineItems);
-
-      if (!isQuote && input.couponCode?.trim()) {
-        const coupon = await tx.coupon.findFirst({
-          where: { nurseryId: nursery.id, code: input.couponCode.trim(), isActive: true },
-        });
-        if (!coupon) throw new Error('קוד קופון לא תקף');
-        assertCouponValid(coupon);
-
-        // מיצוי מכסת שימושים (אם הוגדרה) — עדכון תנאי כדי למנוע חריגה במרוץ תנאים
-        if (coupon.usageLimit !== null) {
-          const res = await tx.coupon.updateMany({
-            where: { id: coupon.id, usageCount: { lt: coupon.usageLimit } },
-            data: { usageCount: { increment: 1 } },
-          });
-          if (res.count !== 1) throw new Error('קוד קופון מוצה');
-        } else {
-          await tx.coupon.update({ where: { id: coupon.id }, data: { usageCount: { increment: 1 } } });
-        }
-
-        total = applyDiscount(total, Number(coupon.discountPct));
-      }
-
-      let shippingCost = 0;
-      if (shippingZone && !isQuote) {
-        shippingCost = resolveShippingCost(total, shippingZone);
-        total += shippingCost;
-      }
-
-      // ניכוי מלאי (רק בהזמנה אונליין) — עם הגנה מפני מרוץ תנאים
-      if (!isQuote) {
-        for (const li of lineItems) {
-          const res = await tx.nurseryProduct.updateMany({
-            where: { id: li.nurseryProductId, stockQuantity: { gte: li.quantity } },
-            data: { stockQuantity: { decrement: li.quantity } },
-          });
-          if (res.count !== 1) throw new Error('המלאי השתנה בזמן ההזמנה, נסו שוב');
-        }
-      }
-
-      const order = await tx.order.create({
-        data: {
-          nurseryId: nursery.id,
-          customerName: name,
-          customerEmail: email,
-          customerPhone: phone,
-          deliveryMethod,
-          shippingAddress,
-          totalAmount: total.toFixed(2),
-          status: isQuote ? 'QUOTE_REQUESTED' : 'PENDING',
-          paymentMethod,
-          paymentReference,
-          shippingZoneId: shippingZone?.id ?? null,
-          shippingCost: shippingZone && !isQuote ? shippingCost.toFixed(2) : null,
-          items: { create: lineItems },
-        },
-      });
-      return order.id;
+    // יצירת ההזמנה, שמירת המלאי, הקופון וה-Snapshot — lib/order-service.ts (C-P1-02)
+    const { orderId, reused } = await createOrderRecord(prisma, {
+      nurseryId: nursery.id,
+      isQuote,
+      customerName: name,
+      customerEmail: email,
+      customerPhone: phone,
+      deliveryMethod,
+      shippingAddress,
+      shippingZone,
+      paymentMethod,
+      paymentReference,
+      couponCode: input.couponCode,
+      items: cart,
+      idempotencyKey: input.idempotencyKey,
     });
 
-    // מיילים טרנזקציוניים — לא חוסמים ולא מפילים את ההזמנה אם נכשלים
-    await sendOrderEmails(orderId, nursery, isQuote);
+    // מיילים טרנזקציוניים — רק בהזמנה חדשה (ניסיון חוזר לא שולח שוב); לא מפילים את ההזמנה
+    if (!reused) await sendOrderEmails(orderId, nursery, isQuote);
 
     return { ok: true, orderId };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'אירעה שגיאה ביצירת ההזמנה' };
+    if (e instanceof CheckoutError) return { error: e.message };
+    // שגיאה טכנית — לא חושפים פרטים ללקוח (אפיון §13.06)
+    console.error('[checkout] יצירת הזמנה נכשלה', e);
+    return { error: 'אירעה שגיאה ביצירת ההזמנה. נסו שוב בעוד רגע.' };
   }
 }
 
