@@ -31,3 +31,4 @@
 ## ממצאים תפעוליים (2026-10-18)
 - S-17: סיסמת בסיס הפיתוח (`mashtelot-dev`) נחשפה בהקשר השיחה דרך בחירה ב-IDE. חומרה נמוכה (סביבת פיתוח ריקה). פעולה: Reset ב-Supabase + עדכון `.env.test` ו-Vercel Preview — **ממתין לבעלים**.
 - S-18: npm ב-Vercel אינו מריץ install scripts (כולל `postinstall` של Prisma) — `scripts/build.js` מריץ `prisma generate` במפורש, כך שאין השפעה. לתיעוד בלבד.
+- S-19 (SEO/תוכן כפול): החנות הוגשה גם בדומיין הראשי (`mashtelot.net/demo-nursery/catalog` → 200, אומת חי). **FIXED בענף** `feat/c-p1-05-seo-sitemap-robots` — 404.

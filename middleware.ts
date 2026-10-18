@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { resolveHost } from '@/lib/tenant-host';
 
 // דומיין הבסיס של הפלטפורמה (ללא פרוטוקול). לדוגמה: mashtelot.net
 const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'localhost:3000';
@@ -19,23 +20,19 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // גישה לדומיין הראשי -> Landing page (app/page.tsx)
-  if (host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`) {
-    return NextResponse.next();
+  const target = resolveHost(host, ROOT_DOMAIN);
+  if (target.kind === 'none') return NextResponse.next();
+
+  if (target.kind === 'root') {
+    // הדומיין הראשי: רק דף הנחיתה. נתיב אחר (למשל /demo-nursery/catalog) היה מגיש את החנות
+    // גם תחת הדומיין הראשי — תוכן כפול (C-P1-05, אפיון §14.04) — ולכן מוחזר 404.
+    if (url.pathname === '/') return NextResponse.next();
+    const notFound = url.clone();
+    notFound.pathname = '/__no_tenant__';
+    return NextResponse.rewrite(notFound);
   }
 
-  let tenant: string;
-  if (host.endsWith(`.${ROOT_DOMAIN}`)) {
-    // תת-דומיין של הפלטפורמה: galim.mashtelot.net -> "galim"
-    tenant = host.slice(0, -1 * (ROOT_DOMAIN.length + 1)).replace(/^www\./, '');
-  } else {
-    // דומיין מותאם אישית: www.galim-nursery.co.il -> "galim-nursery.co.il"
-    tenant = host.replace(/^www\./, '');
-  }
-
-  if (!tenant) {
-    return NextResponse.next();
-  }
+  const tenant = target.tenant;
 
   // שרשור מחדש לנתיב הפנימי של הטננט, שמירת ה-URL המקורי בדפדפן.
   // משכפלים את ה-URL המלא כדי לשמור על ה-query string (דפדוף, חיפוש, סינון)

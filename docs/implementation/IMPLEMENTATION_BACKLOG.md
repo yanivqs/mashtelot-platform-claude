@@ -16,7 +16,7 @@
 | C-P1-01 | שכבת הרשאות מרוכזת: אכיפת מודולים בכל Action, ביטול "המשתלה הראשונה", חסימת משתלה מושעית | §4.07, §16 קבלה, §2.03, §15.02/05 | C-P0-01 | **DONE (קוד)** — main `58e3d00`, נפרס 2026-10-18; ממתין לבדיקה ידנית של הבעלים |
 | C-P1-04 | CI: typecheck, lint, unit, בדיקות DB/בידוד, build | §22.01 | E01 | IN_REVIEW (`chore/c-p1-04-ci`) — CI ירוק על הענף; חסימת מיזוג תלויה בהחלטת בעלים |
 | C-P1-02 | מלאי וביטולים: החזרת מלאי/קופון, Idempotency, Snapshot הנחה, state machine, שמירת מלאי עם פקיעה, מגבלות קופון | §8, §9, §12.01, R05-07/08 | C-P1-01 | **DONE** — main `2c76406`, מיגרציות הוחלו ב-Production 2026-10-18 |
-| C-P1-05 | SEO: sitemap/robots לכל tenant | §14.01, R07 | — | TODO |
+| C-P1-05 | SEO: sitemap/robots לכל tenant + חסימת תוכן כפול בדומיין הראשי | §14.01, §14.04, R07 | — | IN_REVIEW (`feat/c-p1-05-seo-sitemap-robots`) |
 | C-P1-03 | שדרוג Next.js (ADR) + צמצום remotePatterns | R10-01 | C-P1-04 | TODO |
 | OPS-01 | תרגיל גיבוי ושחזור מתועד | §23.06, §38 | — | TODO (לא בתוכנית Claude Code — הוצע) |
 | OPS-02 | Vercel Function Region → fra1 | ביצועים | — | TODO (הוצע) |
