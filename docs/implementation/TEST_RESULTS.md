@@ -249,3 +249,5 @@
 |---|---|---|---|
 | 1 | `test/db/storefront-blog-link.test.ts` — מודול כבוי+פוסט מפורסם ✗ · מודול פעיל+טיוטות בלבד ✗ · מודול פעיל+מפורסם ✓ · בידוד בין משתלות | local | ✅ 4/4 |
 | 2 | tsc · lint · יחידה · DB מלא | local | ✅ · ✅ · 81/81 · 58+4 |
+| 3 | CI על `5ae2a6a` · פריסת Production | GitHub · Vercel | ✅ · ✅ |
+| 4 | חי: baitvagan — 2 קישורי `/blog` (מחשב+נייד), `/blog` 200 · demo-nursery — 0 קישורים, `/blog` 404 (מודול כבוי) | Production | ✅ |
