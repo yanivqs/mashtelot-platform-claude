@@ -120,8 +120,14 @@
 **החלטות בעלים:** יעד 16.4.2; פריסה אחת בסוף; שלב 0 עכשיו בנפרד.
 **שלב 0:** הוסר `images.remotePatterns: [{ hostname: '**' }]` (next/image אינו בשימוש). לפני: `/_next/image` עם תמונה חיצונית → 200 (חי). אחרי: 400 (local). ממתין: גרסת Node ב-Vercel (≥20.9) לפני שלב 2.
 
-## 2026-10-18 — C-P1-03 שלבים 1–2: Next.js 16.4.2 + React 19 — IN_REVIEW
+## 2026-10-18 — C-P1-03 שלבים 1–2: Next.js 16.4.2 + React 19 — DONE (נפרס `7ea00a1`, smoke חי עבר)
 **שלב 1 (`f6ae051`):** next 15.5.28 + react 19.3.1. codemod רשמי `next-async-request-api` (22 קבצים, 0 שגיאות); 2 מקרים שה-codemod לא סיים (`destroySession`, `clientIp`) — הושלמו ידנית והקוראים ממתינים. `useFormState` → `useActionState` ב-22 קבצים. React 19 types: `JSX` → `React.JSX`.
 **שלב 2:** next 16.4.2, eslint 9.39.5, eslint-config-next 16.4.2. `middleware.ts` → `proxy.ts` (Node runtime; הקוד אינו תלוי ב-Edge). `next lint` הוסר → `eslint.config.mjs` (flat) + `npm run lint` ב-CI. Turbopack ב-build (ללא webpack מותאם). `tsconfig` — `jsx: react-jsx` (שינוי אוטומטי של Next 16). כלל חדש `react-hooks/set-state-in-effect` — יחיד ב-cart-provider (טעינת localStorage אחרי hydration, מכוון) — הותר מקומית עם הסבר. `serverActions.bodySizeLimit` נשאר ב-`experimental` (אומת בטיפוסים).
 **התקנה:** הניסיון הראשון ל-next 16 נכשל ב-ERESOLVE (eslint 8 מול eslint-config-next 16 שדורש ≥9) — הותקן eslint 9 תחילה והניסיון החוזר הצליח; `npm ls` נקי.
 **הערה:** `AGENTS.md` מפנה ל-`node_modules/next/dist/docs` — קיים כעת עם Next 16.
+
+## 2026-10-18 — תיקון: קישור "בלוג" בתפריט החנות — IN_REVIEW (ענף `fix/storefront-blog-link`)
+**דיווח בעלים:** "אין תצוגה של הבלוג בצד המשתמש של המשתלה".
+**ממצאים מאומתים (קריאה בלבד מ-Production + בדיקה חיה):** `baitvagan` — מודול בלוג פעיל, 2/2 פוסטים מפורסמים, `/blog` ו-`/blog/tavlins` → 200, הבלוג ב-sitemap — אך **0 קישורים ל-`/blog` בתפריט**. `demo-nursery` — מודול הבלוג כבוי ו-0 פוסטים → `/blog` 404 (התנהגות מכוונת).
+**שורש:** `SiteHeader` לא כלל קישור לבלוג כלל.
+**תיקון:** `hasPublicBlog(nurseryId)` ב-`lib/pages.ts` (מודול פעיל + לפחות פוסט מפורסם אחד) → `showBlog` מ-`app/[tenant]/layout.tsx` → פריט "בלוג" בתפריט (מחשב ונייד), אחרי "קטלוג". אין שינוי סכמה/נתונים.

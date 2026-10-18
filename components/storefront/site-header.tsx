@@ -65,16 +65,20 @@ export function SiteHeader({
   sticky = true,
   navPages = [],
   categories = [],
+  showBlog = false,
 }: {
   nursery: Nursery;
   basePath: string;
   sticky?: boolean;
   navPages?: { slug: string; title: string }[];
   categories?: CategoryNode[];
+  /** קישור לבלוג — רק כשהמודול פעיל ויש פוסטים מפורסמים */
+  showBlog?: boolean;
 }) {
   const nav = [
     { href: basePath || '/', label: 'בית' },
     { href: `${basePath}/catalog`, label: 'קטלוג' },
+    ...(showBlog ? [{ href: `${basePath}/blog`, label: 'בלוג' }] : []),
     ...navPages.map((p) => ({ href: `${basePath}/${p.slug}`, label: p.title })),
     { href: `${basePath}/contact`, label: 'צור קשר' },
   ];

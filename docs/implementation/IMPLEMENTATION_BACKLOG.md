@@ -17,7 +17,7 @@
 | C-P1-04 | CI: typecheck, lint, unit, בדיקות DB/בידוד, build | §22.01 | E01 | IN_REVIEW (`chore/c-p1-04-ci`) — CI ירוק על הענף; חסימת מיזוג תלויה בהחלטת בעלים |
 | C-P1-02 | מלאי וביטולים: החזרת מלאי/קופון, Idempotency, Snapshot הנחה, state machine, שמירת מלאי עם פקיעה, מגבלות קופון | §8, §9, §12.01, R05-07/08 | C-P1-01 | **DONE** — main `2c76406`, מיגרציות הוחלו ב-Production 2026-10-18 |
 | C-P1-05 | SEO: sitemap/robots לכל tenant + חסימת תוכן כפול בדומיין הראשי | §14.01, §14.04, R07 | — | **DONE** — main `f1c5914`, נפרס 2026-10-18 |
-| C-P1-03 | שדרוג Next.js (ADR) + צמצום remotePatterns | R10-01 | C-P1-04 | TODO |
+| C-P1-03 | שדרוג Next.js (ADR) + צמצום remotePatterns | R10-01 | C-P1-04 | **DONE** — `7ea00a1`, אומת חי 2026-10-18 |
 | OPS-01 | תרגיל גיבוי ושחזור מתועד | §23.06, §38 | — | TODO (לא בתוכנית Claude Code — הוצע) |
 | OPS-02 | Vercel Function Region → fra1 | ביצועים | — | TODO (הוצע) |
 | ADR-01 | Monorepo (§1.01/R10-02) מול אפליקציה יחידה | §1.01 | — | ממתין להחלטת בעלים |

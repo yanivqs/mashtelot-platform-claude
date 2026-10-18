@@ -242,3 +242,10 @@
 | 5 | `npm audit` אחרי השדרוג | — | ✅ `next` אינו מופיע עוד (כל 23 ה-advisories סגורים); נותרו כלי פיתוח בלבד + `sanitize-html` (תוקן, ראו S-20) |
 | 6 | sanitize-html 2.18.1 מול payloads של GHSA-g8qq / GHSA-jxwj + script / javascript: / onerror | — | ✅ כולם נוטרלו; תוכן לגיטימי נשמר |
 | 7 | CI על הענף · Vercel Preview (Next 16 על תשתית Vercel — מאשר תאימות גרסת Node) | GitHub · Vercel | ✅ · ✅ |
+
+## 2026-10-18 — קישור בלוג בתפריט החנות (ענף `fix/storefront-blog-link`)
+
+| # | בדיקה | סביבה | תוצאה |
+|---|---|---|---|
+| 1 | `test/db/storefront-blog-link.test.ts` — מודול כבוי+פוסט מפורסם ✗ · מודול פעיל+טיוטות בלבד ✗ · מודול פעיל+מפורסם ✓ · בידוד בין משתלות | local | ✅ 4/4 |
+| 2 | tsc · lint · יחידה · DB מלא | local | ✅ · ✅ · 81/81 · 58+4 |

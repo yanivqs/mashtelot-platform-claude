@@ -5,7 +5,7 @@ import { getActivePromotion } from '@/lib/marketing';
 import { getNurseryTheme } from '@/lib/theme';
 import { isModuleEnabled } from '@/lib/module-access';
 import { getSalesMode } from '@/lib/sales';
-import { getNavPages } from '@/lib/pages';
+import { getNavPages, hasPublicBlog } from '@/lib/pages';
 import { tenantOrigin, localBusinessJsonLd } from '@/lib/seo';
 import { getEnabledChannels } from '@/lib/channel-access';
 import { getCategoryNav } from '@/lib/catalog';
@@ -57,6 +57,7 @@ export default async function TenantLayout(props: LayoutProps) {
   const showSocial = await isModuleEnabled(nursery.id, 'social');
   const channels = showSocial ? await getEnabledChannels(nursery.id) : [];
   const navPages = await getNavPages(nursery.id);
+  const showBlog = await hasPublicBlog(nursery.id);
   const salesMode = await getSalesMode(nursery.id);
   const categories = await getCategoryNav(nursery.id);
   const jsonLd = localBusinessJsonLd(nursery);
@@ -83,6 +84,7 @@ export default async function TenantLayout(props: LayoutProps) {
           sticky={theme.stickyHeader}
           navPages={navPages}
           categories={categories}
+          showBlog={showBlog}
         />
         <main className="flex-1">{children}</main>
         <SiteFooter nursery={nursery} channels={channels} />

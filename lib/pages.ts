@@ -10,6 +10,12 @@ export const getPublishedPage = cache(async (nurseryId: string, slug: string) =>
   });
 });
 
+/** האם להציג קישור "בלוג" בתפריט החנות: המודול פעיל ויש לפחות פוסט מפורסם אחד. */
+export const hasPublicBlog = cache(async (nurseryId: string): Promise<boolean> => {
+  if (!(await isModuleEnabled(nurseryId, 'blog'))) return false;
+  return (await prisma.blogPost.count({ where: { nurseryId, isPublished: true } })) > 0;
+});
+
 /** עמודים מפורסמים לתפריט החנות (אם המודול פעיל). */
 export const getNavPages = cache(async (nurseryId: string) => {
   if (!(await isModuleEnabled(nurseryId, 'static_pages'))) return [];
