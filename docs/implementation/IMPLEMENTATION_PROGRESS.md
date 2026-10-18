@@ -114,3 +114,8 @@
 - `app/robots.txt/route.ts`, `app/sitemap.xml/route.ts` — לפי הדומיין; Preview / משתלה מושעית / דומיין לא מוכר → `Disallow: /` (robots) / 404 (sitemap).
 - `middleware.ts` — דומיין ראשי: רק `/`; כל נתיב אחר → 404.
 **לא בתחום (בקלוג):** הפניות 301 (§14.01, R07-07) — דורש ניהול הפניות במודל נתונים.
+
+## 2026-10-18 — C-P1-03: שדרוג Next.js — Audit, החלטות ושלב 0
+**Audit:** 23 advisories על `next@14.2.35` (2 קריטיים). כל ה-advisories מתוקנים ב-15.5.24+ וב-16.3.3+. שאר 20 הממצאים — כלי פיתוח/build בלבד (vitest, vite, tailwind, eslint). היקף: useFormState ב-22 קבצים, params ב-20 קבצים, cookies×3, headers×1, clientIp×4, middleware→proxy, next lint→ESLint 9 flat, Turbopack. ללא next/image, revalidateTag, unstable_cache, AMP, runtimeConfig, webpack מותאם.
+**החלטות בעלים:** יעד 16.4.2; פריסה אחת בסוף; שלב 0 עכשיו בנפרד.
+**שלב 0:** הוסר `images.remotePatterns: [{ hostname: '**' }]` (next/image אינו בשימוש). לפני: `/_next/image` עם תמונה חיצונית → 200 (חי). אחרי: 400 (local). ממתין: גרסת Node ב-Vercel (≥20.9) לפני שלב 2.

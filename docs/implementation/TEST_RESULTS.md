@@ -218,3 +218,12 @@
 | `demo-nursery.mashtelot.net/sitemap.xml` | ✅ 80 כתובות (62 מוצרים, 14 קטגוריות) |
 | `mashtelot.net/demo-nursery/catalog` (תוכן כפול) | ✅ 404 |
 | חנות (בית, קטלוג, checkout) · דף נחיתה · `/admin/login` · `mashtelot.net/robots.txt` | ✅ 200 |
+
+## 2026-10-18 — C-P1-03 שלב 0 (ענף `fix/c-p1-03-step0-image-optimizer`)
+
+| בדיקה | סביבה | תוצאה |
+|---|---|---|
+| `/_next/image` עם תמונה מדומיין חיצוני — **לפני** | Production חי | ❌ 200 image/jpeg (האופטימייזר מעבד תמונות מכל דומיין) |
+| `/_next/image` עם תמונה מדומיין חיצוני — **אחרי** | local (build) | ✅ 400 |
+| next/image בקוד | — | ✅ 0 שימושים (תמונות ב-`<img>`) |
+| חנות / admin אחרי השינוי | local | ✅ 200 / 200 |
