@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
+import type { PreflightResult } from '@/lib/print-preflight';
 import { canMove, evaluateGate, type GateCheck, type GateInput, type ProductionStatus } from '@/lib/print-release';
 
 /**
@@ -44,7 +45,9 @@ function buildGate(o: OrderForGate, isPrintHouse: boolean): GateInput & { artwor
   return {
     items,
     orderSpecApproved: Boolean(o.specApprovedAt),
-    productionFile: o.productionFile ? { id: o.productionFile.id, sha256: o.productionFile.sha256 } : null,
+    productionFile: o.productionFile
+      ? { id: o.productionFile.id, sha256: o.productionFile.sha256, preflightCritical: (o.productionFile.preflight as PreflightResult | null)?.critical ?? null }
+      : null,
     isPrintHouse,
     status: o.productionStatus as ProductionStatus,
     artworkFor,
@@ -80,7 +83,7 @@ export async function setProductionFile(db: PrismaClient, orderId: string, fileI
 
 /**
  * שחרור לייצור: השער נבדק בתוך הטרנזקציה, וה-Snapshot נשמר יחד עם המעבר (מותנה ב-PENDING —
- * שחרור כפול נדחה). ה-Snapshot: גרסת מפרט וגרסת גרפיקה לכל פריט, קובץ הייצור וחתימתו.
+ * שחרור כפול נדחה). ה-Snapshot: גרסת מפרט וגרסת גרפיקה לכל פריט, קובץ הייצור, חתימתו ותוצאת בדיקת הקובץ.
  */
 export async function releaseOrder(db: PrismaClient, orderId: string, actor: string | null, isPrintHouse: boolean): Promise<Result | { ok: false; error: string; checks: GateCheck[] }> {
   return db.$transaction(async (tx) => {
@@ -95,6 +98,7 @@ export async function releaseOrder(db: PrismaClient, orderId: string, actor: str
       checkedAt: new Date().toISOString(),
       specApproved: o.specApprovedAt ? { at: o.specApprovedAt.toISOString(), by: o.specApprovedBy } : null,
       productionFile: { id: o.productionFile!.id, sha256: o.productionFile!.sha256, name: o.productionFile!.originalName, sizeBytes: o.productionFile!.sizeBytes },
+      preflight: o.productionFile!.preflight ?? null,
       items: o.items.map((it) => {
         const art = g.artworkFor.get(it.id);
         return {

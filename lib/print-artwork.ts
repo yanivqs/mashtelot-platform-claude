@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
-import type { PrintFileKind, PrismaClient } from '@prisma/client';
+import type { Prisma, PrintFileKind, PrismaClient } from '@prisma/client';
 import { MAX_PRINT_FILE_BYTES, ACCEPTED_LABEL, safeFileName, sniffPrintFile } from '@/lib/print-file-sniff';
+import { parseProfile, preflight, type ProductionProfile } from '@/lib/print-preflight';
 
 /**
  * גרפיקה, הגהה ואישור (PT-05, נספח א.7–א.8). מקבל את ה-DB כפרמטר (בר-בדיקה).
@@ -13,16 +14,48 @@ export type Subject = { savedProductId: string } | { printOrderId: string };
 
 export type FileResult = { ok: true; fileId: string } | { ok: false; error: string };
 
+/**
+ * פרופיל הייצור שמולו נבדק קובץ: גרסת התבנית של המוצר הקבוע (גרסת המפרט הפעילה/האחרונה) או של
+ * פריטי ההזמנה. כמה פריטים עם פרופילים שונים — אין פרופיל אחד (הבדיקה מדלגת על המידות).
+ */
+export async function profileFor(db: PrismaClient, s: Subject): Promise<ProductionProfile | null> {
+  let versions: Array<{ production: Prisma.JsonValue }> = [];
+  if ('savedProductId' in s) {
+    const sp = await db.printSavedProduct.findUnique({
+      where: { id: s.savedProductId },
+      include: { activeRevision: { include: { templateVersion: true } }, revisions: { orderBy: { revision: 'desc' }, take: 1, include: { templateVersion: true } } },
+    });
+    const v = sp?.activeRevision?.templateVersion ?? sp?.revisions[0]?.templateVersion;
+    versions = v ? [v] : [];
+  } else {
+    const items = await db.printOrderItem.findMany({ where: { printOrderId: s.printOrderId, templateVersionId: { not: null } }, include: { templateVersion: true } });
+    versions = items.map((i) => i.templateVersion!).filter(Boolean);
+  }
+  const profiles = versions.map((v) => parseProfile(v.production)).map((p) => (p.ok ? p.value : null));
+  const distinct = new Set(profiles.map((p) => JSON.stringify(p)));
+  return distinct.size === 1 ? profiles[0] : null;
+}
+
 /** רישום קובץ שהועלה: בדיקת גודל, סוג לפי התוכן וחתימת SHA-256. קובץ לא תקין לא נרשם. */
 export async function registerFile(
   db: PrismaClient,
-  args: { nurseryId: string; kind: PrintFileKind; storageKey: string; originalName: string; bytes: Buffer | null; actorEmail: string | null },
+  args: {
+    nurseryId: string;
+    kind: PrintFileKind;
+    storageKey: string;
+    originalName: string;
+    bytes: Buffer | null;
+    actorEmail: string | null;
+    /** גרפיקה/קובץ ייצור: בדיקת קובץ בסיסית מול הפרופיל (null — בלי פרופיל); לא מועבר — אין בדיקה */
+    profile?: ProductionProfile | null;
+  },
 ): Promise<FileResult> {
   const b = args.bytes;
   if (!b || b.length === 0) return { ok: false, error: 'הקובץ לא הגיע לאחסון — נסו שוב' };
   if (b.length > MAX_PRINT_FILE_BYTES) return { ok: false, error: 'הקובץ גדול מ-50MB' };
   const sniff = sniffPrintFile(new Uint8Array(b.buffer, b.byteOffset, Math.min(b.length, 65536)));
   if (!sniff) return { ok: false, error: `סוג קובץ לא נתמך — ${ACCEPTED_LABEL}` };
+  const pf = args.profile !== undefined ? preflight(new Uint8Array(b.buffer, b.byteOffset, b.length), sniff, args.profile) : null;
   const f = await db.printFile.create({
     data: {
       nurseryId: args.nurseryId,
@@ -34,6 +67,7 @@ export async function registerFile(
       sha256: createHash('sha256').update(b).digest('hex'),
       widthPx: sniff.widthPx ?? null,
       heightPx: sniff.heightPx ?? null,
+      ...(pf ? { preflight: pf as unknown as Prisma.InputJsonValue } : {}),
       uploadedBy: args.actorEmail,
     },
   });

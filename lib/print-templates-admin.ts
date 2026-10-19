@@ -9,6 +9,7 @@ import {
   type PrintQuote,
   type RawValues,
 } from '@/lib/print-template';
+import { parseProfile } from '@/lib/print-preflight';
 
 /**
  * תבניות דפוס (PT-02/03/07) — ניהול בידי הסופר-אדמין (בית הדפוס) והזמנה בידי משתלה.
@@ -47,21 +48,24 @@ export async function createTemplate(db: PrismaClient, meta: TemplateMeta, actor
 
 export type SaveResult = { ok: true } | { ok: false; errors: string[] };
 
-/** שמירת הטיוטה (שדות + תמחור). רק גרסת DRAFT ניתנת לעריכה. */
+/** שמירת הטיוטה (שדות + תמחור + פרופיל ייצור). רק גרסת DRAFT ניתנת לעריכה. */
 export async function saveDraft(
   db: PrismaClient,
   templateId: string,
-  input: { fields: unknown; pricing: unknown; notes?: string | null },
+  input: { fields: unknown; pricing: unknown; production?: unknown; notes?: string | null },
 ): Promise<SaveResult> {
   const fields = parseFields(input.fields);
   const pricing = parsePricing(input.pricing);
-  const errors = [...(fields.ok ? [] : fields.errors), ...(pricing.ok ? [] : pricing.errors)];
+  const production = parseProfile(input.production);
+  const errors = [...(fields.ok ? [] : fields.errors), ...(pricing.ok ? [] : pricing.errors), ...(production.ok ? [] : production.errors)];
   if (errors.length) return { ok: false, errors };
+  const profile = (production as { value: unknown }).value;
   const res = await db.printTemplateVersion.updateMany({
     where: { templateId, status: 'DRAFT' },
     data: {
       fields: (fields as { value: unknown }).value as Prisma.InputJsonValue,
       pricing: (pricing as { value: unknown }).value as Prisma.InputJsonValue,
+      production: profile === null ? Prisma.DbNull : (profile as Prisma.InputJsonValue),
       notes: input.notes?.trim() || null,
     },
   });
@@ -76,7 +80,8 @@ export async function publishDraft(db: PrismaClient, templateId: string, actor: 
     if (!draft) return { ok: false as const, errors: ['אין טיוטה לפרסום'] };
     const fields = parseFields(draft.fields);
     const pricing = parsePricing(draft.pricing);
-    const errors = [...(fields.ok ? [] : fields.errors), ...(pricing.ok ? [] : pricing.errors)];
+    const production = parseProfile(draft.production);
+    const errors = [...(fields.ok ? [] : fields.errors), ...(pricing.ok ? [] : pricing.errors), ...(production.ok ? [] : production.errors)];
     if (errors.length) return { ok: false as const, errors };
     await tx.printTemplateVersion.updateMany({ where: { templateId, status: 'PUBLISHED' }, data: { status: 'ARCHIVED' } });
     await tx.printTemplateVersion.update({
@@ -102,6 +107,7 @@ export async function createDraftFromLatest(db: PrismaClient, templateId: string
         status: 'DRAFT',
         fields: latest.fields as Prisma.InputJsonValue,
         pricing: latest.pricing as Prisma.InputJsonValue,
+        production: latest.production === null ? Prisma.DbNull : (latest.production as Prisma.InputJsonValue),
         createdBy: actor,
       },
     });

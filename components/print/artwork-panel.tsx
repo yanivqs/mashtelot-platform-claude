@@ -4,6 +4,8 @@ import { useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ownerDecision, startArtworkUpload, type DecisionState } from '@/app/admin/(dash)/print-shop/artwork-actions';
 import { PrintFileUpload } from './file-upload';
+import { PreflightNotes } from './preflight-notes';
+import type { PreflightResult } from '@/lib/print-preflight';
 import { ARTWORK_STATUS, type ArtworkStatus } from '@/lib/print-artwork-status';
 
 export interface ArtworkVersionVM {
@@ -12,6 +14,8 @@ export interface ArtworkVersionVM {
   status: ArtworkStatus;
   fileName: string;
   fileUrl: string;
+  /** בדיקת קובץ בסיסית מול פרופיל הייצור — מידע למשתלה, לא חוסם העלאה */
+  preflight?: PreflightResult | null;
   proofUrl: string | null;
   note: string | null;
   decidedBy: string | null;
@@ -71,6 +75,11 @@ export function ArtworkPanel({
                 </a>
               )}
             </div>
+            {v.id === latest?.id && v.preflight && (
+              <div className="mt-1">
+                <PreflightNotes result={v.preflight} />
+              </div>
+            )}
             {v.status === 'APPROVED' && (
               <p className="mt-1 text-gray-500">
                 אושר {v.method === 'PHONE' ? 'טלפונית (תועד ע״י בית הדפוס)' : 'במערכת'} · {v.decidedBy}

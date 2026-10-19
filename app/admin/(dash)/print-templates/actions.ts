@@ -75,13 +75,15 @@ export async function saveDraftAction(_prev: TemplateFormState, formData: FormDa
   const id = String(formData.get('id') || '');
   let fields: unknown;
   let pricing: unknown;
+  let production: unknown;
   try {
     fields = JSON.parse(String(formData.get('fields') || '[]'));
     pricing = JSON.parse(String(formData.get('pricing') || '{}'));
+    production = JSON.parse(String(formData.get('production') || 'null'));
   } catch {
     return { error: 'נתוני העורך אינם תקינים' };
   }
-  const res = await saveDraft(prisma, id, { fields, pricing, notes: String(formData.get('notes') || '') });
+  const res = await saveDraft(prisma, id, { fields, pricing, production, notes: String(formData.get('notes') || '') });
   if (!res.ok) return { errors: res.errors };
   await recordAudit({ actorEmail: user.email, action: 'print.template_draft_saved', entityType: 'PrintTemplate', entityId: id });
   revalidate(id);

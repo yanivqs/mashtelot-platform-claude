@@ -55,6 +55,10 @@ test('super admin builds and publishes a template; nursery orders with condition
   await page.getByLabel('כמות מינימום').fill('100');
   await page.getByText('הצעת מחיר בלבד').click(); // ברירת המחדל מסומנת — מבטלים
   await page.getByLabel(/מדרגות כמות/).fill('500 | 0.8');
+  // פרופיל ייצור (PT-09) — לבדיקת קבצים
+  await page.getByLabel('רוחב המוצר במ״מ').fill('100');
+  await page.getByLabel('גובה המוצר במ״מ').fill('50');
+  await page.getByLabel('גלישה במ״מ').fill('3');
 
   await page.getByRole('button', { name: 'שמירת טיוטה' }).click();
   await expect(page.getByText('הטיוטה נשמרה ✓')).toBeVisible();
@@ -62,6 +66,7 @@ test('super admin builds and publishes a template; nursery orders with condition
   // אחרי פרסום — הגרסה נעולה, והעורך מוחלף בכפתור "גרסה חדשה"
   await expect(page.getByRole('heading', { name: 'גרסה 1 — מפורסמת (נעולה)' })).toBeVisible();
   await expect(page.getByText('מוצג רק אם חומר = PVC')).toBeVisible();
+  await expect(page.getByText(/ייצור 100×50 מ"מ, גלישה 3, 300 DPI/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'יצירת גרסה חדשה (טיוטה)' })).toBeVisible();
   await page.getByText('מוצג למשתלות להזמנה').click();
   await page.getByRole('button', { name: 'שמירת פרטי המוצר' }).click();

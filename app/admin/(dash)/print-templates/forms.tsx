@@ -15,6 +15,7 @@ import {
   type FieldType,
   type RawValues,
 } from '@/lib/print-template';
+import { parseProfile } from '@/lib/print-preflight';
 import { formatPrice } from '@/lib/utils';
 import {
   createTemplateAction,
@@ -213,12 +214,14 @@ export function DraftEditor({
   version,
   initialFields,
   initialPricing,
+  initialProduction,
   notes,
 }: {
   templateId: string;
   version: number;
   initialFields: unknown[];
   initialPricing: PricingValues;
+  initialProduction: { widthMm?: number; heightMm?: number; bleedMm?: number; minDpi?: number } | null;
   notes: string | null;
 }) {
   const [saveState, saveAction] = useActionState(saveDraftAction, initial);
@@ -231,6 +234,17 @@ export function DraftEditor({
     quoteOnly: initialPricing.quoteOnly === true,
     tiers: (initialPricing.tiers ?? []).map((t) => `${t.minQty} | ${t.unitPrice}`).join('\n'),
   });
+  const [prod, setProd] = useState({
+    widthMm: String(initialProduction?.widthMm ?? ''),
+    heightMm: String(initialProduction?.heightMm ?? ''),
+    bleedMm: String(initialProduction?.bleedMm ?? ''),
+    minDpi: String(initialProduction?.minDpi ?? ''),
+  });
+  const productionJson =
+    prod.widthMm || prod.heightMm
+      ? { widthMm: prod.widthMm, heightMm: prod.heightMm, ...(prod.bleedMm ? { bleedMm: prod.bleedMm } : {}), ...(prod.minDpi ? { minDpi: prod.minDpi } : {}) }
+      : null;
+  const parsedProduction = parseProfile(productionJson);
   const [preview, setPreview] = useState<RawValues>({});
   const [qty, setQty] = useState('');
 
@@ -251,7 +265,11 @@ export function DraftEditor({
   );
   const parsedFields = parseFields(fieldsJson);
   const parsedPricing = parsePricing(pricingJson);
-  const issues = [...(parsedFields.ok ? [] : parsedFields.errors), ...(parsedPricing.ok ? [] : parsedPricing.errors)];
+  const issues = [
+    ...(parsedFields.ok ? [] : parsedFields.errors),
+    ...(parsedPricing.ok ? [] : parsedPricing.errors),
+    ...(parsedProduction.ok ? [] : parsedProduction.errors),
+  ];
 
   const update = (i: number, patch: Partial<EditField>) => setFields((prev) => prev.map((f, j) => (j === i ? { ...f, ...patch } : f)));
   const move = (i: number, d: -1 | 1) =>
@@ -277,6 +295,7 @@ export function DraftEditor({
         <input type="hidden" name="id" value={templateId} />
         <input type="hidden" name="fields" value={JSON.stringify(fieldsJson)} />
         <input type="hidden" name="pricing" value={JSON.stringify(pricingJson)} />
+        <input type="hidden" name="production" value={JSON.stringify(productionJson)} />
 
         <section className="space-y-3">
           <div className="flex items-center justify-between">
@@ -415,6 +434,29 @@ export function DraftEditor({
           <label className="text-xs sm:col-span-4">
             <span className="mb-0.5 block text-gray-600">מדרגות כמות — שורה לכל מדרגה: כמות | מחיר ליחידה</span>
             <textarea value={pricing.tiers} rows={3} dir="ltr" placeholder={'500 | 0.8\n1000 | 0.6'} onChange={(e) => setPricing((p) => ({ ...p, tiers: e.target.value }))} className={`${field} font-mono`} />
+          </label>
+        </section>
+
+        <section className="grid gap-3 rounded-lg border border-gray-200 bg-white p-3 sm:grid-cols-4">
+          <h3 className="font-bold sm:col-span-4">פרופיל ייצור (לבדיקת קבצים)</h3>
+          <p className="-mt-2 text-xs text-gray-500 sm:col-span-4">
+            גודל המוצר הסופי. קובץ גרפיקה וקובץ ייצור ייבדקו מול המידות והרזולוציה; קובץ ייצור שנכשל בבדיקה קריטית לא ישוחרר. ריק — ללא בדיקת מידות.
+          </p>
+          <label className="text-xs">
+            <span className="mb-0.5 block text-gray-600">רוחב (מ"מ)</span>
+            <input value={prod.widthMm} type="number" step="0.1" min="0" aria-label="רוחב המוצר במ״מ" onChange={(e) => setProd((p) => ({ ...p, widthMm: e.target.value }))} className={field} />
+          </label>
+          <label className="text-xs">
+            <span className="mb-0.5 block text-gray-600">גובה (מ"מ)</span>
+            <input value={prod.heightMm} type="number" step="0.1" min="0" aria-label="גובה המוצר במ״מ" onChange={(e) => setProd((p) => ({ ...p, heightMm: e.target.value }))} className={field} />
+          </label>
+          <label className="text-xs">
+            <span className="mb-0.5 block text-gray-600">גלישה (מ"מ, לכל צד)</span>
+            <input value={prod.bleedMm} type="number" step="0.5" min="0" placeholder="0" aria-label="גלישה במ״מ" onChange={(e) => setProd((p) => ({ ...p, bleedMm: e.target.value }))} className={field} />
+          </label>
+          <label className="text-xs">
+            <span className="mb-0.5 block text-gray-600">רזולוציה מינימלית (DPI)</span>
+            <input value={prod.minDpi} type="number" min="72" placeholder="300" aria-label="רזולוציה מינימלית" onChange={(e) => setProd((p) => ({ ...p, minDpi: e.target.value }))} className={field} />
           </label>
         </section>
 

@@ -49,13 +49,14 @@ export interface GateInput {
   items: GateItem[];
   /** אישור מפרט של הזמנה חד-פעמית בידי בית הדפוס */
   orderSpecApproved: boolean;
-  productionFile: { id: string; sha256: string } | null;
+  /** preflightCritical: ממצאים קריטיים של בדיקת הקובץ; null — הקובץ הועלה לפני שהבדיקה קיימת */
+  productionFile: { id: string; sha256: string; preflightCritical?: string[] | null } | null;
   isPrintHouse: boolean;
   status: ProductionStatus;
 }
 
 export interface GateCheck {
-  key: 'spec' | 'artwork' | 'file' | 'role' | 'status';
+  key: 'spec' | 'artwork' | 'file' | 'preflight' | 'role' | 'status';
   label: string;
   ok: boolean;
   detail?: string;
@@ -68,11 +69,19 @@ export function evaluateGate(g: GateInput): { ok: boolean; checks: GateCheck[] }
     i.savedRevisionStatus ? i.savedRevisionStatus === 'APPROVED' || i.savedRevisionStatus === 'SUPERSEDED' : g.orderSpecApproved,
   );
   const missingArt = tpl.filter((i) => i.requiresArtwork && !i.approvedArtwork).map((i) => i.title);
+  const critical = g.productionFile?.preflightCritical ?? [];
   const checks: GateCheck[] = [
     { key: 'status', label: 'ההזמנה ממתינה לשחרור', ok: g.status === 'PENDING', detail: g.status === 'PENDING' ? undefined : PRODUCTION_LABELS[g.status] },
     { key: 'spec', label: 'מפרט מאושר', ok: specOk, detail: specOk ? undefined : 'יש לאשר את מפרט ההזמנה' },
     { key: 'artwork', label: 'גרפיקה מאושרת', ok: missingArt.length === 0, detail: missingArt.length ? `חסר אישור: ${missingArt.join(', ')}` : undefined },
     { key: 'file', label: 'קובץ ייצור עם חתימה', ok: Boolean(g.productionFile?.sha256), detail: g.productionFile ? `SHA-256 ${g.productionFile.sha256.slice(0, 12)}…` : 'לא הועלה קובץ ייצור' },
+    {
+      key: 'preflight',
+      label: 'בדיקת קובץ בסיסית',
+      // בלי קובץ — הבדיקה "file" נכשלת; כאן רק ממצאים קריטיים חוסמים
+      ok: critical.length === 0,
+      detail: !g.productionFile ? undefined : critical.length ? critical.join(' · ') : g.productionFile.preflightCritical === null ? 'לא נבדק (קובץ ישן)' : undefined,
+    },
     { key: 'role', label: 'הרשאת שחרור (בית הדפוס)', ok: g.isPrintHouse },
   ];
   return { ok: checks.every((c) => c.ok), checks };

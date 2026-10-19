@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
 import { Check, X } from 'lucide-react';
 import { PrintFileUpload } from '@/components/print/file-upload';
+import { PreflightNotes } from '@/components/print/preflight-notes';
+import type { PreflightResult } from '@/lib/print-preflight';
 import { startProductionUpload } from '../print-shop/artwork-actions';
 import { PRODUCTION_LABELS, type GateCheck, type ProductionStatus } from '@/lib/print-release';
 import { approveSpecAction, moveProductionAction, releaseAction, type ProductionState } from './actions';
@@ -26,7 +28,7 @@ export interface ProductionVM {
   released: boolean;
   gate: { ok: boolean; checks: GateCheck[] };
   needsSpecApproval: boolean;
-  productionFile: { name: string; url: string; sha256: string } | null;
+  productionFile: { name: string; url: string; sha256: string; preflight: PreflightResult | null } | null;
   snapshot: null | { at: string; by: string | null; artworks: string[]; fileSha: string };
   note: string | null;
   next: ProductionStatus[];
@@ -60,7 +62,7 @@ export function ProductionPanel({ p }: { p: ProductionVM }) {
         <>
           <ul className="grid gap-1 sm:grid-cols-2">
             {p.gate.checks
-              .filter((c) => c.key !== 'status')
+              .filter((c) => c.key !== 'status' && !(c.key === 'preflight' && !p.productionFile))
               .map((c) => (
                 <li key={c.key} className="flex items-center gap-1.5">
                   {c.ok ? <Check className="h-4 w-4 text-green-600" /> : <X className="h-4 w-4 text-rose-500" />}
@@ -87,6 +89,7 @@ export function ProductionPanel({ p }: { p: ProductionVM }) {
               · SHA-256 {p.productionFile.sha256.slice(0, 12)}…
             </p>
           )}
+          {p.productionFile?.preflight && <PreflightNotes result={p.productionFile.preflight} />}
           {p.status === 'PENDING' && (
             <form action={relAction} className="flex flex-wrap items-center gap-2">
               <input type="hidden" name="id" value={p.orderId} />

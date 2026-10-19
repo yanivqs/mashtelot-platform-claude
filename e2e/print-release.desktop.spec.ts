@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { expect, test, type Page } from './fixtures';
 import { ADMIN } from '../playwright.config';
-import { E2E_OWNER4, E2E_SAVED_TEMPLATE, E2E_SUPER3 } from './global-setup';
+import { E2E_OWNER4, E2E_PREFLIGHT_TEMPLATE, E2E_SAVED_TEMPLATE, E2E_SUPER3 } from './global-setup';
 
 async function login(page: Page, user: { email: string; password: string }) {
   await page.context().clearCookies();
@@ -13,13 +13,25 @@ async function login(page: Page, user: { email: string; password: string }) {
 }
 
 const NOTE = 'שחרור E2E';
+const pt = (mm: number) => ((mm * 72) / 25.4).toFixed(2);
+const pdf = (w: number, h: number) => Buffer.from(`%PDF-1.7\n1 0 obj << /Type /Page /MediaBox [0 0 ${pt(w)} ${pt(h)}] >> endobj\n`);
 
 /** הזמנה חד-פעמית מתבנית + גרפיקה מאושרת (מוכנה ב-DB); מפרט וקובץ ייצור — במסך. */
 async function prepareOrder() {
   const db = new PrismaClient({ log: [] });
   try {
     const n = await db.nursery.findUniqueOrThrow({ where: { subdomain: 'e2eshop' } });
-    const v = await db.printTemplateVersion.findFirstOrThrow({ where: { status: 'PUBLISHED', template: { title: E2E_SAVED_TEMPLATE } } });
+    const base = await db.printTemplateVersion.findFirstOrThrow({ where: { status: 'PUBLISHED', template: { title: E2E_SAVED_TEMPLATE } } });
+    // מוצר עם פרופיל ייצור 100×50 מ"מ + גלישה 3 (PT-09)
+    const t = await db.printTemplate.create({
+      data: {
+        title: E2E_PREFLIGHT_TEMPLATE,
+        isActive: false,
+        versions: { create: { version: 1, status: 'PUBLISHED', fields: base.fields as object, pricing: base.pricing as object, production: { widthMm: 100, heightMm: 50, bleedMm: 3, minDpi: 300 } } },
+      },
+      include: { versions: true },
+    });
+    const v = t.versions[0]!;
     const order = await db.printOrder.create({
       data: {
         nurseryId: n.id,
@@ -57,8 +69,16 @@ test('release gate in the UI: checklist, spec approval, production file, release
   await card.getByRole('button', { name: 'אישור מפרט ההזמנה' }).click();
   await expect(card.getByText('יש לאשר את מפרט ההזמנה')).toHaveCount(0);
 
-  await card.getByLabel('העלאת קובץ ייצור').setInputFiles({ name: 'production.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7\n% production file\n') });
+  // קובץ בגודל A4 — בדיקת הקובץ נכשלת והשחרור חסום (PT-09)
+  await card.getByLabel('העלאת קובץ ייצור').setInputFiles({ name: 'wrong.pdf', mimeType: 'application/pdf', buffer: pdf(210, 297) });
+  await expect(card.getByText(/קובץ ייצור: wrong\.pdf/)).toBeVisible();
+  await expect(card.getByText('נכשלה')).toBeVisible();
+  await expect(card.getByText(/אינן תואמות למוצר 100×50/).first()).toBeVisible();
+  await expect(card.getByRole('button', { name: 'שחרור לייצור' })).toBeDisabled();
+
+  await card.getByLabel('החלפת קובץ ייצור').setInputFiles({ name: 'production.pdf', mimeType: 'application/pdf', buffer: pdf(106, 56) });
   await expect(card.getByText(/קובץ ייצור: production\.pdf/)).toBeVisible();
+  await expect(card.getByText('תקינה')).toBeVisible();
 
   await expect(card.getByRole('button', { name: 'שחרור לייצור' })).toBeEnabled();
   await card.getByRole('button', { name: 'שחרור לייצור' }).click();

@@ -20,6 +20,14 @@ describe('release gate (PT-06)', () => {
     expect(failing({ ...base, status: 'RELEASED' })).toEqual(['status']);
   });
 
+  it('a production file with critical preflight findings blocks; warnings and unchecked legacy files do not (PT-09)', () => {
+    expect(failing({ ...base, productionFile: { id: 'f', sha256: 'a'.repeat(64), preflightCritical: ['מידות שגויות'] } })).toEqual(['preflight']);
+    expect(evaluateGate({ ...base, productionFile: { id: 'f', sha256: 'a'.repeat(64), preflightCritical: [] } }).ok).toBe(true);
+    const legacy = evaluateGate({ ...base, productionFile: { id: 'f', sha256: 'a'.repeat(64), preflightCritical: null } });
+    expect(legacy.ok).toBe(true);
+    expect(legacy.checks.find((c) => c.key === 'preflight')!.detail).toContain('לא נבדק');
+  });
+
   it('fixed products use their spec revision; pending/rejected specs block', () => {
     const item = { ...base.items[0]!, savedRevisionStatus: 'APPROVED' as const };
     expect(evaluateGate({ ...base, orderSpecApproved: false, items: [item] }).ok).toBe(true);

@@ -819,6 +819,8 @@ model PrintTemplateVersion {
   status         PrintTemplateStatus  @default(DRAFT)
   fields         Json
   pricing        Json
+  /// PT-09: פרופיל ייצור (מידות, גלישה, DPI מינימלי) לבדיקת קבצים — נעול עם הגרסה
+  production     Json?
   notes          String?
   createdBy      String?              @map("created_by")
   publishedAt    DateTime?            @map("published_at")
@@ -906,6 +908,8 @@ model PrintFile {
   sha256       String
   widthPx      Int?                  @map("width_px")
   heightPx     Int?                  @map("height_px")
+  /// PT-09: תוצאת בדיקת קובץ בסיסית בעת הרישום — אינה משתנה
+  preflight    Json?
   uploadedBy   String?               @map("uploaded_by")
   createdAt    DateTime              @default(now()) @map("created_at")
   nursery      Nursery               @relation(fields: [nurseryId], references: [id], onDelete: Cascade)

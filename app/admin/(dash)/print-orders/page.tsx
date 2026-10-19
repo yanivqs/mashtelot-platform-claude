@@ -1,4 +1,5 @@
 import { itemDisplay } from '@/lib/print-templates-admin';
+import type { PreflightResult } from '@/lib/print-preflight';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatPrice } from '@/lib/utils';
@@ -46,7 +47,12 @@ export default async function PrintOrdersPage() {
       gate,
       needsSpecApproval: !o.specApprovedAt && o.items.some((i) => i.templateVersionId && !i.savedRevisionId),
       productionFile: o.productionFile
-        ? { name: o.productionFile.originalName, url: await signDownloadUrl(o.productionFile.id), sha256: o.productionFile.sha256 }
+        ? {
+            name: o.productionFile.originalName,
+            url: await signDownloadUrl(o.productionFile.id),
+            sha256: o.productionFile.sha256,
+            preflight: (o.productionFile.preflight as PreflightResult | null) ?? null,
+          }
         : null,
       snapshot:
         o.releasedAt && snap

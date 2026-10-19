@@ -15,6 +15,7 @@ export const E2E_OWNER4 = { email: 'owner4@e2e.invalid', password: 'e2e-owner4-p
 export const E2E_SUPER3 = { email: 'super3@e2e.invalid', password: 'e2e-super3-pass-123' };
 /** תבנית מפורסמת שנוצרת כאן לבדיקת המוצרים הקבועים (PT-04) */
 export const E2E_SAVED_TEMPLATE = 'תוויות קבועות E2E';
+export const E2E_PREFLIGHT_TEMPLATE = 'שלט ייצור E2E';
 /** קבוצת נרדפות שבדיקת הניהול יוצרת — נמחקת בתחילת כל ריצה */
 export const E2E_SYNONYM = ['זית', 'אוליבה'];
 /** צמח בקטלוג המרכזי שמשמש את בדיקת הסנכרון (§6) — נוצר מחדש בכל ריצה */
@@ -40,7 +41,7 @@ export default async function globalSetup() {
     // המוצרים נמחקו עם המשתלה; הצמח המרכזי (והגרסאות שלו) נמחק כאן
     await db.plant.deleteMany({ where: { hebrewName: E2E_PLANT } });
     // תבנית הדפוס שבדיקת PT יוצרת (ההזמנות שלה נמחקו עם המשתלה)
-    await db.printTemplate.deleteMany({ where: { title: { in: [E2E_PRINT_TEMPLATE, E2E_SAVED_TEMPLATE] } } });
+    await db.printTemplate.deleteMany({ where: { title: { in: [E2E_PRINT_TEMPLATE, E2E_SAVED_TEMPLATE, E2E_PREFLIGHT_TEMPLATE] } } });
     await db.searchSynonymGroup.deleteMany({ where: { terms: { has: 'אוליבה' } } });
     await db.rateLimit.deleteMany({});
 

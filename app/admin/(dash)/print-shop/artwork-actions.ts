@@ -6,7 +6,7 @@ import { requireUser } from '@/lib/auth';
 import { nurseryActionScope } from '@/lib/nursery-scope';
 import { recordAudit } from '@/lib/audit';
 import { newStorageKey, signUploadTicket, storageDriver, verifyUploadTicket, type UploadTarget } from '@/lib/print-storage';
-import { addArtworkVersion, attachProof, decideArtwork, ownsSubject, registerFile, type Subject } from '@/lib/print-artwork';
+import { addArtworkVersion, attachProof, decideArtwork, ownsSubject, profileFor, registerFile, type Subject } from '@/lib/print-artwork';
 import { setProductionFile } from '@/lib/print-production';
 
 export interface UploadStart {
@@ -91,6 +91,9 @@ export async function finishUpload(input: { ticket: string; originalName: string
 
   const driver = storageDriver();
   const bytes = await driver.read(t.key);
+  // בדיקת קובץ בסיסית מול פרופיל הייצור (גרפיקה וקובץ ייצור; לא להגהה)
+  const subject = t.kind === 'PRODUCTION' ? toSubject({ printOrderId: t.target.productionOrderId }) : t.kind === 'ARTWORK' ? toSubject(t.target) : null;
+  const profile = subject ? await profileFor(prisma, subject) : undefined;
   const reg = await registerFile(prisma, {
     nurseryId: t.nurseryId,
     kind: t.kind,
@@ -98,6 +101,7 @@ export async function finishUpload(input: { ticket: string; originalName: string
     originalName: String(input.originalName ?? ''),
     bytes,
     actorEmail,
+    profile,
   });
   if (!reg.ok) {
     if (bytes) await driver.remove(t.key);
@@ -105,7 +109,6 @@ export async function finishUpload(input: { ticket: string; originalName: string
   }
 
   if (t.kind === 'ARTWORK') {
-    const subject = toSubject(t.target);
     const r = subject ? await addArtworkVersion(prisma, { nurseryId: t.nurseryId, subject, fileId: reg.fileId, actorEmail }) : null;
     if (!r?.ok) return { error: r?.error ?? 'שגיאה' };
     await recordAudit({ nurseryId: t.nurseryId, actorEmail, action: 'print.artwork_uploaded', entityType: 'PrintArtworkVersion', entityId: r.versionId, metadata: { version: r.version } });

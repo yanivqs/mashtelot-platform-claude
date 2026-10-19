@@ -1,4 +1,6 @@
 import { requireUser } from '@/lib/auth';
+import { PreflightNotes } from '@/components/print/preflight-notes';
+import type { PreflightResult } from '@/lib/print-preflight';
 import { prisma } from '@/lib/prisma';
 import { signDownloadUrl } from '@/lib/print-storage';
 import { ARTWORK_STATUS } from '@/lib/print-artwork-status';
@@ -66,6 +68,9 @@ export default async function PrintArtworkPage() {
                   {v.file.widthPx ? ` · ${v.file.widthPx}×${v.file.heightPx}px` : ''} · SHA-256 {v.file.sha256.slice(0, 12)}… · {dateFmt.format(v.createdAt)}
                 </span>
               </p>
+              <div className="mb-3">
+                <PreflightNotes result={v.file.preflight as PreflightResult | null} />
+              </div>
               {v.status === 'UPLOADED' ? (
                 <ProofUpload versionId={v.id} />
               ) : (

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { parseFields, parsePricing, FIELD_TYPE_LABELS, type ShowIf, type TemplateField } from '@/lib/print-template';
 import { formatPrice } from '@/lib/utils';
 import { DEFAULT_PRICING } from '@/lib/print-templates-admin';
+import { parseProfile } from '@/lib/print-preflight';
 import { newDraftAction } from '../actions';
 import { DraftEditor, MetaForm, type PricingValues } from '../forms';
 
@@ -33,6 +34,8 @@ export default async function PrintTemplatePage(props: { params: Promise<{ id: s
   const published = t.versions.find((v) => v.status === 'PUBLISHED');
   const publishedFields = published ? parseFields(published.fields) : null;
   const publishedPricing = published ? parsePricing(published.pricing) : null;
+  const profileParsed = published ? parseProfile(published.production) : null;
+  const publishedProfile = profileParsed?.ok ? profileParsed.value : null;
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -67,6 +70,7 @@ export default async function PrintTemplatePage(props: { params: Promise<{ id: s
             version={draft.version}
             initialFields={Array.isArray(draft.fields) ? (draft.fields as unknown[]) : []}
             initialPricing={{ ...DEFAULT_PRICING, ...((draft.pricing ?? {}) as object) } as PricingValues}
+            initialProduction={(draft.production as { widthMm?: number; heightMm?: number; bleedMm?: number; minDpi?: number } | null) ?? null}
             notes={draft.notes}
           />
         ) : (
@@ -90,6 +94,7 @@ export default async function PrintTemplatePage(props: { params: Promise<{ id: s
             {publishedPricing.value.quoteOnly
               ? 'הצעת מחיר בלבד'
               : `${formatPrice(publishedPricing.value.basePrice)} ליחידה · מינימום ${publishedPricing.value.minQuantity}`}
+            {publishedProfile ? ` · ייצור ${publishedProfile.widthMm}×${publishedProfile.heightMm} מ"מ, גלישה ${publishedProfile.bleedMm}, ${publishedProfile.minDpi} DPI` : ' · ללא פרופיל ייצור'}
           </p>
           <ul className="space-y-1 text-sm">
             {publishedFields.value.map((f) => (

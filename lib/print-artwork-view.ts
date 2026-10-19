@@ -2,6 +2,7 @@ import 'server-only';
 import type { PrintArtworkVersion, PrintFile } from '@prisma/client';
 import { signDownloadUrl } from '@/lib/print-storage';
 import type { ArtworkVersionVM } from '@/components/print/artwork-panel';
+import type { PreflightResult } from '@/lib/print-preflight';
 
 type VersionWithFiles = PrintArtworkVersion & { file: PrintFile; proofFile: PrintFile | null };
 
@@ -16,6 +17,7 @@ export async function artworkVersionsVM(versions: VersionWithFiles[]): Promise<A
         status: v.status,
         fileName: v.file.originalName,
         fileUrl: await signDownloadUrl(v.file.id),
+        preflight: (v.file.preflight as PreflightResult | null) ?? null,
         proofUrl: v.proofFile ? await signDownloadUrl(v.proofFile.id) : null,
         note: v.decisionNote,
         decidedBy: v.approvedBy,
