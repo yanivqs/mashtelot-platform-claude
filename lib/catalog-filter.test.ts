@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { firstLetter, parseLetter } from './alphabet';
 import { PLANT_FACETS, facetOptions, plantMatchesFacet, type PlantFacetFields } from './plant-facets';
 import { buildCatalogView, toIndexEntry } from './catalog-filter';
+import { buildSynonymIndex } from './search';
 import { pageWindow } from '../components/pagination';
 
 const facet = (key: string) => PLANT_FACETS.find((f) => f.key === key)!;
@@ -116,5 +117,35 @@ describe('pageWindow', () => {
   it('shows first, last and a window around the current page', () => {
     expect(pageWindow(1, 3)).toEqual([1, 2, 3]);
     expect(pageWindow(10, 20)).toEqual([1, '…', 8, 9, 10, 11, 12, '…', 20]);
+  });
+});
+
+describe('catalog smart search (R04-03)', () => {
+  const entry = (id: string, title: string, createdAt: number, alt: string[] = []) =>
+    toIndexEntry({ id, createdAt: new Date(createdAt), title, altNames: alt, plant: null, categorySort: {} });
+  const entries = [
+    entry('a', 'ורדינה', 3),
+    entry('b', 'ורד אדום', 1),
+    entry('c', 'לבנדר רפואי', 2, ['Lavandula']),
+    entry('d', 'ריחן מתוק', 4),
+  ];
+  const synonyms = buildSynonymIndex([['ריחן', 'בזיליקום']]);
+
+  it('orders by relevance, not by date, when searching', () => {
+    const v = buildCatalogView(entries, { q: 'ורד' }, 1, 10);
+    expect(v.pageIds).toEqual(['b', 'a']); // מדויק לפני תחילת מילה, למרות ש-a חדש יותר
+  });
+
+  it('finds typos, plurals, latin names and synonyms', () => {
+    expect(buildCatalogView(entries, { q: 'לבדנר' }, 1, 10).pageIds).toEqual(['c']);
+    expect(buildCatalogView(entries, { q: 'ורדים' }, 1, 10).pageIds).toContain('b');
+    expect(buildCatalogView(entries, { q: 'lavandula' }, 1, 10).pageIds).toEqual(['c']);
+    expect(buildCatalogView(entries, { q: 'בזיליקום', synonyms }, 1, 10).pageIds).toEqual(['d']);
+    expect(buildCatalogView(entries, { q: 'בזיליקום' }, 1, 10).pageIds).toEqual([]);
+  });
+
+  it('letters are computed on the searched results', () => {
+    const v = buildCatalogView(entries, { q: 'ורד' }, 1, 10);
+    expect([...v.letters]).toEqual(['ו']);
   });
 });

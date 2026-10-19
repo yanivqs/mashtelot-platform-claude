@@ -6,6 +6,9 @@ import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 
 export const E2E_OWNER = { email: 'owner@e2e.invalid', password: 'e2e-owner-pass-123' };
+export const E2E_SUPER = { email: 'super@e2e.invalid', password: 'e2e-super-pass-123' };
+/** קבוצת נרדפות שבדיקת הניהול יוצרת — נמחקת בתחילת כל ריצה */
+export const E2E_SYNONYM = ['זית', 'אוליבה'];
 
 export default async function globalSetup() {
   const url = process.env.DATABASE_URL ?? '';
@@ -21,7 +24,8 @@ export default async function globalSetup() {
       await db.user.deleteMany({ where: { nurseryId: old.id } });
       await db.nursery.delete({ where: { id: old.id } });
     }
-    await db.user.deleteMany({ where: { email: E2E_OWNER.email } });
+    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email] } } });
+    await db.searchSynonymGroup.deleteMany({ where: { terms: { has: 'אוליבה' } } });
     await db.rateLimit.deleteMany({});
 
     const n = await db.nursery.create({
@@ -44,6 +48,7 @@ export default async function globalSetup() {
       ['ורד אדום', '39.90'],
       ['לבנדר רפואי', '24.90'],
       ['זית סורי', '120.00'],
+      ['ריחן מתוק', '14.90'],
     ] as const) {
       await db.nurseryProduct.create({ data: { nurseryId: n.id, customTitle: title, price, stockQuantity: 20 } });
     }
@@ -61,6 +66,9 @@ export default async function globalSetup() {
         nurseryId: n.id,
         passwordHash: await bcrypt.hash(E2E_OWNER.password, 4),
       },
+    });
+    await db.user.create({
+      data: { email: E2E_SUPER.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER.password, 4) },
     });
   } finally {
     await db.$disconnect();

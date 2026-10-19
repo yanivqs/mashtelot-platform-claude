@@ -14,13 +14,14 @@ import {
   type FacetOption,
   type PlantFacetFields,
 } from '@/lib/plant-facets';
+import { buildSearchDoc, compileQuery, scoreDoc, type CompiledQuery, type SearchDoc, type SynonymIndex } from '@/lib/search';
 
 export interface CatalogIndexEntry {
   id: string;
   createdAt: number;
   title: string;
-  /** טקסט חיפוש מנורמל: שם, שם לטיני, כינוי */
-  searchText: string;
+  /** מסמך חיפוש: שם, שם עברי מקורי, שם לטיני, כינוי (R04-03, lib/search.ts) */
+  search: SearchDoc;
   letter: string | null;
   plant: PlantFacetFields | null;
   /** מזהה קטגוריה → סדר המוצר בתוכה (כפי שקבע בעל המשתלה) */
@@ -34,10 +35,8 @@ export interface CatalogFilterState {
   categoryIds?: string[] | null;
   /** מפתח פאסט → מפתח אפשרות נבחרת */
   facets?: Record<string, string>;
-}
-
-export function normalizeSearch(s: string): string {
-  return s.trim().toLowerCase().replace(/\s+/g, ' ');
+  /** מילון נרדפות גלובלי (search_synonyms) */
+  synonyms?: SynonymIndex;
 }
 
 interface Skip {
@@ -45,9 +44,21 @@ interface Skip {
   facet?: string;
 }
 
-function matches(entry: CatalogIndexEntry, state: CatalogFilterState, skip: Skip = {}): boolean {
-  const q = state.q ? normalizeSearch(state.q) : '';
-  if (q && !entry.searchText.includes(q)) return false;
+function matches(
+  entry: CatalogIndexEntry,
+  state: CatalogFilterState,
+  query: CompiledQuery | null,
+  scores: Map<string, number>,
+  skip: Skip = {},
+): boolean {
+  if (query) {
+    let s = scores.get(entry.id);
+    if (s === undefined) {
+      s = scoreDoc(query, entry.search);
+      scores.set(entry.id, s);
+    }
+    if (s === 0) return false;
+  }
   if (!skip.letter && state.letter && entry.letter !== state.letter) return false;
   if (state.categoryIds && !state.categoryIds.some((id) => id in entry.categorySort)) return false;
   for (const [key, option] of Object.entries(state.facets ?? {})) {
@@ -58,8 +69,17 @@ function matches(entry: CatalogIndexEntry, state: CatalogFilterState, skip: Skip
   return true;
 }
 
-function sortEntries(entries: CatalogIndexEntry[], state: CatalogFilterState): CatalogIndexEntry[] {
+function sortEntries(
+  entries: CatalogIndexEntry[],
+  state: CatalogFilterState,
+  query: CompiledQuery | null,
+  scores: Map<string, number>,
+): CatalogIndexEntry[] {
   const out = [...entries];
+  if (query) {
+    // בחיפוש: לפי רלוונטיות (מדויק > תחילת מילה > מכיל > שגיאת כתיב), ואז החדשים קודם
+    return out.sort((a, b) => (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0) || b.createdAt - a.createdAt);
+  }
   const cats = state.categoryIds;
   if (cats && cats.length) {
     // בקטגוריה: הסדר שקבע בעל המשתלה, ואז החדשים קודם
@@ -96,9 +116,13 @@ export function buildCatalogView(
   page: number,
   pageSize: number,
 ): CatalogView {
+  const query = compileQuery(state.q, state.synonyms);
+  const scores = new Map<string, number>();
   const filtered = sortEntries(
-    entries.filter((e) => matches(e, state)),
+    entries.filter((e) => matches(e, state, query, scores)),
     state,
+    query,
+    scores,
   );
   const total = filtered.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -106,12 +130,12 @@ export function buildCatalogView(
 
   const letters = new Set<string>();
   for (const e of entries) {
-    if (e.letter && matches(e, state, { letter: true })) letters.add(e.letter);
+    if (e.letter && matches(e, state, query, scores, { letter: true })) letters.add(e.letter);
   }
 
   const facets: FacetView[] = [];
   for (const def of PLANT_FACETS) {
-    const pool = entries.filter((e) => e.plant && matches(e, state, { facet: def.key }));
+    const pool = entries.filter((e) => e.plant && matches(e, state, query, scores, { facet: def.key }));
     const options = facetOptions(
       pool.map((e) => e.plant),
       def,
@@ -144,7 +168,7 @@ export function toIndexEntry(p: {
     id: p.id,
     createdAt: p.createdAt.getTime(),
     title: p.title,
-    searchText: normalizeSearch([p.title, ...(p.altNames ?? [])].filter(Boolean).join(' ')),
+    search: buildSearchDoc([p.title, ...(p.altNames ?? [])]),
     letter: firstLetter(p.title),
     plant: p.plant,
     categorySort: p.categorySort,

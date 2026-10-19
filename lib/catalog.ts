@@ -1,6 +1,7 @@
 import { cache } from 'react';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { getSynonymIndex } from '@/lib/synonyms';
 import { categoryAndDescendantIds } from '@/lib/category-tree';
 import { parseLetter } from '@/lib/alphabet';
 import { PLANT_FACETS } from '@/lib/plant-facets';
@@ -166,10 +167,11 @@ export async function getCatalogPage(
   nurseryId: string,
   sp: CatalogSearchParams,
 ): Promise<CatalogPage> {
-  const [index, categoryNav, rawCategories] = await Promise.all([
+  const [index, categoryNav, rawCategories, synonyms] = await Promise.all([
     getCatalogIndex(nurseryId),
     getCategoryNav(nurseryId),
     getRawCategories(nurseryId),
+    sp.q?.trim() ? getSynonymIndex() : undefined,
   ]);
 
   const categoryPath = findCategoryPath(categoryNav, sp.category);
@@ -181,6 +183,7 @@ export async function getCatalogPage(
     letter,
     categoryIds: selected ? categoryAndDescendantIds(rawCategories, selected.id) : null,
     facets: parseFacetParams(sp),
+    synonyms,
   };
 
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);

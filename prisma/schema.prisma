@@ -635,3 +635,13 @@ model RateLimit {
   @@index([expiresAt])
   @@map("rate_limits")
 }
+
+/// R04-03: מילון נרדפות גלובלי לחיפוש בחנויות (מנוהל ע"י סופר-אדמין). כל מונח בקבוצה מרחיב לשאר.
+model SearchSynonymGroup {
+  id        String   @id @default(uuid())
+  terms     String[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("search_synonym_groups")
+}
