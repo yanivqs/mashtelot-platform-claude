@@ -60,6 +60,8 @@ model Nursery {
   productVariants ProductVariant[]
   syncDecisions   CatalogSyncDecision[]
   printSaved      PrintSavedProduct[]
+  printFiles      PrintFile[]
+  printArtworks   PrintArtwork[]
   printOrders     PrintOrder[]
   promotions      Promotion[]
   users           User[]
@@ -471,6 +473,7 @@ model PrintOrder {
   items       PrintOrderItem[]
   nursery     Nursery          @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
   orderedBy   User?            @relation(fields: [orderedById], references: [id])
+  artworks    PrintArtwork[]
 
   @@map("print_orders")
 }
@@ -494,7 +497,7 @@ model PrintOrderItem {
   templateVersion   PrintTemplateVersion? @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
   /// PT-04: הזמנה ממוצר קבוע — גרסת המפרט המאושרת שממנה הוזמן
   savedRevisionId   String?               @map("saved_revision_id")
-  savedRevision     PrintSavedRevision?   @relation(fields: [savedRevisionId], references: [id], onDelete: Restrict)
+  savedRevision     PrintSavedRevision?   @relation(fields: [savedRevisionId], references: [id], onDelete: NoAction)
 
   @@map("print_order_items")
 }
@@ -831,6 +834,7 @@ model PrintSavedProduct {
   nursery          Nursery              @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
   template         PrintTemplate        @relation(fields: [templateId], references: [id], onDelete: Restrict)
   activeRevision   PrintSavedRevision?  @relation("ActiveRevision", fields: [activeRevisionId], references: [id], onDelete: SetNull)
+  artworks         PrintArtwork[]
   revisions        PrintSavedRevision[] @relation("Revisions")
 
   @@index([nurseryId])
@@ -866,4 +870,89 @@ model PrintSavedRevision {
 
   @@unique([savedProductId, revision])
   @@map("print_saved_revisions")
+}
+
+enum PrintFileKind {
+  ARTWORK
+  PROOF
+  PRODUCTION
+}
+
+/// PT-08: קובץ דפוס באחסון פרטי (bucket print-private / דיסק מקומי בפיתוח). נגיש רק דרך קישור זמני מהשרת.
+model PrintFile {
+  id           String                @id @default(uuid())
+  nurseryId    String                @map("nursery_id")
+  kind         PrintFileKind
+  /// מפתח באחסון: {nurseryId}/{kind}/{uuid} — ללא שם הקובץ המקורי (מניעת Path Traversal)
+  storageKey   String                @unique @map("storage_key")
+  originalName String                @map("original_name")
+  /// הסוג לפי תוכן הקובץ (magic bytes), לא לפי הדפדפן
+  mimeType     String                @map("mime_type")
+  sizeBytes    Int                   @map("size_bytes")
+  sha256       String
+  widthPx      Int?                  @map("width_px")
+  heightPx     Int?                  @map("height_px")
+  uploadedBy   String?               @map("uploaded_by")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  nursery      Nursery               @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  artworkOf    PrintArtworkVersion[] @relation("ArtworkFile")
+  proofOf      PrintArtworkVersion[] @relation("ProofFile")
+
+  @@index([nurseryId])
+  @@map("print_files")
+}
+
+/// PT-05: גרפיקה של מוצר קבוע או של הזמנה חד-פעמית — בגרסאות.
+model PrintArtwork {
+  id             String                @id @default(uuid())
+  nurseryId      String                @map("nursery_id")
+  savedProductId String?               @unique @map("saved_product_id")
+  printOrderId   String?               @unique @map("print_order_id")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  nursery        Nursery               @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  savedProduct   PrintSavedProduct?    @relation(fields: [savedProductId], references: [id], onDelete: Cascade)
+  printOrder     PrintOrder?           @relation(fields: [printOrderId], references: [id], onDelete: Cascade)
+  versions       PrintArtworkVersion[]
+
+  @@map("print_artworks")
+}
+
+enum PrintArtworkStatus {
+  UPLOADED
+  PROOF_SENT
+  APPROVED
+  REJECTED
+  SUPERSEDED
+}
+
+enum PrintApprovalMethod {
+  /// בעל המשתלה אישר במערכת
+  OWNER
+  /// בית הדפוס סימן אישור אחרי אישור טלפוני של המשתלה (החלטת בעלים)
+  PHONE
+}
+
+/// PT-05: גרסת גרפיקה — קובץ נעול; הגהה ואישור מפורש מתייחסים לגרסה הזו בלבד.
+model PrintArtworkVersion {
+  id             String               @id @default(uuid())
+  artworkId      String               @map("artwork_id")
+  nurseryId      String               @map("nursery_id")
+  version        Int
+  fileId         String               @map("file_id")
+  status         PrintArtworkStatus   @default(UPLOADED)
+  proofFileId    String?              @map("proof_file_id")
+  proofSentAt    DateTime?            @map("proof_sent_at")
+  proofSentBy    String?              @map("proof_sent_by")
+  approvedAt     DateTime?            @map("approved_at")
+  approvedBy     String?              @map("approved_by")
+  approvalMethod PrintApprovalMethod? @map("approval_method")
+  decisionNote   String?              @map("decision_note")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  createdBy      String?              @map("created_by")
+  artwork        PrintArtwork         @relation(fields: [artworkId], references: [id], onDelete: Cascade)
+  file           PrintFile            @relation("ArtworkFile", fields: [fileId], references: [id], onDelete: NoAction)
+  proofFile      PrintFile?           @relation("ProofFile", fields: [proofFileId], references: [id], onDelete: NoAction)
+
+  @@unique([artworkId, version])
+  @@map("print_artwork_versions")
 }

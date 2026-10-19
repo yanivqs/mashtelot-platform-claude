@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   SearchCode,
   ClipboardCheck,
+  Image as ImageIcon,
   Signpost,
   RefreshCw,
   type LucideIcon,
@@ -64,6 +65,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/print-orders', label: 'בית דפוס', icon: Printer },
   { href: '/admin/print-templates', label: 'תבניות דפוס', icon: FileText },
   { href: '/admin/print-specs', label: 'אישורי מפרט', icon: ClipboardCheck },
+  { href: '/admin/print-artwork', label: 'גרפיקה והגהות', icon: ImageIcon },
   { href: '/admin/system', label: 'מיילים ומערכת', icon: Mail },
   { href: '/admin/search-synonyms', label: 'מילים נרדפות בחיפוש', icon: SearchCode },
   { href: '/admin/security', label: 'יומן התחברויות', icon: ShieldCheck },
@@ -106,8 +108,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const isSuper = user.role === 'SUPER_ADMIN';
   // PT-04: בקשות מפרט שממתינות לאישור בית הדפוס
   const pendingSpecs = isSuper ? await prisma.printSavedRevision.count({ where: { status: 'SUBMITTED' } }) : 0;
+  // PT-05: קבצי גרפיקה שממתינים להגהה
+  const pendingArtwork = isSuper ? await prisma.printArtworkVersion.count({ where: { status: 'UPLOADED' } }) : 0;
+  const counts: Record<string, number> = { '/admin/print-specs': pendingSpecs, '/admin/print-artwork': pendingArtwork };
   const superNav = adminNav.map((item) =>
-    item.href === '/admin/print-specs' && pendingSpecs > 0 ? { ...item, label: `${item.label} (${pendingSpecs})` } : item,
+    counts[item.href] ? { ...item, label: `${item.label} (${counts[item.href]})` } : item,
   );
 
   let ownerNav: NavItem[] = [];

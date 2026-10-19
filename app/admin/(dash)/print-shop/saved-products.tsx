@@ -5,6 +5,7 @@ import { TemplateFields } from '@/components/print/template-fields';
 import { quotePrint, type CleanValues, type RawValues, type TemplateField, type TemplatePricing } from '@/lib/print-template';
 import { formatPrice } from '@/lib/utils';
 import { archiveSavedAction, reorderSavedAction, submitSpecAction } from './actions';
+import { ArtworkPanel, type ArtworkVersionVM } from '@/components/print/artwork-panel';
 
 export interface SavedVM {
   id: string;
@@ -22,6 +23,8 @@ export interface SavedVM {
   latest: null | { revision: number; status: 'SUBMITTED' | 'REJECTED'; note: string | null };
   /** טופס בקשת שינוי — לפי הגרסה המפורסמת של התבנית (null אם אינה זמינה) */
   change: null | { templateVersionId: string; fields: TemplateField[]; prefill: RawValues };
+  /** PT-05: גרסאות גרפיקה (החדשה ראשונה) */
+  artwork: ArtworkVersionVM[];
 }
 
 const input = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500';
@@ -136,6 +139,10 @@ export function SavedProducts({ items }: { items: SavedVM[] }) {
               </div>
             </>
           )}
+
+          <div className="mt-3">
+            <ArtworkPanel subject={{ savedProductId: it.id }} versions={it.artwork} />
+          </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
             {it.change && it.latest?.status !== 'SUBMITTED' && (

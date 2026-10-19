@@ -11,6 +11,8 @@ export const E2E_SUPER = { email: 'super@e2e.invalid', password: 'e2e-super-pass
 export const E2E_OWNER2 = { email: 'owner2@e2e.invalid', password: 'e2e-owner2-pass-123' };
 export const E2E_SUPER2 = { email: 'super2@e2e.invalid', password: 'e2e-super2-pass-123' };
 export const E2E_OWNER3 = { email: 'owner3@e2e.invalid', password: 'e2e-owner3-pass-123' };
+export const E2E_OWNER4 = { email: 'owner4@e2e.invalid', password: 'e2e-owner4-pass-123' };
+export const E2E_SUPER3 = { email: 'super3@e2e.invalid', password: 'e2e-super3-pass-123' };
 /** תבנית מפורסמת שנוצרת כאן לבדיקת המוצרים הקבועים (PT-04) */
 export const E2E_SAVED_TEMPLATE = 'תוויות קבועות E2E';
 /** קבוצת נרדפות שבדיקת הניהול יוצרת — נמחקת בתחילת כל ריצה */
@@ -34,7 +36,7 @@ export default async function globalSetup() {
       await db.user.deleteMany({ where: { nurseryId: old.id } });
       await db.nursery.delete({ where: { id: old.id } });
     }
-    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email] } } });
+    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email] } } });
     // המוצרים נמחקו עם המשתלה; הצמח המרכזי (והגרסאות שלו) נמחק כאן
     await db.plant.deleteMany({ where: { hebrewName: E2E_PLANT } });
     // תבנית הדפוס שבדיקת PT יוצרת (ההזמנות שלה נמחקו עם המשתלה)
@@ -108,6 +110,12 @@ export default async function globalSetup() {
     });
     await db.user.create({
       data: { email: E2E_OWNER3.email, role: 'NURSERY_OWNER', nurseryId: n.id, passwordHash: await bcrypt.hash(E2E_OWNER3.password, 4) },
+    });
+    await db.user.create({
+      data: { email: E2E_OWNER4.email, role: 'NURSERY_OWNER', nurseryId: n.id, passwordHash: await bcrypt.hash(E2E_OWNER4.password, 4) },
+    });
+    await db.user.create({
+      data: { email: E2E_SUPER3.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER3.password, 4) },
     });
     // PT-04: תבנית מפורסמת ופעילה (תווית עם טקסט וגודל)
     await db.printTemplate.create({

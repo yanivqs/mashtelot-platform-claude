@@ -7,6 +7,8 @@ import { PrintOrderForm, type PrintProductVM } from './order-form';
 import { TemplateCatalog, type TemplateVM } from './template-order';
 import { SavedProducts, type SavedVM } from './saved-products';
 import type { CleanValues } from '@/lib/print-template';
+import { artworkInclude, artworkVersionsVM } from '@/lib/print-artwork-view';
+import { ArtworkPanel } from '@/components/print/artwork-panel';
 import { parseFields, parsePricing } from '@/lib/print-template';
 
 export const dynamic = 'force-dynamic';
@@ -38,7 +40,7 @@ export default async function PrintShopPage() {
     nurseryId
       ? prisma.printOrder.findMany({
           where: { nurseryId },
-          include: { items: { include: { printProduct: { select: { title: true } } } } },
+          include: { items: { include: { printProduct: { select: { title: true } } } }, artworks: { include: artworkInclude } },
           orderBy: { createdAt: 'desc' },
         })
       : Promise.resolve([]),
@@ -68,9 +70,10 @@ export default async function PrintShopPage() {
       template: { include: { versions: { where: { status: 'PUBLISHED' } } } },
       activeRevision: { include: { templateVersion: true } },
       revisions: { orderBy: { revision: 'desc' }, take: 1 },
+      artworks: { include: artworkInclude },
     },
   });
-  const savedVm: SavedVM[] = saved.map((s) => {
+  const savedVm: SavedVM[] = await Promise.all(saved.map(async (s) => {
     const a = s.activeRevision;
     const af = a ? parseFields(a.templateVersion.fields) : null;
     const ap = a ? parsePricing(a.templateVersion.pricing) : null;
@@ -86,8 +89,18 @@ export default async function PrintShopPage() {
       active: a && af?.ok && ap?.ok ? { revision: a.revision, display: av.display ?? [], raw: av.raw ?? {}, fields: af.value, pricing: ap.value } : null,
       latest: latest && (latest.status === 'SUBMITTED' || latest.status === 'REJECTED') ? { revision: latest.revision, status: latest.status, note: latest.reviewNote } : null,
       change: pub && pf?.ok ? { templateVersionId: pub.id, fields: pf.value, prefill: prefillFrom.raw ?? {} } : null,
+      artwork: await artworkVersionsVM(s.artworks[0]?.versions ?? []),
     };
-  });
+  }));
+
+  // PT-05: גרפיקה להזמנה חד-פעמית מתבנית (במוצר קבוע הגרפיקה שייכת למוצר)
+  const orderArtwork = new Map(
+    await Promise.all(
+      orders
+        .filter((o) => o.items.some((i) => i.templateVersionId && !i.savedRevisionId))
+        .map(async (o) => [o.id, await artworkVersionsVM(o.artworks[0]?.versions ?? [])] as const),
+    ),
+  );
 
   const vm: PrintProductVM[] = products.map((p) => ({
     id: p.id,
@@ -153,6 +166,11 @@ export default async function PrintShopPage() {
                   ))}
                 </ul>
                 <p className="mt-1 text-sm font-medium">{formatPrice(o.totalAmount.toString())}</p>
+                {orderArtwork.has(o.id) && (
+                  <div className="mt-3">
+                    <ArtworkPanel subject={{ printOrderId: o.id }} versions={orderArtwork.get(o.id)!} />
+                  </div>
+                )}
               </div>
             ))}
           </div>
