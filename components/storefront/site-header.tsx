@@ -127,8 +127,8 @@ export function SiteHeader({
         </nav>
 
         {/* נייד */}
+        {/* העגלה במובייל נמצאת בניווט התחתון (bottom-nav) */}
         <div className="flex items-center gap-1 md:hidden">
-          <CartBadge href={`${basePath}/cart`} />
           <MobileMenu>
               {nav.map((item) => (
                 <Link

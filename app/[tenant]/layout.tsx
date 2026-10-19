@@ -13,6 +13,7 @@ import { CartProvider } from '@/components/cart/cart-provider';
 import { SiteHeader } from '@/components/storefront/site-header';
 import { SiteFooter } from '@/components/storefront/site-footer';
 import { PromoPopup } from '@/components/storefront/promo-popup';
+import { BottomNav } from '@/components/storefront/bottom-nav';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -88,6 +89,7 @@ export default async function TenantLayout(props: LayoutProps) {
         />
         <main className="flex-1">{children}</main>
         <SiteFooter nursery={nursery} channels={channels} />
+        <BottomNav basePath="" />
         {promotion?.popupText && (
           <PromoPopup id={promotion.id} title={promotion.title} text={promotion.popupText} />
         )}
