@@ -74,6 +74,7 @@ export interface MetaValues {
   imageUrl: string | null;
   unitLabel: string | null;
   leadTimeDays: number | null;
+  requiresArtwork: boolean;
   isActive: boolean;
 }
 
@@ -105,6 +106,10 @@ export function MetaForm({ meta }: { meta: MetaValues }) {
       <div className="sm:col-span-2">
         <ImageUpload name="imageUrl" defaultValue={meta.imageUrl} label="תמונת דוגמה" folder="misc" />
       </div>
+      <label className="flex items-center gap-2 text-sm sm:col-span-2">
+        <input name="requiresArtwork" type="checkbox" defaultChecked={meta.requiresArtwork} className="h-4 w-4" />
+        נדרשת גרפיקה מאושרת לפני שחרור לייצור
+      </label>
       <label className="flex items-center gap-2 text-sm sm:col-span-2">
         <input name="isActive" type="checkbox" defaultChecked={meta.isActive} className="h-4 w-4" />
         מוצג למשתלות להזמנה (רק כשיש גרסה מפורסמת)

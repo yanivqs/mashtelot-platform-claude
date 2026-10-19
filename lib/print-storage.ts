@@ -26,7 +26,7 @@ export interface UploadTicket {
   nurseryId: string;
   kind: PrintFileKind;
   /** יעד: גרסת גרפיקה חדשה למוצר קבוע/הזמנה, או הגהה לגרסה */
-  target: { savedProductId?: string; printOrderId?: string; versionId?: string };
+  target: { savedProductId?: string; printOrderId?: string; versionId?: string; productionOrderId?: string };
 }
 
 export async function signUploadTicket(t: UploadTicket): Promise<string> {

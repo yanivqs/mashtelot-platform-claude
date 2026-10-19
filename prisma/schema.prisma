@@ -461,19 +461,31 @@ model PrintProduct {
 }
 
 model PrintOrder {
-  id          String           @id @default(uuid())
-  nurseryId   String           @map("nursery_id")
-  orderedById String?          @map("ordered_by_id")
-  status      PrintOrderStatus @default(NEW)
-  totalAmount Decimal          @map("total_amount") @db.Decimal(10, 2)
-  notes       String?
-  artworkUrl  String?          @map("artwork_url")
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
-  items       PrintOrderItem[]
-  nursery     Nursery          @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
-  orderedBy   User?            @relation(fields: [orderedById], references: [id])
-  artworks    PrintArtwork[]
+  id               String                @id @default(uuid())
+  nurseryId        String                @map("nursery_id")
+  orderedById      String?               @map("ordered_by_id")
+  status           PrintOrderStatus      @default(NEW)
+  totalAmount      Decimal               @map("total_amount") @db.Decimal(10, 2)
+  notes            String?
+  artworkUrl       String?               @map("artwork_url")
+  /// PT-06: מצב ייצור — השחרור (RELEASED) רק דרך שער השחרור
+  productionStatus PrintProductionStatus @default(PENDING) @map("production_status")
+  /// אישור מפרט של הזמנה חד-פעמית בידי בית הדפוס (במוצר קבוע — גרסת המפרט שאושרה)
+  specApprovedAt   DateTime?             @map("spec_approved_at")
+  specApprovedBy   String?               @map("spec_approved_by")
+  productionFileId String?               @map("production_file_id")
+  releasedAt       DateTime?             @map("released_at")
+  releasedBy       String?               @map("released_by")
+  /// מה אושר בעת השחרור: גרסאות מפרט וגרפיקה, קובץ הייצור וחתימתו — אינו משתנה
+  releaseSnapshot  Json?                 @map("release_snapshot")
+  productionNote   String?               @map("production_note")
+  productionFile   PrintFile?            @relation("ProductionFile", fields: [productionFileId], references: [id], onDelete: NoAction)
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+  items            PrintOrderItem[]
+  nursery          Nursery               @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  orderedBy        User?                 @relation(fields: [orderedById], references: [id])
+  artworks         PrintArtwork[]
 
   @@map("print_orders")
 }
@@ -773,20 +785,22 @@ model CatalogSyncDecision {
 
 /// PT-02: מוצר דפוס מרכזי (נספח א — PrintCatalogProduct). ההגדרה עצמה בגרסאות.
 model PrintTemplate {
-  id            String                 @id @default(uuid())
-  title         String
-  description   String?
-  category      String?
+  id              String                 @id @default(uuid())
+  title           String
+  description     String?
+  category        String?
   /// תמונת דוגמה של המוצר (החלטת בעלים: ללא הדמיית ערכים)
-  imageUrl      String?                @map("image_url")
-  unitLabel     String?                @map("unit_label")
-  leadTimeDays  Int?                   @map("lead_time_days")
-  isActive      Boolean                @default(false) @map("is_active")
-  sortOrder     Int                    @default(0) @map("sort_order")
-  createdAt     DateTime               @default(now()) @map("created_at")
-  updatedAt     DateTime               @updatedAt @map("updated_at")
-  versions      PrintTemplateVersion[]
-  savedProducts PrintSavedProduct[]
+  imageUrl        String?                @map("image_url")
+  /// PT-06: האם נדרשת גרפיקה מאושרת לשחרור לייצור
+  requiresArtwork Boolean                @default(true) @map("requires_artwork")
+  unitLabel       String?                @map("unit_label")
+  leadTimeDays    Int?                   @map("lead_time_days")
+  isActive        Boolean                @default(false) @map("is_active")
+  sortOrder       Int                    @default(0) @map("sort_order")
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+  versions        PrintTemplateVersion[]
+  savedProducts   PrintSavedProduct[]
 
   @@map("print_templates")
 }
@@ -897,6 +911,7 @@ model PrintFile {
   nursery      Nursery               @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
   artworkOf    PrintArtworkVersion[] @relation("ArtworkFile")
   proofOf      PrintArtworkVersion[] @relation("ProofFile")
+  productionOf PrintOrder[]          @relation("ProductionFile")
 
   @@index([nurseryId])
   @@map("print_files")
@@ -955,4 +970,13 @@ model PrintArtworkVersion {
 
   @@unique([artworkId, version])
   @@map("print_artwork_versions")
+}
+
+enum PrintProductionStatus {
+  PENDING
+  RELEASED
+  IN_PRODUCTION
+  QC
+  COMPLETED
+  BLOCKED
 }

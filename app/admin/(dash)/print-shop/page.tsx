@@ -9,6 +9,7 @@ import { SavedProducts, type SavedVM } from './saved-products';
 import type { CleanValues } from '@/lib/print-template';
 import { artworkInclude, artworkVersionsVM } from '@/lib/print-artwork-view';
 import { ArtworkPanel } from '@/components/print/artwork-panel';
+import { PRODUCTION_LABELS, type ProductionStatus } from '@/lib/print-release';
 import { parseFields, parsePricing } from '@/lib/print-template';
 
 export const dynamic = 'force-dynamic';
@@ -151,8 +152,15 @@ export default async function PrintShopPage() {
                   <span className="text-sm text-gray-500">
                     {o.createdAt.toLocaleDateString('he-IL')}
                   </span>
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                    {STATUS_LABEL[o.status] ?? o.status}
+                  <span className="flex gap-1.5">
+                    {o.items.some((i) => i.templateVersionId) && o.status !== 'QUOTE_REQUESTED' && (
+                      <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
+                        ייצור: {PRODUCTION_LABELS[o.productionStatus as ProductionStatus]}
+                      </span>
+                    )}
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                      {STATUS_LABEL[o.status] ?? o.status}
+                    </span>
                   </span>
                 </div>
                 <ul className="mt-2 text-sm text-gray-600">

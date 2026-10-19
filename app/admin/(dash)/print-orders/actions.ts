@@ -7,6 +7,10 @@ import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
 import { parsePriceTiers } from '@/lib/print-pricing';
 import { recordAudit } from '@/lib/audit';
+import { approveOrderSpec, moveProduction, releaseOrder } from '@/lib/print-production';
+import type { ProductionStatus } from '@/lib/print-release';
+
+const PRODUCTION_STATUSES: ProductionStatus[] = ['PENDING', 'RELEASED', 'IN_PRODUCTION', 'QC', 'COMPLETED', 'BLOCKED'];
 
 const VALID: PrintOrderStatus[] = [
   'NEW',
@@ -27,6 +31,11 @@ export async function updatePrintOrderStatus(formData: FormData): Promise<void> 
   const id = String(formData.get('id') || '');
   const status = String(formData.get('status') || '') as PrintOrderStatus;
   if (!id || !VALID.includes(status)) return;
+  // PT-06: הזמנה מתבנית לא עוברת ל"בהפקה" בלי שחרור דרך השער
+  if (status === 'IN_PRODUCTION') {
+    const o = await prisma.printOrder.findUnique({ where: { id }, select: { releasedAt: true, items: { select: { templateVersionId: true } } } });
+    if (o && !o.releasedAt && o.items.some((i) => i.templateVersionId)) return;
+  }
   await prisma.printOrder.update({ where: { id }, data: { status } });
   revalidatePath('/admin/print-orders');
 }
@@ -208,6 +217,56 @@ export async function setQuotePrice(_prev: QuoteState, formData: FormData): Prom
     entityId: id,
     metadata: { total },
   });
+  revalidatePrint();
+  return { ok: true };
+}
+
+// ---------- ייצור ושער שחרור (PT-06) ----------
+
+export interface ProductionState {
+  ok?: boolean;
+  error?: string;
+  failed?: string[];
+}
+
+async function auditOrder(orderId: string, actorEmail: string, action: string, metadata?: Record<string, unknown>) {
+  const o = await prisma.printOrder.findUnique({ where: { id: orderId }, select: { nurseryId: true } });
+  await recordAudit({ nurseryId: o?.nurseryId, actorEmail, action, entityType: 'PrintOrder', entityId: orderId, metadata });
+}
+
+export async function approveSpecAction(_prev: ProductionState, formData: FormData): Promise<ProductionState> {
+  const user = await requireUser(['SUPER_ADMIN']);
+  const id = String(formData.get('id') || '');
+  const r = await approveOrderSpec(prisma, id, user.email);
+  if (!r.ok) return { error: r.error };
+  await auditOrder(id, user.email, 'print.order_spec_approved');
+  revalidatePrint();
+  return { ok: true };
+}
+
+/** שחרור לייצור — השער נבדק בשרת (מפרט + גרפיקה + קובץ ייצור עם חתימה + הרשאה). */
+export async function releaseAction(_prev: ProductionState, formData: FormData): Promise<ProductionState> {
+  const user = await requireUser(['SUPER_ADMIN']);
+  const id = String(formData.get('id') || '');
+  const r = await releaseOrder(prisma, id, user.email, user.role === 'SUPER_ADMIN');
+  if (!r.ok) {
+    await auditOrder(id, user.email, 'print.release_refused', { reason: r.error });
+    return { error: r.error, failed: 'checks' in r ? r.checks.filter((c) => !c.ok).map((c) => c.label) : undefined };
+  }
+  await auditOrder(id, user.email, 'print.released');
+  revalidatePrint();
+  return { ok: true };
+}
+
+export async function moveProductionAction(_prev: ProductionState, formData: FormData): Promise<ProductionState> {
+  const user = await requireUser(['SUPER_ADMIN']);
+  const id = String(formData.get('id') || '');
+  const to = String(formData.get('to') || '') as ProductionStatus;
+  if (!PRODUCTION_STATUSES.includes(to)) return { error: 'מצב לא מוכר' };
+  const note = String(formData.get('note') || '');
+  const r = await moveProduction(prisma, id, to, note);
+  if (!r.ok) return { error: r.error };
+  await auditOrder(id, user.email, 'print.production_moved', { to, note: note || undefined });
   revalidatePrint();
   return { ok: true };
 }

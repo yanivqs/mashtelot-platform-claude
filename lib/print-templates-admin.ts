@@ -24,6 +24,7 @@ export interface TemplateMeta {
   imageUrl: string | null;
   unitLabel: string | null;
   leadTimeDays: number | null;
+  requiresArtwork?: boolean;
   isActive: boolean;
 }
 

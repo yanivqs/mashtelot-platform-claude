@@ -4,6 +4,14 @@ import { prisma } from '@/lib/prisma';
 import { formatPrice } from '@/lib/utils';
 import Link from 'next/link';
 import { PrintStatusSelect, QuotePriceForm } from './controls';
+import { ProductionPanel, type ProductionVM } from './production-panel';
+import { gateFor } from '@/lib/print-production';
+import { nextStatuses, type ProductionStatus } from '@/lib/print-release';
+import { signDownloadUrl } from '@/lib/print-storage';
+
+const dateFmt = new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', dateStyle: 'short', timeStyle: 'short' });
+
+type Snapshot = { productionFile?: { sha256: string }; items?: Array<{ title: string | null; artwork: { version: number } | null }> };
 
 export const dynamic = 'force-dynamic';
 
@@ -16,11 +24,43 @@ export default async function PrintOrdersPage() {
         nursery: { select: { name: true } },
         orderedBy: { select: { email: true } },
         items: { include: { printProduct: { select: { title: true } } } },
+        productionFile: true,
       },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.printProduct.count(),
   ]);
+
+  // PT-06: פאנל ייצור להזמנות מתבנית (הזמנות ממוצרים ישנים — בזרימה הקודמת)
+  const production = new Map<string, ProductionVM>();
+  for (const o of orders) {
+    if (!o.items.some((i) => i.templateVersionId) || o.status === 'QUOTE_REQUESTED') continue;
+    const gate = await gateFor(prisma, o.id, true);
+    if (!gate) continue;
+    const snap = o.releaseSnapshot as Snapshot | null;
+    const status = o.productionStatus as ProductionStatus;
+    production.set(o.id, {
+      orderId: o.id,
+      status,
+      released: Boolean(o.releasedAt),
+      gate,
+      needsSpecApproval: !o.specApprovedAt && o.items.some((i) => i.templateVersionId && !i.savedRevisionId),
+      productionFile: o.productionFile
+        ? { name: o.productionFile.originalName, url: await signDownloadUrl(o.productionFile.id), sha256: o.productionFile.sha256 }
+        : null,
+      snapshot:
+        o.releasedAt && snap
+          ? {
+              at: dateFmt.format(o.releasedAt),
+              by: o.releasedBy,
+              fileSha: snap.productionFile?.sha256 ?? '',
+              artworks: (snap.items ?? []).filter((i) => i.artwork).map((i) => `${i.title ?? ''} — גרסה ${i.artwork!.version}`),
+            }
+          : null,
+      note: o.productionNote,
+      next: nextStatuses(status, Boolean(o.releasedAt)),
+    });
+  }
 
   return (
     <div className="max-w-4xl space-y-10">
@@ -79,6 +119,11 @@ export default async function PrintOrdersPage() {
                   </li>
                 ))}
               </ul>
+              {production.has(o.id) && (
+                <div className="mt-3">
+                  <ProductionPanel p={production.get(o.id)!} />
+                </div>
+              )}
               {(o.notes || o.artworkUrl) && (
                 <div className="mt-2 space-y-1 text-sm">
                   {o.notes && <p className="text-gray-500">הערות: {o.notes}</p>}

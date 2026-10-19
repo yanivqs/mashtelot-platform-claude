@@ -7,6 +7,7 @@ import { nurseryActionScope } from '@/lib/nursery-scope';
 import { recordAudit } from '@/lib/audit';
 import { newStorageKey, signUploadTicket, storageDriver, verifyUploadTicket, type UploadTarget } from '@/lib/print-storage';
 import { addArtworkVersion, attachProof, decideArtwork, ownsSubject, registerFile, type Subject } from '@/lib/print-artwork';
+import { setProductionFile } from '@/lib/print-production';
 
 export interface UploadStart {
   ok?: boolean;
@@ -55,6 +56,21 @@ export async function startProofUpload(versionId: string): Promise<UploadStart> 
   }
 }
 
+/** בית הדפוס: קישור העלאה חתום לקובץ הייצור של הזמנה (לפני שחרור בלבד). */
+export async function startProductionUpload(orderId: string): Promise<UploadStart> {
+  await requireUser(['SUPER_ADMIN']);
+  const o = await prisma.printOrder.findUnique({ where: { id: String(orderId) }, select: { id: true, nurseryId: true, releasedAt: true } });
+  if (!o) return { error: 'ההזמנה לא נמצאה' };
+  if (o.releasedAt) return { error: 'ההזמנה כבר שוחררה — קובץ הייצור נעול' };
+  const key = newStorageKey(o.nurseryId, 'PRODUCTION');
+  const ticket = await signUploadTicket({ key, nurseryId: o.nurseryId, kind: 'PRODUCTION', target: { productionOrderId: o.id } });
+  try {
+    return { ok: true, target: await storageDriver().uploadTarget(key, ticket), ticket };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'האחסון אינו זמין' };
+  }
+}
+
 /**
  * סיום העלאה: הכרטיס נבדק, הקובץ נקרא מהאחסון ונבדק לפי התוכן; קובץ לא תקין נמחק.
  * גרפיקה — רק בעל המשתלה של הכרטיס; הגהה — רק בית הדפוס.
@@ -69,6 +85,7 @@ export async function finishUpload(input: { ticket: string; originalName: string
     if (!scope.ok || scope.nurseryId !== t.nurseryId) return { error: 'אין הרשאה' };
     actorEmail = scope.user.email;
   } else {
+    // הגהה וקובץ ייצור — בית הדפוס בלבד
     actorEmail = (await requireUser(['SUPER_ADMIN'])).email;
   }
 
@@ -92,10 +109,15 @@ export async function finishUpload(input: { ticket: string; originalName: string
     const r = subject ? await addArtworkVersion(prisma, { nurseryId: t.nurseryId, subject, fileId: reg.fileId, actorEmail }) : null;
     if (!r?.ok) return { error: r?.error ?? 'שגיאה' };
     await recordAudit({ nurseryId: t.nurseryId, actorEmail, action: 'print.artwork_uploaded', entityType: 'PrintArtworkVersion', entityId: r.versionId, metadata: { version: r.version } });
-  } else {
+  } else if (t.kind === 'PROOF') {
     const r = await attachProof(prisma, { versionId: String(t.target.versionId ?? ''), fileId: reg.fileId, actorEmail });
     if (!r.ok) return { error: r.error };
     await recordAudit({ nurseryId: t.nurseryId, actorEmail, action: 'print.proof_sent', entityType: 'PrintArtworkVersion', entityId: t.target.versionId });
+  } else {
+    const r = await setProductionFile(prisma, String(t.target.productionOrderId ?? ''), reg.fileId);
+    if (!r.ok) return { error: r.error };
+    await recordAudit({ nurseryId: t.nurseryId, actorEmail, action: 'print.production_file_uploaded', entityType: 'PrintOrder', entityId: t.target.productionOrderId, metadata: { fileId: reg.fileId } });
+    revalidatePath('/admin/print-orders');
   }
   revalidateAll();
   return { ok: true };

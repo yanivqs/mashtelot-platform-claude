@@ -31,6 +31,7 @@ function readMeta(formData: FormData): TemplateMeta {
     imageUrl: s('imageUrl'),
     unitLabel: s('unitLabel'),
     leadTimeDays: lead === null ? null : Number(lead),
+    requiresArtwork: formData.get('requiresArtwork') === 'on',
     isActive: formData.get('isActive') === 'on',
   };
 }

@@ -53,6 +53,11 @@ export async function addArtworkVersion(
   args: { nurseryId: string; subject: Subject; fileId: string; actorEmail: string | null },
 ): Promise<VersionResult> {
   if (!(await ownsSubject(db, args.nurseryId, args.subject))) return { ok: false, error: 'לא נמצא' };
+  // PT-06: אחרי שחרור לייצור הגרפיקה של ההזמנה נעולה
+  if ('printOrderId' in args.subject) {
+    const o = await db.printOrder.findUnique({ where: { id: args.subject.printOrderId }, select: { releasedAt: true } });
+    if (o?.releasedAt) return { ok: false, error: 'ההזמנה כבר שוחררה לייצור — לשינוי פנו לבית הדפוס' };
+  }
   const file = await db.printFile.findFirst({ where: { id: args.fileId, nurseryId: args.nurseryId, kind: 'ARTWORK' } });
   if (!file) return { ok: false, error: 'הקובץ לא נמצא' };
   return db.$transaction(async (tx) => {
