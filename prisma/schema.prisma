@@ -59,6 +59,7 @@ model Nursery {
   redirects       Redirect[]
   productVariants ProductVariant[]
   syncDecisions   CatalogSyncDecision[]
+  printSaved      PrintSavedProduct[]
   printOrders     PrintOrder[]
   promotions      Promotion[]
   users           User[]
@@ -491,6 +492,9 @@ model PrintOrderItem {
   printOrder        PrintOrder            @relation(fields: [printOrderId], references: [id], onDelete: Cascade)
   printProduct      PrintProduct?         @relation(fields: [printProductId], references: [id], onDelete: Restrict)
   templateVersion   PrintTemplateVersion? @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
+  /// PT-04: הזמנה ממוצר קבוע — גרסת המפרט המאושרת שממנה הוזמן
+  savedRevisionId   String?               @map("saved_revision_id")
+  savedRevision     PrintSavedRevision?   @relation(fields: [savedRevisionId], references: [id], onDelete: Restrict)
 
   @@map("print_order_items")
 }
@@ -766,19 +770,20 @@ model CatalogSyncDecision {
 
 /// PT-02: מוצר דפוס מרכזי (נספח א — PrintCatalogProduct). ההגדרה עצמה בגרסאות.
 model PrintTemplate {
-  id           String                 @id @default(uuid())
-  title        String
-  description  String?
-  category     String?
+  id            String                 @id @default(uuid())
+  title         String
+  description   String?
+  category      String?
   /// תמונת דוגמה של המוצר (החלטת בעלים: ללא הדמיית ערכים)
-  imageUrl     String?                @map("image_url")
-  unitLabel    String?                @map("unit_label")
-  leadTimeDays Int?                   @map("lead_time_days")
-  isActive     Boolean                @default(false) @map("is_active")
-  sortOrder    Int                    @default(0) @map("sort_order")
-  createdAt    DateTime               @default(now()) @map("created_at")
-  updatedAt    DateTime               @updatedAt @map("updated_at")
-  versions     PrintTemplateVersion[]
+  imageUrl      String?                @map("image_url")
+  unitLabel     String?                @map("unit_label")
+  leadTimeDays  Int?                   @map("lead_time_days")
+  isActive      Boolean                @default(false) @map("is_active")
+  sortOrder     Int                    @default(0) @map("sort_order")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+  versions      PrintTemplateVersion[]
+  savedProducts PrintSavedProduct[]
 
   @@map("print_templates")
 }
@@ -791,21 +796,74 @@ enum PrintTemplateStatus {
 
 /// PT-02/03/07: גרסת תבנית — סכמת שדות ותמחור. גרסה שפורסמה אינה משתנה (trigger).
 model PrintTemplateVersion {
-  id          String              @id @default(uuid())
-  templateId  String              @map("template_id")
-  version     Int
-  status      PrintTemplateStatus @default(DRAFT)
-  fields      Json
-  pricing     Json
-  notes       String?
-  createdBy   String?             @map("created_by")
-  publishedAt DateTime?           @map("published_at")
-  publishedBy String?             @map("published_by")
-  createdAt   DateTime            @default(now()) @map("created_at")
-  updatedAt   DateTime            @updatedAt @map("updated_at")
-  template    PrintTemplate       @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  orderItems  PrintOrderItem[]
+  id             String               @id @default(uuid())
+  templateId     String               @map("template_id")
+  version        Int
+  status         PrintTemplateStatus  @default(DRAFT)
+  fields         Json
+  pricing        Json
+  notes          String?
+  createdBy      String?              @map("created_by")
+  publishedAt    DateTime?            @map("published_at")
+  publishedBy    String?              @map("published_by")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+  template       PrintTemplate        @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  orderItems     PrintOrderItem[]
+  savedRevisions PrintSavedRevision[]
 
   @@unique([templateId, version])
   @@map("print_template_versions")
+}
+
+/// PT-04: מוצר דפוס קבוע של משתלה (נספח א — TenantSavedPrintProduct). המפרט עצמו בגרסאות נעולות.
+model PrintSavedProduct {
+  id               String               @id @default(uuid())
+  nurseryId        String               @map("nursery_id")
+  templateId       String               @map("template_id")
+  /// שם פנימי של המשתלה ("מדבקה לעציץ 1 ליטר — לוגו")
+  name             String
+  isArchived       Boolean              @default(false) @map("is_archived")
+  /// גרסת המפרט המאושרת שממנה מזמינים
+  activeRevisionId String?              @unique @map("active_revision_id")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  nursery          Nursery              @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  template         PrintTemplate        @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  activeRevision   PrintSavedRevision?  @relation("ActiveRevision", fields: [activeRevisionId], references: [id], onDelete: SetNull)
+  revisions        PrintSavedRevision[] @relation("Revisions")
+
+  @@index([nurseryId])
+  @@map("print_saved_products")
+}
+
+enum PrintSpecStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  SUPERSEDED
+}
+
+/// PT-04: צילום בלתי משתנה של מפרט (גרסת תבנית + ערכים). מאושר פעם אחת בידי בית הדפוס; שינוי = גרסה חדשה.
+model PrintSavedRevision {
+  id                String               @id @default(uuid())
+  savedProductId    String               @map("saved_product_id")
+  nurseryId         String               @map("nursery_id")
+  revision          Int
+  templateVersionId String               @map("template_version_id")
+  /// { raw, display } — כמו ב-Snapshot של הזמנה
+  values            Json
+  status            PrintSpecStatus      @default(SUBMITTED)
+  submittedBy       String?              @map("submitted_by")
+  submittedAt       DateTime             @default(now()) @map("submitted_at")
+  reviewedBy        String?              @map("reviewed_by")
+  reviewedAt        DateTime?            @map("reviewed_at")
+  reviewNote        String?              @map("review_note")
+  savedProduct      PrintSavedProduct    @relation("Revisions", fields: [savedProductId], references: [id], onDelete: Cascade)
+  activeFor         PrintSavedProduct?   @relation("ActiveRevision")
+  templateVersion   PrintTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
+  orderItems        PrintOrderItem[]
+
+  @@unique([savedProductId, revision])
+  @@map("print_saved_revisions")
 }

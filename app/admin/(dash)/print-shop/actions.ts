@@ -7,6 +7,7 @@ import { nurseryActionScope } from '@/lib/nursery-scope';
 import { parsePriceTiers, printLinePrice, type SelectedOption } from '@/lib/print-pricing';
 import { recordAudit } from '@/lib/audit';
 import { createTemplateOrder } from '@/lib/print-templates-admin';
+import { archiveSaved, orderSaved, submitSpec } from '@/lib/print-saved';
 
 export interface PrintOrderInput {
   items: Array<{ productId: string; quantity: number; customText?: string; optionIds?: string[] }>;
@@ -136,4 +137,85 @@ export async function createTemplateOrderAction(input: TemplateOrderInput): Prom
   revalidatePath('/admin/print-shop');
   revalidatePath('/admin/print-orders');
   return { ok: true, orderId: res.orderId, quoteOnly: res.quote.quoteOnly, total: res.quote.total };
+}
+
+// ---------- מוצרים קבועים (PT-04) ----------
+
+export interface SpecResult {
+  ok?: boolean;
+  error?: string;
+  fieldErrors?: Record<string, string>;
+}
+
+/** הגשת מפרט לאישור בית הדפוס: מוצר קבוע חדש (עם שם) או בקשת שינוי למוצר קיים. */
+export async function submitSpecAction(input: {
+  templateVersionId: string;
+  values: Record<string, unknown>;
+  name?: string;
+  savedProductId?: string | null;
+}): Promise<SpecResult> {
+  const scope = await nurseryActionScope({ all: ['print_shop'] });
+  if (!scope.ok) return { error: scope.error };
+  const res = await submitSpec(prisma, {
+    nurseryId: scope.nurseryId,
+    actorEmail: scope.user.email,
+    templateVersionId: String(input.templateVersionId ?? ''),
+    values: input.values && typeof input.values === 'object' ? input.values : {},
+    name: typeof input.name === 'string' ? input.name : undefined,
+    savedProductId: typeof input.savedProductId === 'string' ? input.savedProductId : null,
+  });
+  if (!res.ok) return { error: res.error, fieldErrors: res.fieldErrors };
+  await recordAudit({
+    nurseryId: scope.nurseryId,
+    actorEmail: scope.user.email,
+    action: input.savedProductId ? 'print.spec_change_requested' : 'print.spec_submitted',
+    entityType: 'PrintSavedProduct',
+    entityId: res.savedProductId,
+    metadata: { revision: res.revision },
+  });
+  revalidatePath('/admin/print-shop');
+  revalidatePath('/admin/print-specs');
+  return { ok: true };
+}
+
+export interface ReorderResult {
+  ok?: boolean;
+  error?: string;
+  total?: number;
+  quoteOnly?: boolean;
+}
+
+/** הזמנה חוזרת ממוצר קבוע מאושר — כמות והערות בלבד. */
+export async function reorderSavedAction(input: { savedProductId: string; quantity: number; notes?: string }): Promise<ReorderResult> {
+  const scope = await nurseryActionScope({ all: ['print_shop'] });
+  if (!scope.ok) return { error: scope.error };
+  const res = await orderSaved(prisma, {
+    nurseryId: scope.nurseryId,
+    userId: scope.user.id,
+    savedProductId: String(input.savedProductId ?? ''),
+    quantity: Number(input.quantity),
+    notes: typeof input.notes === 'string' ? input.notes : null,
+  });
+  if (!res.ok) return { error: res.error };
+  await recordAudit({
+    nurseryId: scope.nurseryId,
+    actorEmail: scope.user.email,
+    action: 'print.reorder',
+    entityType: 'PrintOrder',
+    entityId: res.orderId,
+    metadata: { savedProductId: input.savedProductId, quantity: res.quote.quantity, total: res.quote.total },
+  });
+  revalidatePath('/admin/print-shop');
+  revalidatePath('/admin/print-orders');
+  return { ok: true, total: res.quote.total, quoteOnly: res.quote.quoteOnly };
+}
+
+export async function archiveSavedAction(formData: FormData): Promise<void> {
+  const scope = await nurseryActionScope({ all: ['print_shop'] });
+  if (!scope.ok) return;
+  const id = String(formData.get('id') || '');
+  if (await archiveSaved(prisma, scope.nurseryId, id)) {
+    await recordAudit({ nurseryId: scope.nurseryId, actorEmail: scope.user.email, action: 'print.saved_archived', entityType: 'PrintSavedProduct', entityId: id });
+  }
+  revalidatePath('/admin/print-shop');
 }

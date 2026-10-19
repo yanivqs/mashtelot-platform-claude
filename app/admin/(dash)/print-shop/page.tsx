@@ -5,6 +5,8 @@ import { formatPrice } from '@/lib/utils';
 import { parsePriceTiers } from '@/lib/print-pricing';
 import { PrintOrderForm, type PrintProductVM } from './order-form';
 import { TemplateCatalog, type TemplateVM } from './template-order';
+import { SavedProducts, type SavedVM } from './saved-products';
+import type { CleanValues } from '@/lib/print-template';
 import { parseFields, parsePricing } from '@/lib/print-template';
 
 export const dynamic = 'force-dynamic';
@@ -58,6 +60,35 @@ export default async function PrintShopPage() {
     }];
   });
 
+  // PT-04: המוצרים הקבועים של המשתלה — מפרט מאושר, בקשה אחרונה, וטופס שינוי לפי הגרסה המפורסמת
+  const saved = await prisma.printSavedProduct.findMany({
+    where: { nurseryId, isArchived: false },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      template: { include: { versions: { where: { status: 'PUBLISHED' } } } },
+      activeRevision: { include: { templateVersion: true } },
+      revisions: { orderBy: { revision: 'desc' }, take: 1 },
+    },
+  });
+  const savedVm: SavedVM[] = saved.map((s) => {
+    const a = s.activeRevision;
+    const af = a ? parseFields(a.templateVersion.fields) : null;
+    const ap = a ? parsePricing(a.templateVersion.pricing) : null;
+    const av = (a?.values ?? {}) as { raw?: CleanValues; display?: Array<{ label: string; value: string }> };
+    const latest = s.revisions[0];
+    const pub = s.template.isActive ? s.template.versions[0] : undefined;
+    const pf = pub ? parseFields(pub.fields) : null;
+    const prefillFrom = (latest?.values ?? a?.values ?? {}) as { raw?: CleanValues };
+    return {
+      id: s.id,
+      name: s.name,
+      templateTitle: s.template.title,
+      active: a && af?.ok && ap?.ok ? { revision: a.revision, display: av.display ?? [], raw: av.raw ?? {}, fields: af.value, pricing: ap.value } : null,
+      latest: latest && (latest.status === 'SUBMITTED' || latest.status === 'REJECTED') ? { revision: latest.revision, status: latest.status, note: latest.reviewNote } : null,
+      change: pub && pf?.ok ? { templateVersionId: pub.id, fields: pf.value, prefill: prefillFrom.raw ?? {} } : null,
+    };
+  });
+
   const vm: PrintProductVM[] = products.map((p) => ({
     id: p.id,
     title: p.title,
@@ -80,6 +111,13 @@ export default async function PrintShopPage() {
       <p className="mb-6 text-sm text-gray-500">
         הזמנת שלטים, תוויות ופריטי מיתוג לחנות מבית הדפוס של הפלטפורמה.
       </p>
+
+      {savedVm.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-lg font-bold">המוצרים הקבועים שלי</h2>
+          <SavedProducts items={savedVm} />
+        </section>
+      )}
 
       {templateVm.length > 0 && (
         <section className="mb-8">

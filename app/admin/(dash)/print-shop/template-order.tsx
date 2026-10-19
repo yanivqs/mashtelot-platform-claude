@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { TemplateFields } from '@/components/print/template-fields';
 import { quotePrint, validateValues, type RawValues, type TemplateField, type TemplatePricing } from '@/lib/print-template';
 import { formatPrice } from '@/lib/utils';
-import { createTemplateOrderAction } from './actions';
+import { createTemplateOrderAction, submitSpecAction } from './actions';
 
 export interface TemplateVM {
   versionId: string;
@@ -27,6 +27,21 @@ function OrderForm({ t }: { t: TemplateVM }) {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // PT-04: שמירה כמוצר קבוע (הגשת מפרט לאישור בית הדפוס) במקום הזמנה חד-פעמית
+  const [saveMode, setSaveMode] = useState(false);
+  const [savedName, setSavedName] = useState('');
+
+  function submitSpec() {
+    setError(null);
+    start(async () => {
+      const res = await submitSpecAction({ templateVersionId: t.versionId, values, name: savedName });
+      if (res.ok) setDone('המוצר הקבוע נשלח לאישור בית הדפוס ✓ — אחרי האישור תוכלו להזמין אותו שוב בלחיצה.');
+      else {
+        setFieldErrors(res.fieldErrors ?? {});
+        setError(res.error ?? (res.fieldErrors ? 'יש לתקן את השדות המסומנים' : 'שגיאה'));
+      }
+    });
+  }
 
   // הערכת מחיר בדפדפן — אותו חישוב שרץ בשרת, שהוא הקובע
   const checked = validateValues(t.fields, values);
@@ -85,8 +100,23 @@ function OrderForm({ t }: { t: TemplateVM }) {
         <button disabled={pending} className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60">
           {pending ? 'שולח...' : t.pricing.quoteOnly ? 'בקשת הצעת מחיר' : 'שליחת הזמנה'}
         </button>
+        <button type="button" onClick={() => setSaveMode((m) => !m)} className="text-sm font-medium text-brand-700 hover:underline">
+          {saveMode ? 'ביטול' : 'מזמינים את זה שוב ושוב? שמרו כמוצר קבוע'}
+        </button>
         {error && <span className="text-sm text-red-600">{error}</span>}
       </div>
+      {saveMode && (
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-brand-100 bg-brand-50/50 p-3">
+          <label className="text-sm">
+            <span className="mb-1 block font-medium text-gray-700">שם למוצר הקבוע</span>
+            <input value={savedName} onChange={(e) => setSavedName(e.target.value)} placeholder="למשל: מדבקת לוגו לעציץ 1 ליטר" className={input} />
+          </label>
+          <button type="button" disabled={pending} onClick={submitSpec} className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
+            הגשה לאישור בית הדפוס
+          </button>
+          <p className="w-full text-xs text-gray-500">אחרי האישור המפרט ננעל, ומזמינים ממנו שוב רק עם כמות והערות. שינוי — בבקשת שינוי לאישור.</p>
+        </div>
+      )}
     </form>
   );
 }

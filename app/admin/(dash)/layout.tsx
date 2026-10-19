@@ -20,6 +20,7 @@ import {
   KeyRound,
   ShieldCheck,
   SearchCode,
+  ClipboardCheck,
   Signpost,
   RefreshCw,
   type LucideIcon,
@@ -62,6 +63,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/nurseries', label: 'משתלות', icon: Store },
   { href: '/admin/print-orders', label: 'בית דפוס', icon: Printer },
   { href: '/admin/print-templates', label: 'תבניות דפוס', icon: FileText },
+  { href: '/admin/print-specs', label: 'אישורי מפרט', icon: ClipboardCheck },
   { href: '/admin/system', label: 'מיילים ומערכת', icon: Mail },
   { href: '/admin/search-synonyms', label: 'מילים נרדפות בחיפוש', icon: SearchCode },
   { href: '/admin/security', label: 'יומן התחברויות', icon: ShieldCheck },
@@ -102,6 +104,11 @@ async function buildOwnerNav(nurseryId: string | null): Promise<NavItem[]> {
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const isSuper = user.role === 'SUPER_ADMIN';
+  // PT-04: בקשות מפרט שממתינות לאישור בית הדפוס
+  const pendingSpecs = isSuper ? await prisma.printSavedRevision.count({ where: { status: 'SUBMITTED' } }) : 0;
+  const superNav = adminNav.map((item) =>
+    item.href === '/admin/print-specs' && pendingSpecs > 0 ? { ...item, label: `${item.label} (${pendingSpecs})` } : item,
+  );
 
   let ownerNav: NavItem[] = [];
   let storeUrl: string | null = null;
@@ -154,7 +161,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 <LayoutDashboard className="h-4 w-4" />
                 סקירה
               </Link>
-              {adminNav.map(({ href, label, icon: Icon }) => (
+              {superNav.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
