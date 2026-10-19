@@ -4,7 +4,12 @@ import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import type { NurseryPaymentMethod } from '@prisma/client';
 import { savePaymentMethods, type SavePaymentMethodsState } from './payment-actions';
-import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '@/lib/payment-methods';
+import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, PAYMENT_DESTINATION_LABELS } from '@/lib/payment-methods';
+
+const HINTS: Partial<Record<string, string>> = {
+  PAY_ON_PICKUP: 'מוצג ללקוח רק כשבחר איסוף עצמי.',
+  PAY_ON_DELIVERY: 'מוצג ללקוח רק כשבחר משלוח.',
+};
 
 const initial: SavePaymentMethodsState = {};
 const field =
@@ -30,6 +35,7 @@ export function PaymentMethodsForm({ methods }: { methods: NurseryPaymentMethod[
     <form action={action} className="space-y-4">
       {PAYMENT_METHODS.map((method) => {
         const row = byMethod.get(method);
+        const destLabel = PAYMENT_DESTINATION_LABELS[method];
         return (
           <div key={method} className="rounded-lg border border-gray-100 p-4">
             <label className="flex items-center gap-2 text-sm font-medium text-gray-900">
@@ -40,15 +46,20 @@ export function PaymentMethodsForm({ methods }: { methods: NurseryPaymentMethod[
               />
               {PAYMENT_METHOD_LABELS[method]}
             </label>
+            {HINTS[method] && <p className="mt-1 text-xs text-gray-500">{HINTS[method]}</p>}
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <label className="text-sm">
-                <span className="mb-1 block text-gray-700">פרטי יעד (מספר טלפון / IBAN)</span>
-                <input
-                  name={`${method}_destination`}
-                  defaultValue={row?.destination ?? ''}
-                  className={field}
-                />
-              </label>
+              {destLabel && (
+                <label className="text-sm">
+                  <span className="mb-1 block text-gray-700">{destLabel}</span>
+                  <input
+                    name={`${method}_destination`}
+                    defaultValue={row?.destination ?? ''}
+                    dir={method === 'PAYPAL' ? 'ltr' : undefined}
+                    placeholder={method === 'PAYPAL' ? 'https://paypal.me/your-name' : undefined}
+                    className={field}
+                  />
+                </label>
+              )}
               <label className="text-sm">
                 <span className="mb-1 block text-gray-700">הוראות ללקוח</span>
                 <input

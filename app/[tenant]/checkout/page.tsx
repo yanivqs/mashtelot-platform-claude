@@ -8,6 +8,7 @@ import type { PaymentMethod } from '@prisma/client';
 import { useCart } from '@/components/cart/cart-provider';
 import { formatPrice } from '@/lib/utils';
 import { resolveShippingCost, type DeliveryChoice } from '@/lib/checkout-calc';
+import { isMethodAllowedFor, isPayOnSite } from '@/lib/payment-methods';
 import { createOrder, getCheckoutOptions, type CheckoutOptions } from './actions';
 
 const field =
@@ -82,7 +83,7 @@ export default function CheckoutPage() {
       shippingAddress: String(fd.get('shippingAddress') || ''),
       city,
       couponCode: String(fd.get('couponCode') || ''),
-      paymentMethod: selectedMethod || undefined,
+      paymentMethod: effectiveMethod || undefined,
       paymentReference: String(fd.get('paymentReference') || ''),
       items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       idempotencyKey,
@@ -97,7 +98,11 @@ export default function CheckoutPage() {
     setPending(false);
   }
 
-  const paymentMethods = isQuote ? [] : options?.paymentMethods ?? [];
+  // "תשלום באיסוף" רק באיסוף, "תשלום לשליח" רק במשלוח (גם נאכף בשרת)
+  const paymentMethods = (isQuote ? [] : options?.paymentMethods ?? []).filter((m) =>
+    isMethodAllowedFor(m.method, delivery),
+  );
+  const effectiveMethod = paymentMethods.some((m) => m.method === selectedMethod) ? selectedMethod : '';
 
   return (
     <div dir="rtl" className="mx-auto max-w-4xl px-6 py-10">
@@ -238,17 +243,17 @@ export default function CheckoutPage() {
                     <input
                       type="radio"
                       name="paymentMethodChoice"
-                      checked={selectedMethod === m.method}
+                      checked={effectiveMethod === m.method}
                       onChange={() => setSelectedMethod(m.method)}
                     />
                     {m.label}
                   </label>
                 ))}
               </div>
-              {selectedMethod && (
+              {effectiveMethod && (
                 <div className="mt-3 space-y-2 border-t border-gray-100 pt-3">
                   {(() => {
-                    const m = paymentMethods.find((x) => x.method === selectedMethod);
+                    const m = paymentMethods.find((x) => x.method === effectiveMethod);
                     if (!m) return null;
                     return (
                       <>
@@ -256,15 +261,29 @@ export default function CheckoutPage() {
                           <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">
                             {m.instructions}
                             {m.instructions && m.destination ? ' · ' : ''}
-                            {m.destination}
+                            {m.method === 'PAYPAL' && m.destination ? (
+                              <a
+                                href={m.destination}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                dir="ltr"
+                                className="font-medium underline"
+                              >
+                                {m.destination}
+                              </a>
+                            ) : (
+                              m.destination
+                            )}
                           </p>
                         )}
-                        <label className="block text-sm">
-                          <span className="mb-1 block font-medium text-gray-700">
-                            אסמכתא / הערה לתשלום
-                          </span>
-                          <input name="paymentReference" className={field} />
-                        </label>
+                        {!isPayOnSite(m.method) && (
+                          <label className="block text-sm">
+                            <span className="mb-1 block font-medium text-gray-700">
+                              אסמכתא / הערה לתשלום
+                            </span>
+                            <input name="paymentReference" className={field} />
+                          </label>
+                        )}
                       </>
                     );
                   })()}

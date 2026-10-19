@@ -7,7 +7,12 @@ import { getSalesMode } from '@/lib/sales';
 import { tenantUrl } from '@/lib/seo';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
 import { getEnabledPaymentMethods } from '@/lib/payment-access';
-import type { EnabledPaymentMethod } from '@/lib/payment-methods';
+import {
+  isMethodAllowedFor,
+  isPaymentMethod,
+  isPayOnSite,
+  type EnabledPaymentMethod,
+} from '@/lib/payment-methods';
 import { resolveShippingZone, hasAnyShippingZone } from '@/lib/shipping';
 import { recordAudit } from '@/lib/audit';
 import { createOrderRecord } from '@/lib/order-service';
@@ -117,16 +122,6 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
   }
   const isQuote = salesMode === 'QUOTE';
 
-  // אימות אמצעי תשלום מול האפשרויות הפעילות אצל המשתלה (לא סומכים על הקלט מהלקוח)
-  let paymentMethod: PaymentMethod | null = null;
-  if (!isQuote && input.paymentMethod) {
-    const allowed = await prisma.nurseryPaymentMethod.findFirst({
-      where: { nurseryId: nursery.id, method: input.paymentMethod, isEnabled: true },
-    });
-    if (allowed) paymentMethod = input.paymentMethod;
-  }
-  const paymentReference = !isQuote ? input.paymentReference?.trim() || null : null;
-
   // אופן קבלה: איסוף עצמי / משלוח (לפי מה שהמשתלה מאפשרת)
   let deliveryMethod: DeliveryChoice;
   try {
@@ -134,6 +129,21 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'יש לבחור אופן קבלה' };
   }
+
+  // אימות אמצעי תשלום מול האפשרויות הפעילות אצל המשתלה ומול אופן הקבלה
+  // (לא סומכים על הקלט מהלקוח; "תשלום באיסוף" רק באיסוף, "תשלום לשליח" רק במשלוח)
+  let paymentMethod: PaymentMethod | null = null;
+  if (!isQuote && input.paymentMethod) {
+    if (!isPaymentMethod(input.paymentMethod) || !isMethodAllowedFor(input.paymentMethod, deliveryMethod)) {
+      return { error: 'אמצעי התשלום שנבחר אינו זמין לאופן הקבלה' };
+    }
+    const allowed = await prisma.nurseryPaymentMethod.findFirst({
+      where: { nurseryId: nursery.id, method: input.paymentMethod, isEnabled: true },
+    });
+    if (allowed) paymentMethod = input.paymentMethod;
+  }
+  const paymentReference =
+    !isQuote && !(paymentMethod && isPayOnSite(paymentMethod)) ? input.paymentReference?.trim() || null : null;
 
   let shippingAddress: string | null = null;
   let shippingZone: Awaited<ReturnType<typeof resolveShippingZone>> = null;

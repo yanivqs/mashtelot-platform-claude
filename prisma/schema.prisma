@@ -563,6 +563,9 @@ enum PaymentMethod {
   BIT
   PAYBOX
   BANK_TRANSFER
+  PAYPAL
+  PAY_ON_PICKUP
+  PAY_ON_DELIVERY
 }
 
 enum PrintOrderStatus {
