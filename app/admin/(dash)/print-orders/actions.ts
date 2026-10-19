@@ -6,6 +6,7 @@ import { Prisma, type PrintOrderStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
 import { parsePriceTiers } from '@/lib/print-pricing';
+import { recordAudit } from '@/lib/audit';
 
 const VALID: PrintOrderStatus[] = [
   'NEW',
@@ -166,4 +167,47 @@ export async function deletePrintOption(formData: FormData): Promise<void> {
   const id = String(formData.get('id') || '');
   await prisma.printGlobalOption.delete({ where: { id } }).catch(() => undefined);
   revalidatePrint();
+}
+
+// ---------- הצעת מחיר (PT-07: "הצעת מחיר בלבד") ----------
+
+export interface QuoteState {
+  ok?: boolean;
+  error?: string;
+}
+
+/** קביעת מחיר לבקשת הצעת מחיר: ההזמנה עוברת ל"התקבלה" במחיר שנקבע; מתועד ב-Audit. */
+export async function setQuotePrice(_prev: QuoteState, formData: FormData): Promise<QuoteState> {
+  const user = await requireUser(['SUPER_ADMIN']);
+  const id = String(formData.get('id') || '');
+  const total = Number(String(formData.get('total') || ''));
+  if (!Number.isFinite(total) || total <= 0) return { error: 'יש להזין סכום גדול מ-0' };
+
+  const order = await prisma.printOrder.findUnique({ where: { id }, include: { items: true } });
+  if (!order || order.status !== 'QUOTE_REQUESTED') return { error: 'ההזמנה אינה ממתינה להצעת מחיר' };
+  const units = order.items.reduce((s, i) => s + i.quantity, 0) || 1;
+
+  // מותנה בסטטוס — שתי קביעות מקבילות לא יחולו פעמיים
+  const res = await prisma.$transaction(async (tx) => {
+    const r = await tx.printOrder.updateMany({
+      where: { id, status: 'QUOTE_REQUESTED' },
+      data: { status: 'NEW', totalAmount: total.toFixed(2) },
+    });
+    if (r.count !== 1) return false;
+    for (const it of order.items) {
+      await tx.printOrderItem.update({ where: { id: it.id }, data: { unitPrice: (total / units).toFixed(2) } });
+    }
+    return true;
+  });
+  if (!res) return { error: 'ההזמנה עודכנה במקביל — רעננו' };
+  await recordAudit({
+    nurseryId: order.nurseryId,
+    actorEmail: user.email,
+    action: 'print.quote_priced',
+    entityType: 'PrintOrder',
+    entityId: id,
+    metadata: { total },
+  });
+  revalidatePrint();
+  return { ok: true };
 }

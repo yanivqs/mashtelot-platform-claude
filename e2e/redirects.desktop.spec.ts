@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { ADMIN, SHOP } from '../playwright.config';
 import { E2E_OWNER } from './global-setup';
 

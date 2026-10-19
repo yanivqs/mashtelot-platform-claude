@@ -475,15 +475,22 @@ model PrintOrder {
 }
 
 model PrintOrderItem {
-  id             String       @id @default(uuid())
-  printOrderId   String       @map("print_order_id")
-  printProductId String       @map("print_product_id")
-  quantity       Int
-  unitPrice      Decimal      @map("unit_price") @db.Decimal(10, 2)
-  customText     String?      @map("custom_text")
-  options        Json?
-  printOrder     PrintOrder   @relation(fields: [printOrderId], references: [id], onDelete: Cascade)
-  printProduct   PrintProduct @relation(fields: [printProductId], references: [id])
+  id                String                @id @default(uuid())
+  printOrderId      String                @map("print_order_id")
+  /// מוצר דפוס ישן (לפני התבניות); ריק בפריט מתבנית
+  printProductId    String?               @map("print_product_id")
+  quantity          Int
+  unitPrice         Decimal               @map("unit_price") @db.Decimal(10, 2)
+  customText        String?               @map("custom_text")
+  options           Json?
+  /// PT-07: Snapshot — גרסת התבנית, שם המוצר, הערכים שנבדקו בשרת ופירוט המחיר בעת ההזמנה
+  templateVersionId String?               @map("template_version_id")
+  title             String?
+  values            Json?
+  priceBreakdown    Json?                 @map("price_breakdown")
+  printOrder        PrintOrder            @relation(fields: [printOrderId], references: [id], onDelete: Cascade)
+  printProduct      PrintProduct?         @relation(fields: [printProductId], references: [id], onDelete: Restrict)
+  templateVersion   PrintTemplateVersion? @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
 
   @@map("print_order_items")
 }
@@ -589,6 +596,7 @@ enum PaymentMethod {
 }
 
 enum PrintOrderStatus {
+  QUOTE_REQUESTED
   NEW
   IN_PRODUCTION
   SHIPPED
@@ -754,4 +762,50 @@ model CatalogSyncDecision {
 
   @@index([nurseryId, createdAt])
   @@map("catalog_sync_decisions")
+}
+
+/// PT-02: מוצר דפוס מרכזי (נספח א — PrintCatalogProduct). ההגדרה עצמה בגרסאות.
+model PrintTemplate {
+  id           String                 @id @default(uuid())
+  title        String
+  description  String?
+  category     String?
+  /// תמונת דוגמה של המוצר (החלטת בעלים: ללא הדמיית ערכים)
+  imageUrl     String?                @map("image_url")
+  unitLabel    String?                @map("unit_label")
+  leadTimeDays Int?                   @map("lead_time_days")
+  isActive     Boolean                @default(false) @map("is_active")
+  sortOrder    Int                    @default(0) @map("sort_order")
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
+  versions     PrintTemplateVersion[]
+
+  @@map("print_templates")
+}
+
+enum PrintTemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+/// PT-02/03/07: גרסת תבנית — סכמת שדות ותמחור. גרסה שפורסמה אינה משתנה (trigger).
+model PrintTemplateVersion {
+  id          String              @id @default(uuid())
+  templateId  String              @map("template_id")
+  version     Int
+  status      PrintTemplateStatus @default(DRAFT)
+  fields      Json
+  pricing     Json
+  notes       String?
+  createdBy   String?             @map("created_by")
+  publishedAt DateTime?           @map("published_at")
+  publishedBy String?             @map("published_by")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+  template    PrintTemplate       @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  orderItems  PrintOrderItem[]
+
+  @@unique([templateId, version])
+  @@map("print_template_versions")
 }

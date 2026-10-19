@@ -4,6 +4,8 @@ import { useActionState, useRef } from 'react';
 import { useFormStatus } from 'react-dom';
 import {
   updatePrintOrderStatus,
+  setQuotePrice,
+  type QuoteState,
   savePrintOption,
   deletePrintOption,
   type PrintProductState,
@@ -95,5 +97,19 @@ export function PrintOptionForm({
         </form>
       )}
     </div>
+  );
+}
+
+/** בקשת הצעת מחיר: קביעת מחיר כולל → ההזמנה עוברת ל"התקבלה". */
+export function QuotePriceForm({ id }: { id: string }) {
+  const [state, action] = useActionState(setQuotePrice, {} as QuoteState);
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="id" value={id} />
+      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">ממתינה להצעת מחיר</span>
+      <input name="total" type="number" step="0.01" min="0" placeholder="סה״כ ₪" aria-label="מחיר כולל להצעה" className="w-28 rounded-md border border-gray-200 px-2 py-1 text-sm" />
+      <SaveButton label="קביעת מחיר" />
+      {state.error && <span className="text-xs text-red-600">{state.error}</span>}
+    </form>
   );
 }

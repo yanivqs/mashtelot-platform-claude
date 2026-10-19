@@ -1,8 +1,9 @@
+import { itemDisplay } from '@/lib/print-templates-admin';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatPrice } from '@/lib/utils';
 import Link from 'next/link';
-import { PrintStatusSelect } from './controls';
+import { PrintStatusSelect, QuotePriceForm } from './controls';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,7 +58,11 @@ export default async function PrintOrdersPage() {
                     {formatPrice(o.totalAmount.toString())}
                   </p>
                   <div className="mt-1">
-                    <PrintStatusSelect id={o.id} status={o.status} />
+                    {o.status === 'QUOTE_REQUESTED' ? (
+                      <QuotePriceForm id={o.id} />
+                    ) : (
+                      <PrintStatusSelect id={o.id} status={o.status} />
+                    )}
                   </div>
                 </div>
               </div>
@@ -65,10 +70,10 @@ export default async function PrintOrdersPage() {
                 {o.items.map((it) => (
                   <li key={it.id} className="flex justify-between py-0.5">
                     <span>
-                      {it.printProduct.title} × {it.quantity}
-                      {Array.isArray(it.options) && it.options.length > 0 &&
-                        ` · ${(it.options as Array<{ name?: string }>).map((o) => o.name).join(', ')}`}
-                      {it.customText ? ` — "${it.customText}"` : ''}
+                      {itemDisplay(it).title} × {it.quantity}
+                      {itemDisplay(it).details.length > 0 && (
+                        <span className="block text-xs text-gray-500">{itemDisplay(it).details.join(' · ')}</span>
+                      )}
                     </span>
                     <span>{formatPrice(Number(it.unitPrice) * it.quantity)}</span>
                   </li>

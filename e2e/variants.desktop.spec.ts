@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { PrismaClient } from '@prisma/client';
 import { ADMIN, SHOP } from '../playwright.config';
 import { E2E_OWNER2 } from './global-setup';

@@ -5,6 +5,8 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { nurseryActionScope } from '@/lib/nursery-scope';
 import { parsePriceTiers, printLinePrice, type SelectedOption } from '@/lib/print-pricing';
+import { recordAudit } from '@/lib/audit';
+import { createTemplateOrder } from '@/lib/print-templates-admin';
 
 export interface PrintOrderInput {
   items: Array<{ productId: string; quantity: number; customText?: string; optionIds?: string[] }>;
@@ -90,4 +92,48 @@ export async function createPrintOrder(input: PrintOrderInput): Promise<PrintOrd
   revalidatePath('/admin/print-shop');
   revalidatePath('/admin/print-orders');
   return { ok: true, orderId: order.id };
+}
+
+// ---------- הזמנה מתבנית (PT-02/03/07) ----------
+
+export interface TemplateOrderInput {
+  templateVersionId: string;
+  values: Record<string, unknown>;
+  quantity: number;
+  notes?: string;
+}
+
+export interface TemplateOrderResult {
+  ok?: boolean;
+  orderId?: string;
+  quoteOnly?: boolean;
+  total?: number;
+  error?: string;
+  fieldErrors?: Record<string, string>;
+}
+
+/** הזמנת רכש מתבנית: הערכים והמחיר נבדקים ומחושבים מחדש בשרת מול הגרסה המפורסמת. */
+export async function createTemplateOrderAction(input: TemplateOrderInput): Promise<TemplateOrderResult> {
+  const scope = await nurseryActionScope({ all: ['print_shop'] });
+  if (!scope.ok) return { error: scope.error };
+  const res = await createTemplateOrder(prisma, {
+    nurseryId: scope.nurseryId,
+    userId: scope.user.id,
+    templateVersionId: String(input.templateVersionId ?? ''),
+    values: input.values && typeof input.values === 'object' ? input.values : {},
+    quantity: Number(input.quantity),
+    notes: typeof input.notes === 'string' ? input.notes : null,
+  });
+  if (!res.ok) return { error: res.error, fieldErrors: res.fieldErrors };
+  await recordAudit({
+    nurseryId: scope.nurseryId,
+    actorEmail: scope.user.email,
+    action: res.quote.quoteOnly ? 'print.quote_requested' : 'print.order_created',
+    entityType: 'PrintOrder',
+    entityId: res.orderId,
+    metadata: { templateVersionId: input.templateVersionId, quantity: res.quote.quantity, total: res.quote.total },
+  });
+  revalidatePath('/admin/print-shop');
+  revalidatePath('/admin/print-orders');
+  return { ok: true, orderId: res.orderId, quoteOnly: res.quote.quoteOnly, total: res.quote.total };
 }

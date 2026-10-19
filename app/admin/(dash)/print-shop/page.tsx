@@ -1,12 +1,16 @@
+import { itemDisplay } from '@/lib/print-templates-admin';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryPage } from '@/lib/nursery-scope';
 import { formatPrice } from '@/lib/utils';
 import { parsePriceTiers } from '@/lib/print-pricing';
 import { PrintOrderForm, type PrintProductVM } from './order-form';
+import { TemplateCatalog, type TemplateVM } from './template-order';
+import { parseFields, parsePricing } from '@/lib/print-template';
 
 export const dynamic = 'force-dynamic';
 
 const STATUS_LABEL: Record<string, string> = {
+  QUOTE_REQUESTED: 'ממתינה להצעת מחיר',
   NEW: 'התקבלה',
   IN_PRODUCTION: 'בהפקה',
   SHIPPED: 'נשלחה',
@@ -17,7 +21,13 @@ const STATUS_LABEL: Record<string, string> = {
 export default async function PrintShopPage() {
   const { nurseryId } = await requireNurseryPage({ all: ['print_shop'] });
 
-  const [products, options, orders] = await Promise.all([
+  const [templates, products, options, orders] = await Promise.all([
+    // PT-02: מוצרים מתבניות — הגרסה המפורסמת של כל תבנית פעילה
+    prisma.printTemplateVersion.findMany({
+      where: { status: 'PUBLISHED', template: { isActive: true } },
+      include: { template: true },
+      orderBy: [{ template: { sortOrder: 'asc' } }, { template: { createdAt: 'asc' } }],
+    }),
     prisma.printProduct.findMany({
       where: { isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { basePrice: 'asc' }],
@@ -31,6 +41,22 @@ export default async function PrintShopPage() {
         })
       : Promise.resolve([]),
   ]);
+
+  const templateVm: TemplateVM[] = templates.flatMap((v) => {
+    const fields = parseFields(v.fields);
+    const pricing = parsePricing(v.pricing);
+    if (!fields.ok || !pricing.ok) return [];
+    return [{
+      versionId: v.id,
+      title: v.template.title,
+      description: v.template.description,
+      imageUrl: v.template.imageUrl,
+      unitLabel: v.template.unitLabel,
+      leadTimeDays: v.template.leadTimeDays,
+      fields: fields.value,
+      pricing: pricing.value,
+    }];
+  });
 
   const vm: PrintProductVM[] = products.map((p) => ({
     id: p.id,
@@ -55,7 +81,14 @@ export default async function PrintShopPage() {
         הזמנת שלטים, תוויות ופריטי מיתוג לחנות מבית הדפוס של הפלטפורמה.
       </p>
 
-      <PrintOrderForm products={vm} options={options.map((o) => ({ id: o.id, optionName: o.optionName, extraPrice: o.extraPrice.toString() }))} />
+      {templateVm.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-lg font-bold">מוצרי דפוס</h2>
+          <TemplateCatalog templates={templateVm} />
+        </section>
+      )}
+
+      {vm.length > 0 && <PrintOrderForm products={vm} options={options.map((o) => ({ id: o.id, optionName: o.optionName, extraPrice: o.extraPrice.toString() }))} />}
 
       {orders.length > 0 && (
         <section className="mt-10">
@@ -74,7 +107,10 @@ export default async function PrintShopPage() {
                 <ul className="mt-2 text-sm text-gray-600">
                   {o.items.map((it) => (
                     <li key={it.id}>
-                      {it.printProduct.title} × {it.quantity}
+                      {itemDisplay(it).title} × {it.quantity}
+                      {itemDisplay(it).details.length > 0 && (
+                        <span className="block text-xs text-gray-500">{itemDisplay(it).details.join(' · ')}</span>
+                      )}
                     </li>
                   ))}
                 </ul>

@@ -9,10 +9,13 @@ export const E2E_OWNER = { email: 'owner@e2e.invalid', password: 'e2e-owner-pass
 export const E2E_SUPER = { email: 'super@e2e.invalid', password: 'e2e-super-pass-123' };
 /** בעלים נוסף של אותה משתלה — מגבלת ההתחברות היא 5 לאימייל ב-15 דק', והסוויטה מתחברת יותר פעמים */
 export const E2E_OWNER2 = { email: 'owner2@e2e.invalid', password: 'e2e-owner2-pass-123' };
+export const E2E_SUPER2 = { email: 'super2@e2e.invalid', password: 'e2e-super2-pass-123' };
 /** קבוצת נרדפות שבדיקת הניהול יוצרת — נמחקת בתחילת כל ריצה */
 export const E2E_SYNONYM = ['זית', 'אוליבה'];
 /** צמח בקטלוג המרכזי שמשמש את בדיקת הסנכרון (§6) — נוצר מחדש בכל ריצה */
 export const E2E_PLANT = 'צמח בדיקה E2E';
+/** תבנית דפוס שבדיקת PT-02/03 יוצרת במסך */
+export const E2E_PRINT_TEMPLATE = 'מדבקות E2E';
 
 export default async function globalSetup() {
   const url = process.env.DATABASE_URL ?? '';
@@ -28,9 +31,11 @@ export default async function globalSetup() {
       await db.user.deleteMany({ where: { nurseryId: old.id } });
       await db.nursery.delete({ where: { id: old.id } });
     }
-    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email] } } });
+    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email] } } });
     // המוצרים נמחקו עם המשתלה; הצמח המרכזי (והגרסאות שלו) נמחק כאן
     await db.plant.deleteMany({ where: { hebrewName: E2E_PLANT } });
+    // תבנית הדפוס שבדיקת PT יוצרת (ההזמנות שלה נמחקו עם המשתלה)
+    await db.printTemplate.deleteMany({ where: { title: E2E_PRINT_TEMPLATE } });
     await db.searchSynonymGroup.deleteMany({ where: { terms: { has: 'אוליבה' } } });
     await db.rateLimit.deleteMany({});
 
@@ -48,6 +53,7 @@ export default async function globalSetup() {
         { nurseryId: n.id, moduleKey: 'sales', isEnabled: true, config: { mode: 'ONLINE' } },
         { nurseryId: n.id, moduleKey: 'orders', isEnabled: true },
         { nurseryId: n.id, moduleKey: 'plant_catalog', isEnabled: true },
+        { nurseryId: n.id, moduleKey: 'print_shop', isEnabled: true },
       ],
     });
     for (const [title, price] of [
@@ -93,6 +99,9 @@ export default async function globalSetup() {
     });
     await db.user.create({
       data: { email: E2E_SUPER.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER.password, 4) },
+    });
+    await db.user.create({
+      data: { email: E2E_SUPER2.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER2.password, 4) },
     });
     await db.user.create({
       data: {

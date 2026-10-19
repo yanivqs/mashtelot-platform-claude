@@ -61,6 +61,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/catalog', label: 'קטלוג בוטני', icon: Sprout },
   { href: '/admin/nurseries', label: 'משתלות', icon: Store },
   { href: '/admin/print-orders', label: 'בית דפוס', icon: Printer },
+  { href: '/admin/print-templates', label: 'תבניות דפוס', icon: FileText },
   { href: '/admin/system', label: 'מיילים ומערכת', icon: Mail },
   { href: '/admin/search-synonyms', label: 'מילים נרדפות בחיפוש', icon: SearchCode },
   { href: '/admin/security', label: 'יומן התחברויות', icon: ShieldCheck },
