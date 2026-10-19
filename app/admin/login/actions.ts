@@ -10,6 +10,8 @@ import { authenticateAdmin, loginAuditEvent, LOGIN_ACTIONS, type LoginContext } 
 
 export interface LoginState {
   error?: string;
+  /** האימייל שהוקלד — React 19 מאפס את הטופס אחרי Action, וכך הוא נשמר בשגיאה */
+  email?: string;
 }
 
 const TOO_MANY = 'יותר מדי ניסיונות התחברות. נסו שוב בעוד מספר דקות.';
@@ -22,7 +24,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   const password = String(formData.get('password') || '');
 
   if (!email || !password) {
-    return { error: 'יש להזין אימייל וסיסמה' };
+    return { error: 'יש להזין אימייל וסיסמה', email };
   }
 
   const ctx: LoginContext = {
@@ -41,7 +43,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
       if ((await rateLimit(`login-blocked-logged:${l.key}`, 1, l.windowMs)).ok) {
         await recordAudit(loginAuditEvent(LOGIN_ACTIONS.blocked, { email, reason: l.reason, ctx }));
       }
-      return { error: TOO_MANY };
+      return { error: TOO_MANY, email };
     }
   }
 
@@ -50,7 +52,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     await recordAudit(
       loginAuditEvent(LOGIN_ACTIONS.failed, { email, user: res.user, reason: res.reason, ctx }),
     );
-    return { error: res.error };
+    return { error: res.error, email };
   }
 
   await recordAudit(loginAuditEvent(LOGIN_ACTIONS.success, { email, user: res.user, ctx }));

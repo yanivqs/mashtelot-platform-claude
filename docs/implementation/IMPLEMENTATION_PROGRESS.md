@@ -171,3 +171,9 @@
 **מיגרציה** `20261019020000_payment_methods_paypal_on_site`: 3 ערכי enum חדשים (PAYPAL, PAY_ON_PICKUP, PAY_ON_DELIVERY) — תוספת בלבד.
 **כללים** (`lib/payment-methods.ts`, טהור): "תשלום באיסוף" רק באיסוף, "תשלום לשליח" רק במשלוח — מסונן בטופס ו**נאכף בשרת** (`createOrder` מחשב קודם את אופן הקבלה; ערך לא מוכר או לא תואם → שגיאה). בתשלום במקום אין אסמכתא (נמחקת גם אם נשלחה). PayPal: יעד חייב להיות `https://paypal.me/…` או `https://www.paypal.com/…` (מוצג ללקוח כקישור — חוסם `javascript:` ודומיינים מתחזים); לאמצעי תשלום במקום אין שדה יעד.
 **הערה (§10.04):** אמצעים ידניים בלבד — אין חיוב או אימות תשלום אוטומטי; ההזמנה נשארת "לא שולם" עד סימון ידני של בעל המשתלה.
+
+## 2026-10-19 — E2E בדפדפן (Playwright) — IN_REVIEW (ענף `chore/playwright-e2e`)
+**בקשת בעלים:** אוטומציית לחיצות בדפדפן. `@playwright/test` 1.56.1 (תלות פיתוח) + Chromium.
+**הרצה:** `npm run test:e2e` (`scripts/e2e.js`) — מוודא Postgres **מקומי** ששמו מסתיים ב-`_test` (לעולם לא Supabase/Production), מריץ מיגרציות ו-build, ומפעיל את Playwright מול `next start`. נתונים קבועים ב-`e2e/global-setup.ts` (משתלה `e2eshop` ב-`http://e2eshop.localhost:3100`). פרויקטים: mobile (Pixel 7) ו-desktop.
+**CI:** job שלישי `E2E (Playwright, Chromium)` עם Postgres זמני; דוח + trace מועלים כ-artifact בכישלון.
+**באג אמיתי שנמצא ותוקן (UX-01a):** אחרי התחברות כושלת שדה האימייל התרוקן — React 19 מאפס טפסים אחרי Server Action (נכנס עם C-P1-03). תוקן בהחזרת האימייל ב-state + `defaultValue`.

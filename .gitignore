@@ -45,3 +45,8 @@ next-env.d.ts
 
 # local dev/build logs
 *.log
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/

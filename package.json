@@ -18,7 +18,8 @@
     "db:seed:supplies": "node seed-supplies.js",
     "db:seed:print": "node seed-print.js",
     "db:seed:admin": "node seed-admin.js",
-    "db:seed:all": "npm run db:seed:plants && npm run db:seed:supplies && npm run db:seed:print && npm run db:seed:demo && npm run db:seed:admin"
+    "db:seed:all": "npm run db:seed:plants && npm run db:seed:supplies && npm run db:seed:print && npm run db:seed:demo && npm run db:seed:admin",
+    "test:e2e": "node scripts/e2e.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -41,6 +42,7 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",

@@ -42,6 +42,7 @@ export default function LoginPage() {
               type="email"
               autoComplete="username"
               required
+              defaultValue={state.email}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
             />
           </div>
