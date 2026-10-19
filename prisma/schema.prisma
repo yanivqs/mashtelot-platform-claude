@@ -285,17 +285,18 @@ model NurseryProduct {
 }
 
 model ShippingZone {
-  id                    String             @id @default(uuid())
-  nurseryId             String             @map("nursery_id")
+  id                    String                 @id @default(uuid())
+  nurseryId             String                 @map("nursery_id")
   name                  String
-  isEnabled             Boolean            @default(true) @map("is_enabled")
-  shippingPrice         Decimal            @map("shipping_price") @db.Decimal(10, 2)
-  freeShippingThreshold Decimal?           @map("free_shipping_threshold") @db.Decimal(10, 2)
-  sortOrder             Int                @default(0) @map("sort_order")
-  createdAt             DateTime           @default(now()) @map("created_at")
-  updatedAt             DateTime           @updatedAt @map("updated_at")
-  nursery               Nursery            @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  isEnabled             Boolean                @default(true) @map("is_enabled")
+  shippingPrice         Decimal                @map("shipping_price") @db.Decimal(10, 2)
+  freeShippingThreshold Decimal?               @map("free_shipping_threshold") @db.Decimal(10, 2)
+  sortOrder             Int                    @default(0) @map("sort_order")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  nursery               Nursery                @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
   cities                ShippingZoneCity[]
+  postcodes             ShippingZonePostcode[]
   orders                Order[]
 
   @@map("shipping_zones")
@@ -312,6 +313,17 @@ model ShippingZoneCity {
   @@map("shipping_zone_cities")
 }
 
+/// §11.01: מיקוד מלא או התחלה (1–7 ספרות). מיקוד הלקוח שתואם גובר על העיר; ההתחלה הארוכה ביותר מנצחת.
+model ShippingZonePostcode {
+  id             String       @id @default(uuid())
+  shippingZoneId String       @map("shipping_zone_id")
+  prefix         String
+  zone           ShippingZone @relation(fields: [shippingZoneId], references: [id], onDelete: Cascade)
+
+  @@unique([shippingZoneId, prefix])
+  @@map("shipping_zone_postcodes")
+}
+
 model Order {
   id                   String          @id @default(uuid())
   nurseryId            String          @map("nursery_id")
@@ -320,6 +332,7 @@ model Order {
   customerEmail        String          @map("customer_email")
   customerPhone        String          @map("customer_phone")
   shippingAddress      String?         @map("shipping_address")
+  shippingPostcode     String?         @map("shipping_postcode")
   deliveryMethod       DeliveryMethod? @map("delivery_method")
   totalAmount          Decimal         @map("total_amount") @db.Decimal(10, 2)
   status               OrderStatus     @default(RECEIVED)

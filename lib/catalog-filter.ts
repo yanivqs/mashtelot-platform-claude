@@ -20,6 +20,8 @@ export interface CatalogIndexEntry {
   id: string;
   createdAt: number;
   title: string;
+  /** המחיר המוצג ("החל מ-" — הנמוך מבין הווריאנטים הפעילים) — למיון לפי מחיר */
+  price: number;
   /** מסמך חיפוש: שם, שם עברי מקורי, שם לטיני, כינוי (R04-03, lib/search.ts) */
   search: SearchDoc;
   letter: string | null;
@@ -28,7 +30,24 @@ export interface CatalogIndexEntry {
   categorySort: Record<string, number>;
 }
 
+/** מיון שהלקוח בוחר (R04-07: מחיר, שם ותאריך בלבד). "מומלץ" = הסדר הרגיל (רלוונטיות/קטגוריה/חדשים). */
+export const CATALOG_SORTS = [
+  { key: 'recommended', label: 'מומלץ' },
+  { key: 'price_asc', label: 'מחיר: מהנמוך לגבוה' },
+  { key: 'price_desc', label: 'מחיר: מהגבוה לנמוך' },
+  { key: 'name', label: 'שם (א–ת)' },
+  { key: 'newest', label: 'חדשים' },
+] as const;
+
+export type CatalogSort = (typeof CATALOG_SORTS)[number]['key'];
+
+/** ערך מה-URL; לא מוכר → "מומלץ". */
+export function parseSort(raw: string | undefined | null): CatalogSort {
+  return CATALOG_SORTS.some((s) => s.key === raw) ? (raw as CatalogSort) : 'recommended';
+}
+
 export interface CatalogFilterState {
+  sort?: CatalogSort;
   q?: string;
   letter?: string | null;
   /** הקטגוריה הנבחרת וכל צאצאיה (null = ללא סינון קטגוריה) */
@@ -76,6 +95,18 @@ function sortEntries(
   scores: Map<string, number>,
 ): CatalogIndexEntry[] {
   const out = [...entries];
+  const byName = (a: CatalogIndexEntry, b: CatalogIndexEntry) => a.title.localeCompare(b.title, 'he');
+  // מיון שנבחר במפורש גובר על הסדר הרגיל (גם בחיפוש ובקטגוריה)
+  switch (state.sort) {
+    case 'price_asc':
+      return out.sort((a, b) => a.price - b.price || byName(a, b));
+    case 'price_desc':
+      return out.sort((a, b) => b.price - a.price || byName(a, b));
+    case 'name':
+      return out.sort(byName);
+    case 'newest':
+      return out.sort((a, b) => b.createdAt - a.createdAt || byName(a, b));
+  }
   if (query) {
     // בחיפוש: לפי רלוונטיות (מדויק > תחילת מילה > מכיל > שגיאת כתיב), ואז החדשים קודם
     return out.sort((a, b) => (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0) || b.createdAt - a.createdAt);
@@ -159,6 +190,7 @@ export function toIndexEntry(p: {
   id: string;
   createdAt: Date;
   title: string;
+  price?: number;
   /** שמות נוספים לחיפוש (שם עברי מקורי, לטיני, כינוי) */
   altNames?: Array<string | null | undefined>;
   plant: PlantFacetFields | null;
@@ -168,6 +200,7 @@ export function toIndexEntry(p: {
     id: p.id,
     createdAt: p.createdAt.getTime(),
     title: p.title,
+    price: p.price ?? 0,
     search: buildSearchDoc([p.title, ...(p.altNames ?? [])]),
     letter: firstLetter(p.title),
     plant: p.plant,

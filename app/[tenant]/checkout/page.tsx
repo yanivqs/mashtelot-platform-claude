@@ -9,6 +9,7 @@ import { cartKey, useCart } from '@/components/cart/cart-provider';
 import { formatPrice } from '@/lib/utils';
 import { resolveShippingCost, type DeliveryChoice } from '@/lib/checkout-calc';
 import { isMethodAllowedFor, isPayOnSite } from '@/lib/payment-methods';
+import { pickZone } from '@/lib/shipping-zones';
 import { createOrder, getCheckoutOptions, type CheckoutOptions } from './actions';
 
 const field =
@@ -31,6 +32,7 @@ export default function CheckoutPage() {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | ''>('');
   const [delivery, setDelivery] = useState<DeliveryChoice | ''>('');
   const [city, setCity] = useState('');
+  const [postcode, setPostcode] = useState('');
   // מפתח קבוע לניסיון ה-checkout הזה: לחיצה כפולה / ניסיון חוזר מחזירים את אותה הזמנה (C-P1-02)
   const [idempotencyKey] = useState(() => crypto.randomUUID());
 
@@ -43,13 +45,15 @@ export default function CheckoutPage() {
 
   const zones = useMemo(() => options?.zones ?? [], [options]);
   const zoneCities = useMemo(() => zones.flatMap((z) => z.cities), [zones]);
+  // אזורים לפי מיקוד — העיר חופשית (עם הצעות), כי אזור יכול להיות מוגדר במיקוד בלבד
+  const usesPostcodes = zones.some((z) => z.postcodes.length > 0);
 
   /** עלות המשלוח המשוערת (לפני קופון): null = תתואם / לא רלוונטי */
   const shippingEstimate = useMemo(() => {
-    if (isQuote || delivery !== 'DELIVERY' || zones.length === 0 || !city) return null;
-    const zone = zones.find((z) => z.cities.includes(city));
+    if (isQuote || delivery !== 'DELIVERY' || zones.length === 0 || (!city && !postcode)) return null;
+    const zone = pickZone(zones, city, postcode);
     return zone ? resolveShippingCost(subtotal, zone) : null;
-  }, [isQuote, delivery, zones, city, subtotal]);
+  }, [isQuote, delivery, zones, city, postcode, subtotal]);
 
   if (salesMode === 'DISABLED' || items.length === 0) {
     return (
@@ -82,6 +86,7 @@ export default function CheckoutPage() {
       deliveryMethod: delivery,
       shippingAddress: String(fd.get('shippingAddress') || ''),
       city,
+      postcode,
       couponCode: String(fd.get('couponCode') || ''),
       paymentMethod: effectiveMethod || undefined,
       paymentReference: String(fd.get('paymentReference') || ''),
@@ -183,7 +188,7 @@ export default function CheckoutPage() {
                 )}
                 <label className="block text-sm">
                   <span className="mb-1 block font-medium text-gray-700">עיר / יישוב *</span>
-                  {zoneCities.length > 0 ? (
+                  {zoneCities.length > 0 && !usesPostcodes ? (
                     <select
                       required
                       value={city}
@@ -205,9 +210,29 @@ export default function CheckoutPage() {
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       autoComplete="address-level2"
+                      list={zoneCities.length ? 'zone-cities' : undefined}
                       className={`${field} bg-white`}
                     />
                   )}
+                  {usesPostcodes && zoneCities.length > 0 && (
+                    <datalist id="zone-cities">
+                      {zoneCities.map((c) => (
+                        <option key={c} value={c} />
+                      ))}
+                    </datalist>
+                  )}
+                </label>
+                <label className="block text-sm">
+                  <span className="mb-1 block font-medium text-gray-700">מיקוד {usesPostcodes ? '(מומלץ — קובע את אזור המשלוח)' : '(לא חובה)'}</span>
+                  <input
+                    value={postcode}
+                    onChange={(e) => setPostcode(e.target.value)}
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    maxLength={9}
+                    placeholder="7 ספרות"
+                    className={`${field} bg-white`}
+                  />
                 </label>
                 <label className="block text-sm">
                   <span className="mb-1 block font-medium text-gray-700">רחוב, מספר בית ודירה *</span>
@@ -220,7 +245,7 @@ export default function CheckoutPage() {
                 </label>
                 {zoneCities.length > 0 && (
                   <p className="text-xs text-gray-500">
-                    העיר שלכם לא ברשימה? צרו קשר עם המשתלה לתיאום משלוח.
+                    {usesPostcodes ? 'אין משלוח לכתובת שלכם? צרו קשר עם המשתלה לתיאום.' : 'העיר שלכם לא ברשימה? צרו קשר עם המשתלה לתיאום משלוח.'}
                   </p>
                 )}
               </div>
@@ -340,7 +365,9 @@ export default function CheckoutPage() {
                   ? 'חינם'
                   : shippingEstimate === null
                     ? zones.length > 0 && !isQuote
-                      ? 'בחרו עיר'
+                      ? usesPostcodes
+                        ? 'הזינו מיקוד או עיר'
+                        : 'בחרו עיר'
                       : 'יתואם'
                     : shippingEstimate === 0
                       ? 'חינם'

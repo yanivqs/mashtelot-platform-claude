@@ -1,10 +1,9 @@
 import 'server-only';
+import type { PrismaClient } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { pickZone } from '@/lib/shipping-zones';
 
-/** נירמול שם עיר להשוואה (רווחים מיותרים + case, לא רלוונטי לעברית אך עדיין מנקה). */
-export function normalizeCityName(city: string): string {
-  return city.trim().toLowerCase().replace(/\s+/g, ' ');
-}
+export { normalizeCityName } from '@/lib/shipping-zones';
 
 export interface ResolvedShippingZone {
   id: string;
@@ -13,29 +12,30 @@ export interface ResolvedShippingZone {
   freeShippingThreshold: number | null;
 }
 
-/** אזור המשלוח המתאים לעיר נתונה אצל משתלה, אם קיים. */
+/** אזור המשלוח המתאים לעיר/מיקוד אצל משתלה, אם קיים (מיקוד תואם גובר על העיר — lib/shipping-zones.ts). */
 export async function resolveShippingZone(
   nurseryId: string,
   city: string,
+  postcode?: string | null,
+  db: PrismaClient = prisma,
 ): Promise<ResolvedShippingZone | null> {
-  const normalized = normalizeCityName(city);
-  if (!normalized) return null;
-
-  const match = await prisma.shippingZoneCity.findFirst({
-    where: {
-      normalizedCityName: normalized,
-      zone: { nurseryId, isEnabled: true },
-    },
-    include: { zone: true },
+  const zones = await db.shippingZone.findMany({
+    where: { nurseryId, isEnabled: true },
+    include: { cities: true, postcodes: true },
+    orderBy: { sortOrder: 'asc' },
   });
+  const match = pickZone(
+    zones.map((z) => ({ zone: z, cities: z.cities.map((c) => c.cityName), postcodes: z.postcodes.map((p) => p.prefix) })),
+    city,
+    postcode,
+  );
   if (!match) return null;
-
+  const z = match.zone;
   return {
-    id: match.zone.id,
-    name: match.zone.name,
-    shippingPrice: Number(match.zone.shippingPrice),
-    freeShippingThreshold:
-      match.zone.freeShippingThreshold !== null ? Number(match.zone.freeShippingThreshold) : null,
+    id: z.id,
+    name: z.name,
+    shippingPrice: Number(z.shippingPrice),
+    freeShippingThreshold: z.freeShippingThreshold !== null ? Number(z.freeShippingThreshold) : null,
   };
 }
 

@@ -6,10 +6,13 @@ import { catalogRevisionInclude, localizeProduct } from '@/lib/catalog-localize'
 import { categoryAndDescendantIds } from '@/lib/category-tree';
 import { parseLetter } from '@/lib/alphabet';
 import { PLANT_FACETS } from '@/lib/plant-facets';
+import { priceSummary } from '@/lib/variants';
 import {
   buildCatalogView,
+  parseSort,
   toIndexEntry,
   type CatalogFilterState,
+  type CatalogSort,
   type CatalogView,
 } from '@/lib/catalog-filter';
 
@@ -114,6 +117,9 @@ const getCatalogIndex = cache(async (nurseryId: string) => {
       id: true,
       createdAt: true,
       customTitle: true,
+      price: true,
+      compareAtPrice: true,
+      variants: { where: { isActive: true } },
       plant: {
         select: {
           hebrewName: true,
@@ -141,6 +147,7 @@ const getCatalogIndex = cache(async (nurseryId: string) => {
     toIndexEntry({
       id: r.id,
       createdAt: r.createdAt,
+      price: priceSummary(r.variants, r).min,
       title: r.customTitle || r.plant?.hebrewName || r.supply?.title || 'מוצר ללא שם',
       altNames: [r.plant?.hebrewName, r.plant?.latinName, r.plant?.nickname],
       plant: r.plant,
@@ -167,6 +174,7 @@ export interface CatalogPage extends CatalogView {
   categoryPath: CategoryNode[];
   categoryNav: CategoryNode[];
   letter: string | null;
+  sort: CatalogSort;
 }
 
 /** עמוד קטלוג מסונן של משתלה: מוצרים, ספירות, אותיות זמינות, פאסטים וקטגוריות. */
@@ -185,7 +193,9 @@ export async function getCatalogPage(
   const selected = categoryPath[categoryPath.length - 1];
   const letter = parseLetter(sp.letter);
 
+  const sort = parseSort(sp.sort);
   const state: CatalogFilterState = {
+    sort,
     q: sp.q,
     letter,
     categoryIds: selected ? categoryAndDescendantIds(rawCategories, selected.id) : null,
@@ -210,6 +220,7 @@ export async function getCatalogPage(
     categoryPath,
     categoryNav,
     letter,
+    sort,
   };
 }
 

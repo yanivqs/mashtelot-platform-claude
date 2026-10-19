@@ -5,7 +5,7 @@ import type { FacetView } from '@/lib/catalog-filter';
 import { FACET_KEYS } from '@/lib/plant-facets';
 
 /** הפרמטרים שנשמרים בין קישורי הסינון (page מתאפס בכל שינוי). */
-export const FILTER_PARAM_KEYS = ['q', 'category', 'letter', ...FACET_KEYS];
+export const FILTER_PARAM_KEYS = ['q', 'category', 'letter', 'sort', ...FACET_KEYS];
 
 export type ParamChanges = Record<string, string | null>;
 export type HrefBuilder = (changes: ParamChanges) => string;

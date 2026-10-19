@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { requireNurseryPage } from '@/lib/nursery-scope';
 import { formatPrice } from '@/lib/utils';
-import { ZoneForm } from './forms';
+import { ZoneForm, ZonePostcodesForm } from './forms';
 import { toggleZone, deleteZone } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export default async function ShippingPage() {
 
   const zones = await prisma.shippingZone.findMany({
     where: { nurseryId },
-    include: { cities: true },
+    include: { cities: true, postcodes: true },
     orderBy: { sortOrder: 'asc' },
   });
 
@@ -21,7 +21,7 @@ export default async function ShippingPage() {
       <div>
         <h1 className="text-2xl font-bold">אזורי משלוח</h1>
         <p className="text-sm text-gray-500">
-          הגדירו עלות משלוח לפי עיר, עם אפשרות לסף למשלוח חינם. משתלה ללא אזורים מוגדרים לא תציג
+          הגדירו עלות משלוח לפי עיר ו/או מיקוד, עם אפשרות לסף למשלוח חינם. משתלה ללא אזורים מוגדרים לא תציג
           שלב משלוח ב-checkout.
         </p>
       </div>
@@ -63,6 +63,7 @@ export default async function ShippingPage() {
               <p className="mt-2 text-sm text-gray-500">
                 {z.cities.map((c) => c.cityName).join(', ')}
               </p>
+              <ZonePostcodesForm id={z.id} name={z.name} postcodes={z.postcodes.map((p) => p.prefix)} />
             </div>
           ))}
         </div>

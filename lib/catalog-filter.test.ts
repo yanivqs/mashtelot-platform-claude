@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { firstLetter, parseLetter } from './alphabet';
 import { PLANT_FACETS, facetOptions, plantMatchesFacet, type PlantFacetFields } from './plant-facets';
-import { buildCatalogView, toIndexEntry } from './catalog-filter';
+import { buildCatalogView, parseSort, toIndexEntry } from './catalog-filter';
 import { buildSynonymIndex } from './search';
 import { pageWindow } from '../components/pagination';
 
@@ -84,6 +84,22 @@ describe('buildCatalogView', () => {
   it('respects owner sort order inside a category', () => {
     const v = buildCatalogView(entries, { categoryIds: ['succ'] }, 1, 10);
     expect(v.pageIds).toEqual(['c', 'a']);
+  });
+
+  it('customer sort (R04-07): price both ways, name, newest; overrides category order and relevance', () => {
+    const priced = entries.map((e, i) => ({ ...e, price: [30, 10, 20, 10][i]! }));
+    expect(buildCatalogView(priced, { sort: 'price_asc' }, 1, 10).pageIds).toEqual(['d', 'b', 'c', 'a']); // שוויון → לפי שם
+    expect(buildCatalogView(priced, { sort: 'price_desc' }, 1, 10).pageIds).toEqual(['a', 'c', 'd', 'b']);
+    expect(buildCatalogView(priced, { sort: 'name' }, 1, 10).pageIds).toEqual(['c', 'd', 'a', 'b']);
+    expect(buildCatalogView(priced, { sort: 'newest' }, 1, 10).pageIds).toEqual(['d', 'c', 'b', 'a']);
+    expect(buildCatalogView(priced, { categoryIds: ['succ'], sort: 'price_asc' }, 1, 10).pageIds).toEqual(['c', 'a']);
+    expect(buildCatalogView(priced, { sort: 'recommended' }, 1, 10).pageIds).toEqual(['d', 'c', 'b', 'a']);
+  });
+
+  it('parseSort accepts only known values', () => {
+    expect(parseSort('price_desc')).toBe('price_desc');
+    expect(parseSort('stock')).toBe('recommended');
+    expect(parseSort(undefined)).toBe('recommended');
   });
 
   it('searches alt names case-insensitively', () => {

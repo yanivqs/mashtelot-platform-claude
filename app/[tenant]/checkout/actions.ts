@@ -14,6 +14,7 @@ import {
   type EnabledPaymentMethod,
 } from '@/lib/payment-methods';
 import { resolveShippingZone, hasAnyShippingZone } from '@/lib/shipping';
+import { normalizePostcode } from '@/lib/shipping-zones';
 import { recordAudit } from '@/lib/audit';
 import { createOrderRecord } from '@/lib/order-service';
 import {
@@ -37,6 +38,8 @@ export interface CheckoutInput {
   deliveryMethod?: DeliveryChoice;
   shippingAddress?: string;
   city?: string;
+  /** §11.01: אופציונלי; מיקוד שתואם אזור גובר על העיר */
+  postcode?: string;
   couponCode?: string;
   paymentMethod?: PaymentMethod;
   paymentReference?: string;
@@ -47,6 +50,7 @@ export interface CheckoutInput {
 
 export interface CheckoutShippingZone {
   cities: string[];
+  postcodes: string[];
   shippingPrice: number;
   freeShippingThreshold: number | null;
 }
@@ -68,7 +72,7 @@ export async function getCheckoutOptions(tenant: string): Promise<CheckoutOption
     getEnabledPaymentMethods(nursery.id),
     prisma.shippingZone.findMany({
       where: { nurseryId: nursery.id, isEnabled: true },
-      include: { cities: true },
+      include: { cities: true, postcodes: true },
       orderBy: { sortOrder: 'asc' },
     }),
   ]);
@@ -78,9 +82,10 @@ export async function getCheckoutOptions(tenant: string): Promise<CheckoutOption
     deliveryNote: nursery.deliveryNote,
     pickupAddress: [nursery.addressLine, nursery.city].filter(Boolean).join(', ') || null,
     zones: zones
-      .filter((z) => z.cities.length > 0)
+      .filter((z) => z.cities.length > 0 || z.postcodes.length > 0)
       .map((z) => ({
         cities: z.cities.map((c) => c.cityName),
+        postcodes: z.postcodes.map((p) => p.prefix),
         shippingPrice: Number(z.shippingPrice),
         freeShippingThreshold: z.freeShippingThreshold !== null ? Number(z.freeShippingThreshold) : null,
       })),
@@ -150,18 +155,22 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
     !isQuote && !(paymentMethod && isPayOnSite(paymentMethod)) ? input.paymentReference?.trim() || null : null;
 
   let shippingAddress: string | null = null;
+  let shippingPostcode: string | null = null;
   let shippingZone: Awaited<ReturnType<typeof resolveShippingZone>> = null;
   if (deliveryMethod === 'DELIVERY') {
     const street = input.shippingAddress?.trim();
     const city = input.city?.trim();
     if (!city) return { error: 'יש לבחור עיר למשלוח' };
     if (!street) return { error: 'יש למלא כתובת למשלוח' };
-    shippingAddress = `${street}, ${city}`;
+    const pc = normalizePostcode(input.postcode);
+    if (pc === null) return { error: 'מיקוד לא תקין — 7 ספרות' };
+    shippingPostcode = pc || null;
+    shippingAddress = `${street}, ${city}${pc ? ` ${pc}` : ''}`;
 
     // אזור משלוח: רק אם למשתלה מוגדר לפחות אזור אחד; אחרת העלות מתואמת מול המשתלה
     if (await hasAnyShippingZone(nursery.id)) {
-      shippingZone = await resolveShippingZone(nursery.id, city);
-      if (!shippingZone) return { error: 'משלוח לא זמין לעיר זו, צרו קשר עם המשתלה' };
+      shippingZone = await resolveShippingZone(nursery.id, city, shippingPostcode);
+      if (!shippingZone) return { error: 'משלוח לא זמין לכתובת זו, צרו קשר עם המשתלה' };
     }
   }
 
@@ -175,6 +184,7 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
       customerPhone: phone,
       deliveryMethod,
       shippingAddress,
+      shippingPostcode,
       shippingZone,
       paymentMethod,
       paymentReference,

@@ -13,6 +13,8 @@ import {
   MobileFacets,
   makeHrefBuilder,
 } from '@/components/storefront/catalog-filters';
+import { SortSelect } from '@/components/storefront/sort-select';
+import { CATALOG_SORTS } from '@/lib/catalog-filter';
 
 export const revalidate = 300;
 
@@ -37,7 +39,7 @@ export async function generateMetadata(props: CatalogPageProps): Promise<Metadat
 
   // עמודי קטגוריה מאונדקסים (קנוניים); חיפוש/אות/מאפיינים — לא (תוכן דל וכפול)
   const hasRefinements = Boolean(
-    q || searchParams.letter || Object.keys(parseFacetParams(searchParams)).length,
+    q || searchParams.letter || searchParams.sort || Object.keys(parseFacetParams(searchParams)).length,
   );
 
   return {
@@ -64,6 +66,7 @@ export default async function CatalogPage(props: CatalogPageProps) {
     // קטגוריה לא מוכרת (למשל ללא מוצרים) לא נשמרת בקישורים
     category: view.categoryPath.at(-1)?.slug,
     letter: view.letter ?? undefined,
+    sort: view.sort === 'recommended' ? undefined : view.sort,
   };
   const href = makeHrefBuilder('/catalog', current);
   const selectedCategory = view.categoryPath.at(-1);
@@ -84,7 +87,17 @@ export default async function CatalogPage(props: CatalogPageProps) {
             ? `תוצאות חיפוש: ${searchParams.q}`
             : selectedCategory?.name ?? 'הקטלוג שלנו'}
         </h1>
-        <p className="mt-1 text-sm text-gray-500">{view.total} מוצרים</p>
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-gray-500">{view.total} מוצרים</p>
+          <SortSelect
+            value={view.sort}
+            options={CATALOG_SORTS.map((s) => ({
+              key: s.key,
+              label: s.label,
+              href: href({ sort: s.key === 'recommended' ? null : s.key, page: null }),
+            }))}
+          />
+        </div>
       </header>
 
       <div className="mb-6 space-y-5">
