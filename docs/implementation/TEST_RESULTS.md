@@ -282,3 +282,7 @@
 | 7 | **E2E הפעלה מחדש:** אחרי 8 ניסיונות — השרת נעצר והופעל מחדש (מופע חדש, זיכרון ריק); ניסיון נוסף מ-IP אחר → עדיין חסום | local | ✅ |
 
 **הערת בדיקה:** הריצה הראשונה של בדיקת האטומיות על dev Supabase נכשלה ב-`EMAXCONNSESSION` (ה-pooler במצב session מוגבל ל-15 לקוחות, ושני לקוחות הבדיקה פתחו יותר) — מגבלת סביבת הבדיקה, לא שגיאת לוגיקה. הוגבל `connection_limit=4` ללקוחות הבדיקה → עבר. Production משתמש ב-pooler במצב transaction (פורט 6543) — נבדק בשורה 4.
+| 8 | CI על `8a7eb18` · פריסת Production | GitHub · Vercel | ✅ · ✅ |
+| 9 | חי: `/` · `/admin/login` · חנות · קטלוג · בלוג → 200 | Production | ✅ |
+| 10 | קריאה בלבד ב-Production: `rate_limits` קיימת, RLS פעיל, 0 הרשאות ל-anon/authenticated, המיגרציה הושלמה | Production | ✅ |
+| 11 | אזור ה-Functions: `x-vercel-id: fra1::fra1::…` בתגובה דינמית (קטלוג) | Production | ✅ Frankfurt |

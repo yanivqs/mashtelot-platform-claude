@@ -19,7 +19,7 @@
 | C-P1-05 | SEO: sitemap/robots לכל tenant + חסימת תוכן כפול בדומיין הראשי | §14.01, §14.04, R07 | — | **DONE** — main `f1c5914`, נפרס 2026-10-18 |
 | C-P1-03 | שדרוג Next.js (ADR) + צמצום remotePatterns | R10-01 | C-P1-04 | **DONE** — `7ea00a1`, אומת חי 2026-10-18 |
 | OPS-01 | תרגיל גיבוי ושחזור מתועד | §23.06, §38 | — | TODO (לא בתוכנית Claude Code — הוצע) |
-| OPS-02 | Vercel Function Region → fra1 | ביצועים | — | TODO (הוצע) |
+| OPS-02 | Vercel Function Region → fra1 | ביצועים | — | **DONE** — אומת חי 2026-10-19 (`fra1::fra1`); מומלץ לקבע בקוד (`vercel.json`) — ממתין להחלטה |
 | ADR-01 | Monorepo (§1.01/R10-02) מול אפליקציה יחידה | §1.01 | — | ממתין להחלטת בעלים |
 | C-P2-01 | תשתית סליקה: sandbox, webhook חתום, idempotency | §10, §21 | C-P1-02 | TODO |
 | C-PT-01..04 | מודול תבניות דפוס (Workstream נפרד) | PT-01..PT-10 | C-P1-01 | TODO |
