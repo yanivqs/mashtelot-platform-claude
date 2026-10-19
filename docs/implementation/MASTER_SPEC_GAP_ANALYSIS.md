@@ -31,7 +31,7 @@
 | §7.03 / R04-01 קטגוריות בעץ + סדר | MVP | Verified | `NurseryCategory`, `lib/category-tree.ts` |
 | §7.04 / R04-02 מסננים דינמיים | MVP | Verified | `lib/plant-facets.ts`, `lib/catalog-filter.ts` |
 | R04-03 חיפוש נרדפות/שגיאות | MVP | Missing | תת-מחרוזת בלבד |
-| R04-07 מיון מחיר/שם/תאריך | MVP | Missing | — |
+| R04-07 מיון מחיר/שם/תאריך | MVP | Verified (2026-10-20) | `lib/catalog-filter.ts` `CATALOG_SORTS` |
 | R04-08 אזל = מוצג ולא נרכש | MVP | Verified | `product/[slug]/page.tsx` `disabled={outOfStock}` + בדיקת שרת |
 | §8.01-02 on_hand/reserved + תנועות | BLOCKER | Missing | — |
 | §8.03 ללא Oversell במקביל | BLOCKER | Verified | `updateMany` מותנה; smoke test (כעת מבודד) |
@@ -48,7 +48,7 @@
 | §9 Idempotency הזמנה | BLOCKER | Missing | — |
 | §10.02 / §21.02 Webhooks | BLOCKER | Missing | — |
 | §10.03 / R05-06 תשלום ידני | MVP | Partial | Bit/PayBox/העברה; אין PayPal/באיסוף/אשראי |
-| §11.01 / R05-03 משלוח עיר+מיקוד | MVP | Partial | עיר בלבד |
+| §11.01 / R05-03 משלוח עיר+מיקוד | MVP | Verified (2026-10-20) | `lib/shipping-zones.ts`, `shipping_zone_postcodes` |
 | R05-05 נקודת איסוף אחת | MVP | Verified | `Nursery.pickupEnabled` |
 | §12.01 קופון: מינימום/ללקוח | MVP | Partial | יש תוקף ומכסה כוללת (אטומית) |
 | R05-10 הודעות עסקה | MVP | Partial | מייל (Resend; אימות דומיין Unknown) |

@@ -17,7 +17,7 @@
 | P0-9 | אין Idempotency ביצירת הזמנה (שליחה כפולה = שתי הזמנות) | בינונית | VERIFIED | `app/[tenant]/checkout/actions.ts` | **FIXED** — נפרס ב-`2c76406` | C-P1-02 |
 | S-10 | Next.js 14.2.35 — 23 advisories, כולל 2 קריטיים (RCE ב-Image Optimization API עם AVIF; RCE בשרתי Windows — לא רלוונטי ל-Vercel). מתוקן ב-15.5.24+ / 16.3.3+ | **קריטית** | VERIFIED (npm audit + GitHub advisories, 2026-10-18); חשיפת האופטימייזר אומתה חי (תמונה חיצונית → 200) | `package.json`, `next.config.js` | **שלב 0 נפרס** (`32345a8`): הוסר `remotePatterns` → תמונה חיצונית 400 (אומת חי). **FIXED** — שודרג ל-16.4.2, נפרס ב-`7ea00a1` ואומת חי (2026-10-18) | C-P1-03 |
 | S-11 | bucket אחסון ציבורי (כולל artwork של דפוס) | בינונית | VERIFIED | `lib/upload-actions.ts` | OPEN | C-PT-03 (PT-08) |
-| S-12 | `log: ['query']` ב-Prisma גם בפרודקשן | נמוכה | VERIFIED | `lib/prisma.ts` | IN_REVIEW — רק בפיתוח; ב-Production שגיאות ואזהרות (`feat/sort-postcode-s12`) | — |
+| S-12 | `log: ['query']` ב-Prisma גם בפרודקשן | נמוכה | VERIFIED | `lib/prisma.ts` | **CLOSED** — רק בפיתוח; ב-Production שגיאות ואזהרות (`6d8546b`, נפרס 2026-10-20) | — |
 | S-13 | Vercel Functions ב-`iad1` מול DB ב-`eu-central-1` (ביצועים) | נמוכה (ביצועים) | VERIFIED (`x-vercel-id`, host ה-DB) | header חי + `.env` | **RESOLVED** — אומת חי 2026-10-19: `x-vercel-id: fra1::fra1::…` בתגובה דינמית — ה-Functions רצות כבר ב-Frankfurt (קרוב ל-DB ב-eu-central-1). לא ידוע מתי/איך שונה (הגדרת הפרויקט ב-Vercel; אין `vercel.json` בריפו) | הצעה נפרדת |
 | S-14 | `next build` מקומי מבצע prerender שקורא (קריאה בלבד) מבסיס ה-Production דרך `.env` | נמוכה | VERIFIED (build של C-P0-01) | `app/page.tsx` (revalidate 3600) | **FIXED** — `e45fa46`: build מקומי נחסם מול Production | C-P0-05 |
 
