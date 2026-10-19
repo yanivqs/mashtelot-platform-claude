@@ -56,6 +56,7 @@ model Nursery {
   nurseryProducts NurseryProduct[]
   orders          Order[]
   paymentMethods  NurseryPaymentMethod[]
+  redirects       Redirect[]
   printOrders     PrintOrder[]
   promotions      Promotion[]
   users           User[]
@@ -644,4 +645,21 @@ model SearchSynonymGroup {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("search_synonym_groups")
+}
+
+/// §14.01 / R07-07: הפניה קבועה מכתובת ישנה לנתיב בחנות. מופעלת רק כשהכתובת לא קיימת (במקום 404).
+model Redirect {
+  id        String    @id @default(uuid())
+  nurseryId String    @map("nursery_id")
+  /// נתיב מנורמל (lib/redirects.ts)
+  fromPath  String    @map("from_path")
+  toPath    String    @map("to_path")
+  hits      Int       @default(0)
+  lastHitAt DateTime? @map("last_hit_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  nursery   Nursery   @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@unique([nurseryId, fromPath])
+  @@map("redirects")
 }

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getNurseryByTenant } from '@/lib/tenant';
 import { getPublishedPage } from '@/lib/pages';
 import { htmlToText } from '@/lib/sanitize';
+import { redirectOrNotFound } from '@/lib/redirect-resolve';
 
 export const revalidate = 300;
 export const dynamicParams = true;
@@ -31,7 +32,8 @@ export default async function StaticPageView(props: Props) {
   if (!nursery) notFound();
 
   const page = await getPublishedPage(nursery.id, params.pageSlug);
-  if (!page) notFound();
+  // כתובת שלא קיימת: הפניה מכתובת ישנה (§14.01) או 404
+  if (!page) return redirectOrNotFound(nursery.id, `/${params.pageSlug}`);
 
   return (
     <article dir="rtl" className="mx-auto max-w-3xl px-6 py-12">

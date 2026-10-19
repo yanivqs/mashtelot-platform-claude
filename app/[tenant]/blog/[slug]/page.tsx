@@ -4,6 +4,7 @@ import { getNurseryByTenant } from '@/lib/tenant';
 import { isModuleEnabled } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
 import { htmlToText } from '@/lib/sanitize';
+import { redirectOrNotFound } from '@/lib/redirect-resolve';
 
 export const revalidate = 300;
 
@@ -39,7 +40,11 @@ export default async function BlogPostView(
 ) {
   const params = await props.params;
   const post = await loadPost(params.tenant, params.slug);
-  if (!post) notFound();
+  if (!post) {
+    const nursery = await getNurseryByTenant(params.tenant);
+    if (!nursery) notFound();
+    return redirectOrNotFound(nursery.id, `/blog/${params.slug}`);
+  }
 
   return (
     <article dir="rtl" className="mx-auto max-w-3xl px-6 py-12">

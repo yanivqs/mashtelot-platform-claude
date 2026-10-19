@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { resolveHost } from '@/lib/tenant-host';
+import { isLegacyPagePath } from '@/lib/redirects';
 
 // דומיין הבסיס של הפלטפורמה (ללא פרוטוקול). לדוגמה: mashtelot.net
 const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'localhost:3000';
@@ -18,7 +19,8 @@ export function proxy(request: NextRequest) {
     url.pathname.startsWith('/api') ||
     url.pathname.startsWith('/admin') ||
     url.pathname === '/favicon.ico' ||
-    url.pathname.includes('.')
+    // קבצים סטטיים — אבל דפים מאתרים ישנים (.html/.php…) ממשיכים לחנות, לטובת הפניות (§14.01)
+    (url.pathname.includes('.') && !isLegacyPagePath(url.pathname))
   ) {
     return NextResponse.next();
   }

@@ -9,6 +9,7 @@ import { resolveProductContent, productJsonLd, tenantUrl } from '@/lib/seo';
 import { AddToCartButton } from '@/components/cart/add-to-cart-button';
 import { PlantFactsGrid } from '@/components/storefront/plant-key-facts';
 import { SpecTable } from '@/components/storefront/spec-table';
+import { redirectOrNotFound } from '@/lib/redirect-resolve';
 
 export const revalidate = 300;
 export const dynamicParams = true;
@@ -48,7 +49,7 @@ export default async function ProductPage(props: ProductPageProps) {
   if (!nursery) notFound();
 
   const product = await getProductById(nursery.id, idFromSlug(params.slug));
-  if (!product) notFound();
+  if (!product) return redirectOrNotFound(nursery.id, `/product/${params.slug}`);
 
   const { title, description, image } = resolveProductContent(product);
   const price = Number(product.price);

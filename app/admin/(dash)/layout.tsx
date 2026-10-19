@@ -20,6 +20,7 @@ import {
   KeyRound,
   ShieldCheck,
   SearchCode,
+  Signpost,
   type LucideIcon,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
@@ -82,6 +83,7 @@ async function buildOwnerNav(nurseryId: string | null): Promise<NavItem[]> {
     }
   }
 
+  nav.push({ href: '/admin/redirects', label: 'הפניות (SEO)', icon: Signpost });
   nav.push({ href: '/admin/settings', label: 'הגדרות המשתלה', icon: Settings });
   return nav;
 }
