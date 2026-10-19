@@ -4,8 +4,9 @@
  * מקבל את ה-Prisma client כפרמטר כדי שיהיה בר-בדיקה מול בסיס נתונים, ללא תלות ב-Next.
  * ה-Server Actions אחראים לזיהוי (משתלה מהדומיין / מהמשתמש), rate limit ומיילים.
  *
- * מודל המלאי: stockQuantity = on_hand, reservedQuantity = שמור; זמין = on_hand − שמור.
- * כל שינוי — עדכון מותנה אטומי (אין overselling במקביל) + רשומת StockMovement.
+ * מודל המלאי (§8.01): ברמת הווריאנט — stockQuantity = on_hand, reservedQuantity = שמור; זמין = on_hand − שמור.
+ * כל שינוי — עדכון מותנה אטומי על product_variants (אין overselling במקביל) + רשומת StockMovement.
+ * מלאי המוצר (nursery_products) = סכום הווריאנטים הפעילים — מתוחזק ב-DB (trigger, מיגרציה 20261019050000).
  */
 import { Prisma, type OrderStatus, type PaymentStatus, type PaymentMethod, type PrismaClient } from '@prisma/client';
 import {
@@ -15,8 +16,10 @@ import {
   assertCouponValid,
   buildLineItems,
   calcSubtotal,
+  lineKey,
   resolveShippingCost,
   type DeliveryChoice,
+  type ProductForCheckout,
   type ShippingZoneForCheckout,
 } from '@/lib/checkout-calc';
 import {
@@ -28,9 +31,22 @@ import {
   ORDER_STATUS_LABELS,
 } from '@/lib/order-state';
 import { resolveProductContent } from '@/lib/seo';
+import { activeVariants, effectivePrice, lineTitle } from '@/lib/variants';
+import { availableQuantity } from '@/lib/stock';
 
 type Tx = Prisma.TransactionClient;
-type Line = { nurseryProductId: string; quantity: number; productTitle?: string };
+type Line = { nurseryProductId: string; variantId: string | null; quantity: number; productTitle?: string };
+
+/** הווריאנט של שורה. שורה ישנה ללא וריאנט (או שהווריאנט נמחק) → וריאנט ברירת המחדל של המוצר. */
+async function lineVariantId(tx: Tx, nurseryId: string, l: Line): Promise<string> {
+  if (l.variantId) return l.variantId;
+  const v = await tx.productVariant.findFirst({
+    where: { nurseryId, nurseryProductId: l.nurseryProductId, isDefault: true },
+    select: { id: true },
+  });
+  if (!v) throw new Error(`no default variant for product ${l.nurseryProductId}`);
+  return v.id;
+}
 
 // ---------- פעולות מלאי (בתוך טרנזקציה) ----------
 
@@ -39,6 +55,7 @@ async function movement(
   data: {
     nurseryId: string;
     nurseryProductId: string;
+    variantId: string;
     orderId?: string | null;
     reason: Prisma.StockMovementCreateManyInput['reason'];
     onHandDelta?: number;
@@ -52,50 +69,54 @@ async function movement(
 /** שמירת מלאי לשורות ההזמנה. נכשל (וכל הטרנזקציה מתבטלת) אם אין מספיק זמין. */
 export async function reserveLines(tx: Tx, nurseryId: string, orderId: string | null, lines: Line[], actorEmail?: string | null) {
   for (const l of lines) {
+    const variantId = await lineVariantId(tx, nurseryId, l);
     const n = await tx.$executeRaw`
-      UPDATE "nursery_products"
+      UPDATE "product_variants"
       SET "reserved_quantity" = "reserved_quantity" + ${l.quantity}
-      WHERE "id" = ${l.nurseryProductId} AND "nursery_id" = ${nurseryId}
+      WHERE "id" = ${variantId} AND "nursery_id" = ${nurseryId} AND "is_active"
         AND "stock_quantity" - "reserved_quantity" >= ${l.quantity}`;
     if (n !== 1) {
       throw new CheckoutError(`אין מספיק מלאי זמין עבור "${l.productTitle ?? 'אחד המוצרים'}"`);
     }
-    await movement(tx, { nurseryId, nurseryProductId: l.nurseryProductId, orderId, reason: 'RESERVE', reservedDelta: l.quantity, actorEmail });
+    await movement(tx, { nurseryId, nurseryProductId: l.nurseryProductId, variantId, orderId, reason: 'RESERVE', reservedDelta: l.quantity, actorEmail });
   }
 }
 
 async function releaseLines(tx: Tx, nurseryId: string, orderId: string, lines: Line[], reason: 'RELEASE_EXPIRED' | 'RELEASE_CANCELLED', actorEmail?: string | null) {
   for (const l of lines) {
+    const variantId = await lineVariantId(tx, nurseryId, l);
     const n = await tx.$executeRaw`
-      UPDATE "nursery_products"
+      UPDATE "product_variants"
       SET "reserved_quantity" = "reserved_quantity" - ${l.quantity}
-      WHERE "id" = ${l.nurseryProductId} AND "nursery_id" = ${nurseryId}
+      WHERE "id" = ${variantId} AND "nursery_id" = ${nurseryId}
         AND "reserved_quantity" >= ${l.quantity}`;
-    if (n !== 1) throw new Error(`reserved_quantity inconsistency for product ${l.nurseryProductId}`);
-    await movement(tx, { nurseryId, nurseryProductId: l.nurseryProductId, orderId, reason, reservedDelta: -l.quantity, actorEmail });
+    if (n !== 1) throw new Error(`reserved_quantity inconsistency for variant ${variantId}`);
+    await movement(tx, { nurseryId, nurseryProductId: l.nurseryProductId, variantId, orderId, reason, reservedDelta: -l.quantity, actorEmail });
   }
 }
 
 async function commitLines(tx: Tx, nurseryId: string, orderId: string, lines: Line[], actorEmail?: string | null) {
   for (const l of lines) {
+    const variantId = await lineVariantId(tx, nurseryId, l);
     const n = await tx.$executeRaw`
-      UPDATE "nursery_products"
+      UPDATE "product_variants"
       SET "stock_quantity" = "stock_quantity" - ${l.quantity},
           "reserved_quantity" = "reserved_quantity" - ${l.quantity}
-      WHERE "id" = ${l.nurseryProductId} AND "nursery_id" = ${nurseryId}
+      WHERE "id" = ${variantId} AND "nursery_id" = ${nurseryId}
         AND "reserved_quantity" >= ${l.quantity} AND "stock_quantity" >= ${l.quantity}`;
-    if (n !== 1) throw new Error(`stock inconsistency committing product ${l.nurseryProductId}`);
-    await movement(tx, { nurseryId, nurseryProductId: l.nurseryProductId, orderId, reason: 'COMMIT', onHandDelta: -l.quantity, reservedDelta: -l.quantity, actorEmail });
+    if (n !== 1) throw new Error(`stock inconsistency committing variant ${variantId}`);
+    await movement(tx, { nurseryId, nurseryProductId: l.nurseryProductId, variantId, orderId, reason: 'COMMIT', onHandDelta: -l.quantity, reservedDelta: -l.quantity, actorEmail });
   }
 }
 
 async function restoreLines(tx: Tx, nurseryId: string, orderId: string, lines: Line[], actorEmail?: string | null) {
   for (const l of lines) {
-    await tx.nurseryProduct.updateMany({
-      where: { id: l.nurseryProductId, nurseryId },
+    const variantId = await lineVariantId(tx, nurseryId, l);
+    await tx.productVariant.updateMany({
+      where: { id: variantId, nurseryId },
       data: { stockQuantity: { increment: l.quantity } },
     });
-    await movement(tx, { nurseryId, nurseryProductId: l.nurseryProductId, orderId, reason: 'RESTORE_CANCELLED', onHandDelta: l.quantity, actorEmail });
+    await movement(tx, { nurseryId, nurseryProductId: l.nurseryProductId, variantId, orderId, reason: 'RESTORE_CANCELLED', onHandDelta: l.quantity, actorEmail });
   }
 }
 
@@ -152,7 +173,8 @@ export interface CreateOrderInput {
   paymentMethod: PaymentMethod | null;
   paymentReference: string | null;
   couponCode?: string | null;
-  items: Array<{ productId: string; quantity: number }>;
+  /** variantId חסר (עגלה ישנה) → וריאנט ברירת המחדל */
+  items: Array<{ productId: string; variantId?: string | null; quantity: number }>;
   /** מפתח ייחודי לניסיון checkout — ניסיון חוזר מחזיר את אותה הזמנה */
   idempotencyKey?: string | null;
   now?: Date;
@@ -181,22 +203,32 @@ export async function createOrderRecord(db: PrismaClient, input: CreateOrderInpu
     const orderId = await db.$transaction(async (tx) => {
       const products = await tx.nurseryProduct.findMany({
         where: { id: { in: input.items.map((c) => c.productId) }, nurseryId: input.nurseryId, isActive: true },
-        include: { plant: true, supply: true },
+        include: { plant: true, supply: true, variants: true },
       });
-      const byId = new Map(
-        products.map((p) => [
-          p.id,
-          {
-            id: p.id,
-            title: resolveProductContent(p).title,
-            price: Number(p.price),
-            // הזמין למכירה = on_hand פחות מה שכבר שמור להזמנות אחרות
-            stockQuantity: p.stockQuantity - p.reservedQuantity,
-          },
-        ]),
-      );
+      const productById = new Map(products.map((p) => [p.id, p]));
 
-      const lineItems = buildLineItems(input.items, byId, { isQuote: input.isQuote });
+      // כל שורת עגלה → מוצר + וריאנט פעיל שלו (וריאנט של מוצר אחר / לא פעיל → "אינו זמין")
+      const resolved = new Map<string, ProductForCheckout>();
+      const cart = input.items.map((c) => {
+        const p = productById.get(c.productId);
+        const variants = p ? activeVariants(p.variants) : [];
+        const v = c.variantId ? variants.find((x) => x.id === c.variantId) : variants[0];
+        const key = lineKey(c.productId, v?.id ?? c.variantId ?? null);
+        if (p && v) {
+          resolved.set(key, {
+            id: p.id,
+            variantId: v.id,
+            variantName: v.name || null,
+            title: lineTitle(resolveProductContent(p).title, v.name),
+            price: effectivePrice(v, p),
+            // הזמין למכירה = on_hand פחות מה שכבר שמור להזמנות אחרות
+            stockQuantity: availableQuantity(v),
+          });
+        }
+        return { ...c, key };
+      });
+
+      const lineItems = buildLineItems(cart, resolved, { isQuote: input.isQuote });
       const subtotal = calcSubtotal(lineItems);
       let total = subtotal;
       let coupon: { id: string; code: string; discountPct: number } | null = null;
@@ -379,28 +411,34 @@ export async function setPaymentStatus(
 /** עדכון on_hand בידי בעל המשתלה — לא מתחת לכמות השמורה; נרשם כתנועה. */
 export async function setOnHandStock(
   db: PrismaClient,
-  args: { nurseryId: string; productId: string; quantity: number; actorEmail?: string | null },
+  args: { nurseryId: string; productId: string; variantId?: string | null; quantity: number; actorEmail?: string | null },
 ): Promise<{ ok: true; delta: number } | { ok: false; error: string }> {
   if (!Number.isInteger(args.quantity) || args.quantity < 0) return { ok: false, error: 'כמות מלאי לא תקינה' };
   return db.$transaction(async (tx) => {
-    const p = await tx.nurseryProduct.findFirst({
-      where: { id: args.productId, nurseryId: args.nurseryId },
-      select: { stockQuantity: true, reservedQuantity: true },
+    // וריאנט של המוצר הזה, במשתלה הזו (ללא variantId → ברירת המחדל)
+    const v = await tx.productVariant.findFirst({
+      where: {
+        nurseryId: args.nurseryId,
+        nurseryProductId: args.productId,
+        ...(args.variantId ? { id: args.variantId } : { isDefault: true }),
+      },
+      select: { id: true, stockQuantity: true, reservedQuantity: true },
     });
-    if (!p) return { ok: false as const, error: 'המוצר לא נמצא' };
-    if (args.quantity < p.reservedQuantity) {
-      return { ok: false as const, error: `${p.reservedQuantity} יחידות שמורות להזמנות פתוחות — לא ניתן להוריד מתחת לכך` };
+    if (!v) return { ok: false as const, error: 'המוצר לא נמצא' };
+    if (args.quantity < v.reservedQuantity) {
+      return { ok: false as const, error: `${v.reservedQuantity} יחידות שמורות להזמנות פתוחות — לא ניתן להוריד מתחת לכך` };
     }
-    const delta = args.quantity - p.stockQuantity;
+    const delta = args.quantity - v.stockQuantity;
     if (delta === 0) return { ok: true as const, delta };
-    const res = await tx.nurseryProduct.updateMany({
-      where: { id: args.productId, nurseryId: args.nurseryId, stockQuantity: p.stockQuantity, reservedQuantity: { lte: args.quantity } },
+    const res = await tx.productVariant.updateMany({
+      where: { id: v.id, nurseryId: args.nurseryId, stockQuantity: v.stockQuantity, reservedQuantity: { lte: args.quantity } },
       data: { stockQuantity: args.quantity },
     });
     if (res.count !== 1) return { ok: false as const, error: 'המלאי השתנה במקביל — רעננו ונסו שוב' };
     await movement(tx, {
       nurseryId: args.nurseryId,
       nurseryProductId: args.productId,
+      variantId: v.id,
       reason: 'MANUAL_ADJUST',
       onHandDelta: delta,
       actorEmail: args.actorEmail,

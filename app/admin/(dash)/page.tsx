@@ -3,6 +3,10 @@ import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { scoreProductSeo } from '@/lib/seo-score';
 import { denialMessage } from '@/lib/nursery-scope';
+import { lineTitle } from '@/lib/variants';
+
+/** §8.04: סף מלאי נמוך לווריאנט (ברירת מחדל) */
+const LOW_STOCK_THRESHOLD = 5;
 
 function Notice({ reason }: { reason?: string }) {
   const message = denialMessage(reason);
@@ -89,6 +93,21 @@ export default async function AdminOverviewPage(
   ]);
   const needsSeo = seoProducts.filter((p) => scoreProductSeo(p).level !== 'good').length;
 
+  // §8.04: התראת מלאי נמוך לפי וריאנט (סף ברירת מחדל 5), במוצרים ובווריאנטים פעילים בלבד
+  const lowStock = await prisma.$queryRaw<
+    Array<{ id: string; name: string; available: number; title: string }>
+  >`
+    SELECT v."id", v."name", (v."stock_quantity" - v."reserved_quantity")::int AS available,
+           COALESCE(p."custom_title", pl."hebrew_name", s."title", 'מוצר') AS title
+    FROM "product_variants" v
+    JOIN "nursery_products" p ON p."id" = v."nursery_product_id"
+    LEFT JOIN "plants" pl ON pl."id" = p."plant_id"
+    LEFT JOIN "master_supplies" s ON s."id" = p."supply_id"
+    WHERE v."nursery_id" = ${user.nurseryId} AND v."is_active" AND p."is_active"
+      AND v."stock_quantity" - v."reserved_quantity" <= ${LOW_STOCK_THRESHOLD}
+    ORDER BY available ASC, title ASC
+    LIMIT 12`;
+
   return (
     <div>
       <Notice reason={searchParams.notice} />
@@ -101,6 +120,22 @@ export default async function AdminOverviewPage(
         <Stat label="הזמנות" value={orders} href="/admin/orders" />
         <Stat label="מוצרים לשיפור SEO" value={needsSeo} href="/admin/products" />
       </div>
+
+      {lowStock.length > 0 && (
+        <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-6">
+          <h2 className="font-bold text-amber-900">מלאי נמוך ({LOW_STOCK_THRESHOLD} יחידות או פחות)</h2>
+          <ul className="mt-3 grid gap-1.5 text-sm sm:grid-cols-2">
+            {lowStock.map((v) => (
+              <li key={v.id} className="flex justify-between gap-3 rounded-lg bg-white px-3 py-1.5">
+                <span className="truncate">{lineTitle(v.title, v.name)}</span>
+                <span className={v.available <= 0 ? 'font-medium text-rose-700' : 'text-amber-800'}>
+                  {v.available <= 0 ? 'אזל' : `${v.available} יח׳`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mt-8 rounded-xl border border-gray-100 bg-white p-6">
         <h2 className="font-bold">פעולות מהירות</h2>

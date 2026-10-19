@@ -40,7 +40,7 @@ export interface CheckoutInput {
   couponCode?: string;
   paymentMethod?: PaymentMethod;
   paymentReference?: string;
-  items: Array<{ productId: string; quantity: number }>;
+  items: Array<{ productId: string; variantId?: string | null; quantity: number }>;
   /** מפתח ייחודי לניסיון checkout — ניסיון חוזר לא ייצור הזמנה שנייה */
   idempotencyKey?: string;
 }
@@ -104,7 +104,11 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
   if (!email || !EMAIL_RE.test(email)) return { error: 'כתובת אימייל לא תקינה' };
 
   const cart = (input.items ?? []).filter(
-    (i) => i.productId && Number.isInteger(i.quantity) && i.quantity > 0,
+    (i) =>
+      typeof i.productId === 'string' &&
+      (i.variantId === undefined || i.variantId === null || typeof i.variantId === 'string') &&
+      Number.isInteger(i.quantity) &&
+      i.quantity > 0,
   );
   if (cart.length === 0) return { error: 'העגלה ריקה' };
 

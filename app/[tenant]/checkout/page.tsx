@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Store, Truck } from 'lucide-react';
 import type { PaymentMethod } from '@prisma/client';
-import { useCart } from '@/components/cart/cart-provider';
+import { cartKey, useCart } from '@/components/cart/cart-provider';
 import { formatPrice } from '@/lib/utils';
 import { resolveShippingCost, type DeliveryChoice } from '@/lib/checkout-calc';
 import { isMethodAllowedFor, isPayOnSite } from '@/lib/payment-methods';
@@ -85,7 +85,7 @@ export default function CheckoutPage() {
       couponCode: String(fd.get('couponCode') || ''),
       paymentMethod: effectiveMethod || undefined,
       paymentReference: String(fd.get('paymentReference') || ''),
-      items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+      items: items.map((i) => ({ productId: i.productId, variantId: i.variantId ?? null, quantity: i.quantity })),
       idempotencyKey,
     });
 
@@ -320,7 +320,7 @@ export default function CheckoutPage() {
           <h2 className="mb-3 font-bold text-gray-900">סיכום</h2>
           <ul className="space-y-2 text-sm">
             {items.map((i) => (
-              <li key={i.productId} className="flex justify-between gap-2">
+              <li key={cartKey(i)} className="flex justify-between gap-2">
                 <span className="min-w-0 truncate text-gray-600">
                   {i.title} × {i.quantity}
                 </span>

@@ -11,6 +11,8 @@ import {
 
 export interface CartItem {
   productId: string;
+  /** וריאנט (§7.01). חסר בעגלות ישנות — השרת משייך לברירת המחדל */
+  variantId?: string | null;
   title: string;
   price: number;
   image: string | null;
@@ -20,14 +22,19 @@ export interface CartItem {
 
 export type SalesMode = 'DISABLED' | 'ONLINE' | 'QUOTE';
 
+/** מזהה שורה בעגלה: מוצר + וריאנט. */
+export function cartKey(i: Pick<CartItem, 'productId' | 'variantId'>): string {
+  return `${i.productId}:${i.variantId ?? ''}`;
+}
+
 interface CartContextValue {
   items: CartItem[];
   count: number;
   subtotal: number;
   salesMode: SalesMode;
   add: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void;
-  setQuantity: (productId: string, quantity: number) => void;
-  remove: (productId: string) => void;
+  setQuantity: (key: string, quantity: number) => void;
+  remove: (key: string) => void;
   clear: () => void;
 }
 
@@ -72,10 +79,11 @@ export function CartProvider({
   const value = useMemo<CartContextValue>(() => {
     const add: CartContextValue['add'] = (item, quantity = 1) => {
       setItems((prev) => {
-        const existing = prev.find((i) => i.productId === item.productId);
+        const key = cartKey(item);
+        const existing = prev.find((i) => cartKey(i) === key);
         if (existing) {
           return prev.map((i) =>
-            i.productId === item.productId
+            cartKey(i) === key
               ? { ...i, quantity: i.quantity + quantity }
               : i,
           );
@@ -84,16 +92,16 @@ export function CartProvider({
       });
     };
 
-    const setQuantity: CartContextValue['setQuantity'] = (productId, quantity) => {
+    const setQuantity: CartContextValue['setQuantity'] = (key, quantity) => {
       setItems((prev) =>
         quantity <= 0
-          ? prev.filter((i) => i.productId !== productId)
-          : prev.map((i) => (i.productId === productId ? { ...i, quantity } : i)),
+          ? prev.filter((i) => cartKey(i) !== key)
+          : prev.map((i) => (cartKey(i) === key ? { ...i, quantity } : i)),
       );
     };
 
-    const remove: CartContextValue['remove'] = (productId) =>
-      setItems((prev) => prev.filter((i) => i.productId !== productId));
+    const remove: CartContextValue['remove'] = (key) =>
+      setItems((prev) => prev.filter((i) => cartKey(i) !== key));
 
     const clear = () => setItems([]);
 

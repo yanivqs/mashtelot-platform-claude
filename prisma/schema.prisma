@@ -57,6 +57,7 @@ model Nursery {
   orders          Order[]
   paymentMethods  NurseryPaymentMethod[]
   redirects       Redirect[]
+  productVariants ProductVariant[]
   printOrders     PrintOrder[]
   promotions      Promotion[]
   users           User[]
@@ -254,8 +255,11 @@ model NurseryProduct {
   customDescription  String?                  @map("custom_description")
   seoMetaTitle       String?                  @map("seo_meta_title")
   seoMetaDescription String?                  @map("seo_meta_description")
+  /// שם האפשרות בבחירת וריאנט (למשל "גודל עציץ"); ריק = "אפשרות"
+  optionLabel        String?                  @map("option_label")
   createdAt          DateTime                 @default(now()) @map("created_at")
   updatedAt          DateTime                 @updatedAt @map("updated_at")
+  variants           ProductVariant[]
   nursery            Nursery                  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
   plant              Plant?                   @relation(fields: [plantId], references: [id])
   supply             MasterSupply?            @relation(fields: [supplyId], references: [id])
@@ -336,14 +340,18 @@ model Order {
 }
 
 model OrderItem {
-  id               String         @id @default(uuid())
-  orderId          String         @map("order_id")
-  nurseryProductId String         @map("nursery_product_id")
-  productTitle     String         @map("product_title")
+  id               String          @id @default(uuid())
+  orderId          String          @map("order_id")
+  nurseryProductId String          @map("nursery_product_id")
+  productTitle     String          @map("product_title")
   quantity         Int
-  unitPrice        Decimal        @map("unit_price") @db.Decimal(10, 2)
-  nurseryProduct   NurseryProduct @relation(fields: [nurseryProductId], references: [id])
-  order            Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  unitPrice        Decimal         @map("unit_price") @db.Decimal(10, 2)
+  variantId        String?         @map("variant_id")
+  /// Snapshot של שם הווריאנט בזמן ההזמנה
+  variantName      String?         @map("variant_name")
+  nurseryProduct   NurseryProduct  @relation(fields: [nurseryProductId], references: [id])
+  variant          ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("order_items")
 }
@@ -538,6 +546,7 @@ model StockMovement {
   id               String              @id @default(uuid())
   nurseryId        String              @map("nursery_id")
   nurseryProductId String              @map("nursery_product_id")
+  variantId        String?             @map("variant_id")
   orderId          String?             @map("order_id")
   reason           StockMovementReason
   /// שינוי ב-on_hand (stockQuantity)
@@ -548,6 +557,7 @@ model StockMovement {
   createdAt        DateTime            @default(now()) @map("created_at")
   nursery          Nursery             @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
   nurseryProduct   NurseryProduct      @relation(fields: [nurseryProductId], references: [id], onDelete: Cascade)
+  variant          ProductVariant?     @relation(fields: [variantId], references: [id], onDelete: SetNull)
   order            Order?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
   @@index([nurseryId, createdAt])
@@ -662,4 +672,38 @@ model Redirect {
 
   @@unique([nurseryId, fromPath])
   @@map("redirects")
+}
+
+/// §7.01 / §8.01: וריאנט מוצר — מחיר, SKU, ברקוד, מלאי ותמונות לפי וריאנט.
+/// לכל מוצר יש בדיוק וריאנט ברירת מחדל אחד (trigger + אינדקס חלקי במיגרציה 20261019050000).
+/// מלאי המוצר (nursery_products.stock_quantity/reserved_quantity) = סכום הווריאנטים הפעילים — מתוחזק ע"י trigger.
+model ProductVariant {
+  id               String          @id @default(uuid())
+  nurseryId        String          @map("nursery_id")
+  nurseryProductId String          @map("nursery_product_id")
+  /// ריק בווריאנט ברירת מחדל של מוצר פשוט
+  name             String          @default("")
+  sku              String?
+  /// טקסט — שומר אפסים מובילים (§7.02)
+  barcode          String?
+  /// ריק = יורש ממחיר המוצר (החלטת בעלים)
+  price            Decimal?        @db.Decimal(10, 2)
+  compareAtPrice   Decimal?        @map("compare_at_price") @db.Decimal(10, 2)
+  stockQuantity    Int             @default(0) @map("stock_quantity")
+  reservedQuantity Int             @default(0) @map("reserved_quantity")
+  imageUrls        String[]        @default([]) @map("image_urls")
+  isDefault        Boolean         @default(false) @map("is_default")
+  isActive         Boolean         @default(true) @map("is_active")
+  sortOrder        Int             @default(0) @map("sort_order")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+  nursery          Nursery         @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  product          NurseryProduct  @relation(fields: [nurseryProductId], references: [id], onDelete: Cascade)
+  orderItems       OrderItem[]
+  stockMovements   StockMovement[]
+
+  @@unique([nurseryId, sku])
+  @@unique([nurseryId, barcode])
+  @@index([nurseryProductId])
+  @@map("product_variants")
 }

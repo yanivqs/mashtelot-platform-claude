@@ -1,10 +1,10 @@
 import Link from 'next/link';
-import { availableQuantity } from '@/lib/stock';
 import { formatPrice, productSlug } from '@/lib/utils';
 import { resolveProductContent } from '@/lib/seo';
 import type { CatalogProduct } from '@/lib/catalog';
 import { AddToCartButton } from '@/components/cart/add-to-cart-button';
 import { PlantFactsInline } from '@/components/storefront/plant-key-facts';
+import { activeVariants, priceSummary } from '@/lib/variants';
 
 export function ProductCard({
   product,
@@ -16,10 +16,14 @@ export function ProductCard({
   const { title, image } = resolveProductContent(product);
   const slug = productSlug(product.id, title);
   const href = `${basePath}/product/${slug}`;
-  const price = Number(product.price);
-  const compareAt = product.compareAtPrice ? Number(product.compareAtPrice) : null;
-  const onSale = compareAt !== null && compareAt > price;
-  const outOfStock = availableQuantity(product) <= 0;
+  // §7.01: מחיר וזמינות לפי הווריאנטים הפעילים
+  const variants = activeVariants(product.variants);
+  const summary = priceSummary(variants, product);
+  const price = summary.min;
+  const compareAt = summary.compareAt;
+  const onSale = compareAt !== null;
+  const outOfStock = !summary.inStock;
+  const choice = variants.length > 1;
   const kicker = product.plant?.plantType || product.supply?.brand || null;
 
   return (
@@ -70,16 +74,27 @@ export function ProductCard({
 
         <div className="mt-auto pt-2">
           <div className="mb-3 flex items-baseline gap-2">
+            {choice && summary.min !== summary.max && <span className="text-xs text-gray-500">החל מ-</span>}
             <span className="text-lg font-bold text-gray-900">{formatPrice(price)}</span>
             {onSale && (
               <span className="text-sm text-gray-400 line-through">{formatPrice(compareAt!)}</span>
             )}
           </div>
-          <AddToCartButton
-            withQuantity={false}
-            disabled={outOfStock}
-            product={{ productId: product.id, title, price, image, slug }}
-          />
+          {choice ? (
+            // כמה וריאנטים — הבחירה נעשית בדף המוצר
+            <Link
+              href={href}
+              className="inline-flex w-full items-center justify-center rounded-lg border border-[var(--brand,#16a34a)] px-4 py-2.5 text-sm font-medium text-[var(--brand,#16a34a)] transition hover:bg-brand-50"
+            >
+              {outOfStock ? 'אזל מהמלאי' : `לבחירת ${product.optionLabel?.trim() || 'אפשרות'}`}
+            </Link>
+          ) : (
+            <AddToCartButton
+              withQuantity={false}
+              disabled={outOfStock}
+              product={{ productId: product.id, variantId: variants[0]?.id ?? null, title, price, image, slug }}
+            />
+          )}
         </div>
       </div>
     </div>

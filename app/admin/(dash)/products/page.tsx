@@ -23,7 +23,12 @@ export default async function AdminProductsPage(
   const [products, nurseryCategories] = await Promise.all([
     prisma.nurseryProduct.findMany({
       where: { nurseryId },
-      include: { plant: true, supply: true, categories: true },
+      include: {
+        plant: true,
+        supply: true,
+        categories: true,
+        variants: { orderBy: [{ isDefault: 'desc' }, { sortOrder: 'asc' }] },
+      },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.nurseryCategory.findMany({ where: { nurseryId } }),
@@ -52,6 +57,20 @@ export default async function AdminProductsPage(
       categoryIds: p.categories.map((c) => c.nurseryCategoryId),
       plant: p.plant,
       seo: scoreProductSeo(p),
+      optionLabel: p.optionLabel,
+      variants: p.variants.map((v) => ({
+        id: v.id,
+        name: v.name,
+        sku: v.sku,
+        barcode: v.barcode,
+        price: v.price?.toString() ?? null,
+        compareAtPrice: v.compareAtPrice?.toString() ?? null,
+        stockQuantity: v.stockQuantity,
+        reservedQuantity: v.reservedQuantity,
+        imageUrls: v.imageUrls,
+        isDefault: v.isDefault,
+        isActive: v.isActive,
+      })),
     };
   });
 

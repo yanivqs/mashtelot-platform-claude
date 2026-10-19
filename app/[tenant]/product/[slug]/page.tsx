@@ -6,7 +6,8 @@ import { getNurseryByTenant } from '@/lib/tenant';
 import { getProductById } from '@/lib/catalog';
 import { idFromSlug, productSlug, formatPrice } from '@/lib/utils';
 import { resolveProductContent, productJsonLd, tenantUrl } from '@/lib/seo';
-import { AddToCartButton } from '@/components/cart/add-to-cart-button';
+import { ProductPurchase, type PurchaseVariant } from '@/components/storefront/product-purchase';
+import { activeVariants, effectiveCompareAt, effectivePrice, variantImages } from '@/lib/variants';
 import { PlantFactsGrid } from '@/components/storefront/plant-key-facts';
 import { SpecTable } from '@/components/storefront/spec-table';
 import { redirectOrNotFound } from '@/lib/redirect-resolve';
@@ -52,17 +53,25 @@ export default async function ProductPage(props: ProductPageProps) {
   if (!product) return redirectOrNotFound(nursery.id, `/product/${params.slug}`);
 
   const { title, description, image } = resolveProductContent(product);
-  const price = Number(product.price);
-  const compareAt = product.compareAtPrice ? Number(product.compareAtPrice) : null;
-  const onSale = compareAt !== null && compareAt > price;
-  const available = availableQuantity(product);
-  const outOfStock = available <= 0;
+  // §7.01: וריאנטים פעילים — מחיר, מחיר לפני הנחה, זמינות ותמונות לכל אחד
+  const purchaseVariants: PurchaseVariant[] = activeVariants(product.variants).map((v) => {
+    const price = effectivePrice(v, product);
+    const compareAt = effectiveCompareAt(v, product);
+    return {
+      id: v.id,
+      name: v.name,
+      price,
+      compareAt: compareAt !== null && compareAt > price ? compareAt : null,
+      available: availableQuantity(v),
+      images: variantImages(v, image),
+    };
+  });
   const plant = product.plant;
   const kicker = plant?.plantType || product.supply?.brand || null;
   const canonicalPath = `/product/${productSlug(product.id, title)}`;
   const care = plant?.care?.trim();
 
-  const jsonLd = productJsonLd({ nursery, product, url: tenantUrl(nursery, canonicalPath) });
+  const jsonLd = productJsonLd({ nursery, product, variants: product.variants, url: tenantUrl(nursery, canonicalPath) });
 
   return (
     <div dir="rtl" className="mx-auto max-w-5xl px-6 py-10">
@@ -77,58 +86,35 @@ export default async function ProductPage(props: ProductPageProps) {
         <span className="text-gray-700">{title}</span>
       </nav>
 
-      <div className="grid gap-8 md:grid-cols-2">
-        <div className="flex aspect-square items-center justify-center overflow-hidden rounded-2xl bg-brand-50 text-7xl">
-          {image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt={title} className="h-full w-full object-cover" />
-          ) : (
-            <span aria-hidden>🪴</span>
-          )}
-        </div>
-
-        <div className="flex flex-col">
-          {kicker && (
-            <span className="w-fit rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-              {kicker}
-            </span>
-          )}
-          <h1 className="mt-3 text-3xl font-bold leading-tight text-gray-900">{title}</h1>
-          {plant?.latinName && (
-            <p className="mt-1 text-sm italic text-gray-400">{plant.latinName}</p>
-          )}
-
-          <div className="mt-5 flex items-baseline gap-3">
-            <span className="text-3xl font-bold text-gray-900">{formatPrice(price)}</span>
-            {onSale && (
-              <span className="text-lg text-gray-400 line-through">{formatPrice(compareAt!)}</span>
-            )}
-          </div>
-          <p className={`mt-1 text-sm ${outOfStock ? 'text-rose-600' : 'text-brand-700'}`}>
-            {outOfStock ? 'אזל מהמלאי' : `במלאי (${available} יח')`}
-          </p>
-
-          <div className="mt-6 max-w-sm">
-            <AddToCartButton
-              withQuantity
-              disabled={outOfStock}
-              product={{
-                productId: product.id,
-                title,
-                price,
-                image,
-                slug: productSlug(product.id, title),
-              }}
-            />
-          </div>
-
-          {plant && (
-            <div className="mt-8">
-              <PlantFactsGrid plant={plant} limit={4} />
-            </div>
-          )}
-        </div>
-      </div>
+      {purchaseVariants.length > 0 ? (
+        <ProductPurchase
+          productId={product.id}
+          title={title}
+          slug={productSlug(product.id, title)}
+          optionLabel={product.optionLabel?.trim() || 'אפשרות'}
+          variants={purchaseVariants}
+          header={
+            <>
+              {kicker && (
+                <span className="w-fit rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
+                  {kicker}
+                </span>
+              )}
+              <h1 className="mt-3 text-3xl font-bold leading-tight text-gray-900">{title}</h1>
+              {plant?.latinName && <p className="mt-1 text-sm italic text-gray-400">{plant.latinName}</p>}
+            </>
+          }
+          footer={
+            plant ? (
+              <div className="mt-8">
+                <PlantFactsGrid plant={plant} limit={4} />
+              </div>
+            ) : null
+          }
+        />
+      ) : (
+        <h1 className="text-3xl font-bold leading-tight text-gray-900">{title}</h1>
+      )}
 
       {description && (
         <section className="mt-12">

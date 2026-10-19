@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildLineItems,
+  lineKey,
   calcSubtotal,
   assertCouponValid,
   applyDiscount,
@@ -25,8 +26,18 @@ describe('buildLineItems', () => {
   it('resolves cart lines against products, carrying title and price', () => {
     const items = buildLineItems([{ productId: 'p1', quantity: 2 }], products, { isQuote: false });
     expect(items).toEqual([
-      { nurseryProductId: 'p1', productTitle: 'עציץ בזיליקום', quantity: 2, unitPrice: 25 },
+      { nurseryProductId: 'p1', variantId: null, variantName: null, productTitle: 'עציץ בזיליקום', quantity: 2, unitPrice: 25 },
     ]);
+  });
+
+  it('resolves a line by product + variant key, carrying the variant', () => {
+    const byKey = new Map([
+      [lineKey('p1', 'v2'), { id: 'p1', variantId: 'v2', variantName: '4 ליטר', title: 'עציץ — 4 ליטר', price: 55, stockQuantity: 3 }],
+    ]);
+    expect(buildLineItems([{ productId: 'p1', variantId: 'v2', quantity: 1 }], byKey, { isQuote: false })).toEqual([
+      { nurseryProductId: 'p1', variantId: 'v2', variantName: '4 ליטר', productTitle: 'עציץ — 4 ליטר', quantity: 1, unitPrice: 55 },
+    ]);
+    expect(() => buildLineItems([{ productId: 'p1', variantId: 'other', quantity: 1 }], byKey, { isQuote: false })).toThrow(CheckoutError);
   });
 
   it('throws when a product no longer exists', () => {

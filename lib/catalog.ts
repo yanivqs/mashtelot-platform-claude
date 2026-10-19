@@ -17,6 +17,8 @@ export const PAGE_SIZE = 12;
 const withRefs = {
   plant: true,
   supply: true,
+  // וריאנטים פעילים (§7.01) — מחיר "החל מ-", זמינות ובחירה בדף המוצר
+  variants: { where: { isActive: true }, orderBy: [{ isDefault: 'desc' }, { sortOrder: 'asc' }] },
 } satisfies Prisma.NurseryProductInclude;
 
 export type CatalogProduct = Prisma.NurseryProductGetPayload<{ include: typeof withRefs }>;

@@ -9,6 +9,7 @@ import { SpecTable } from '@/components/storefront/spec-table';
 import { formatPrice } from '@/lib/utils';
 import { SEO_LEVEL_META, type SeoScore } from '@/lib/seo-score';
 import { updateProduct, deleteProduct, type ProductFormState } from './actions';
+import { VariantsEditor, type EditorVariant } from './variants-editor';
 
 export interface RowProduct {
   id: string;
@@ -30,6 +31,10 @@ export interface RowProduct {
   categoryIds: string[];
   plant: Plant | null;
   seo: SeoScore;
+  /** שם האפשרות לבחירת וריאנט (למשל "גודל עציץ") */
+  optionLabel: string | null;
+  /** כל הווריאנטים (כולל מושבתים), ברירת המחדל ראשונה */
+  variants: EditorVariant[];
 }
 
 export interface CategoryOption {
@@ -64,6 +69,7 @@ export function ProductRow({
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(updateProduct, initial);
   const [imageUrl, setImageUrl] = useState(product.customImageUrl ?? '');
+  const multi = product.variants.length > 1;
 
   return (
     <div className="border-b border-gray-100 last:border-0">
@@ -85,7 +91,10 @@ export function ProductRow({
             {product.latinName ? ` · ${product.latinName}` : ''}
           </p>
         </div>
-        <div className="hidden w-24 text-sm text-gray-700 sm:block">{formatPrice(product.price)}</div>
+        <div className="hidden w-24 text-sm text-gray-700 sm:block">
+          {formatPrice(product.price)}
+          {multi && <span className="block text-xs text-gray-400">{product.variants.length} וריאנטים</span>}
+        </div>
         <div className="hidden w-20 text-sm text-gray-700 sm:block">
           {product.stockQuantity} יח׳
           {product.reservedQuantity > 0 && (
@@ -164,7 +173,7 @@ export function ProductRow({
             </div>
 
             <label className="text-sm">
-              <span className="mb-1 block font-medium text-gray-700">מחיר (₪)</span>
+              <span className="mb-1 block font-medium text-gray-700">{multi ? 'מחיר בסיס (₪) — לווריאנטים בלי מחיר משלהם' : 'מחיר (₪)'}</span>
               <input name="price" type="number" step="0.01" min="0" defaultValue={product.price} className={field} required />
             </label>
             <label className="text-sm">
@@ -178,10 +187,18 @@ export function ProductRow({
                 className={field}
               />
             </label>
-            <label className="text-sm">
-              <span className="mb-1 block font-medium text-gray-700">מלאי</span>
-              <input name="stockQuantity" type="number" min="0" defaultValue={product.stockQuantity} className={field} />
-            </label>
+            {multi ? (
+              <label className="text-sm">
+                <span className="mb-1 block font-medium text-gray-700">שם האפשרות בחנות</span>
+                <input name="optionLabel" defaultValue={product.optionLabel ?? ''} placeholder="למשל: גודל עציץ" className={field} />
+                <span className="mt-1 block text-xs text-gray-500">המלאי מנוהל לכל וריאנט בנפרד (למטה).</span>
+              </label>
+            ) : (
+              <label className="text-sm">
+                <span className="mb-1 block font-medium text-gray-700">מלאי</span>
+                <input name="stockQuantity" type="number" min="0" defaultValue={product.stockQuantity} className={field} />
+              </label>
+            )}
             <label className="flex items-center gap-2 self-end text-sm">
               <input
                 name="isActive"
@@ -242,6 +259,10 @@ export function ProductRow({
               {state.error && <span className="text-sm text-red-600">{state.error}</span>}
             </div>
           </form>
+
+          <div className="mt-4 rounded-lg border border-gray-200 bg-white p-3">
+            <VariantsEditor productId={product.id} basePrice={product.price} variants={product.variants} />
+          </div>
 
           {product.plant && (
             <details className="mt-4 rounded-lg border border-gray-200 bg-white p-4">

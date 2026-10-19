@@ -1,5 +1,6 @@
-import type { Nursery, Plant, MasterSupply, NurseryProduct } from '@prisma/client';
+import type { Nursery, Plant, MasterSupply, NurseryProduct, ProductVariant } from '@prisma/client';
 import { availableQuantity } from '@/lib/stock';
+import { activeVariants, effectivePrice, priceSummary } from '@/lib/variants';
 
 const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'localhost:3000';
 const PROTOCOL = ROOT_DOMAIN.startsWith('localhost') ? 'http' : 'https';
@@ -76,11 +77,43 @@ export function localBusinessJsonLd(nursery: Nursery) {
 export function productJsonLd(params: {
   nursery: Nursery;
   product: ProductWithRefs;
+  /** וריאנטים (§7.01); חסר = לפי מחיר/מלאי המוצר */
+  variants?: ProductVariant[];
   url: string;
 }) {
   const { nursery, product, url } = params;
   const { title, description, image } = resolveProductContent(product);
-  const price = product.price.toString();
+  const variants = activeVariants(params.variants ?? []);
+  const inStock = variants.length ? variants.some((v) => availableQuantity(v) > 0) : availableQuantity(product) > 0;
+  const availability = inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock';
+  const seller = { '@type': 'Organization', name: nursery.name };
+
+  // §7.01: כמה וריאנטים → טווח מחירים (AggregateOffer)
+  if (variants.length > 1) {
+    const s = priceSummary(variants, product);
+    return {
+      '@context': 'https://schema.org/',
+      '@type': 'Product',
+      name: title,
+      description: description || title,
+      image: image ? [image] : undefined,
+      sku: product.id,
+      brand: { '@type': 'Brand', name: nursery.name },
+      offers: {
+        '@type': 'AggregateOffer',
+        url,
+        priceCurrency: 'ILS',
+        lowPrice: s.min.toFixed(2),
+        highPrice: s.max.toFixed(2),
+        offerCount: variants.length,
+        availability,
+        seller,
+      },
+    };
+  }
+
+  const only = variants[0];
+  const price = only ? effectivePrice(only, product).toFixed(2) : product.price.toString();
 
   return {
     '@context': 'https://schema.org/',
@@ -88,18 +121,15 @@ export function productJsonLd(params: {
     name: title,
     description: description || title,
     image: image ? [image] : undefined,
-    sku: product.id,
+    sku: only?.sku || product.id,
     brand: { '@type': 'Brand', name: nursery.name },
     offers: {
       '@type': 'Offer',
       url,
       priceCurrency: 'ILS',
       price,
-      availability:
-        availableQuantity(product) > 0
-          ? 'https://schema.org/InStock'
-          : 'https://schema.org/OutOfStock',
-      seller: { '@type': 'Organization', name: nursery.name },
+      availability,
+      seller,
     },
   };
 }

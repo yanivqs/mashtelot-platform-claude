@@ -7,6 +7,8 @@ import { PrismaClient } from '@prisma/client';
 
 export const E2E_OWNER = { email: 'owner@e2e.invalid', password: 'e2e-owner-pass-123' };
 export const E2E_SUPER = { email: 'super@e2e.invalid', password: 'e2e-super-pass-123' };
+/** בעלים נוסף של אותה משתלה — מגבלת ההתחברות היא 5 לאימייל ב-15 דק', והסוויטה מתחברת יותר פעמים */
+export const E2E_OWNER2 = { email: 'owner2@e2e.invalid', password: 'e2e-owner2-pass-123' };
 /** קבוצת נרדפות שבדיקת הניהול יוצרת — נמחקת בתחילת כל ריצה */
 export const E2E_SYNONYM = ['זית', 'אוליבה'];
 
@@ -24,7 +26,7 @@ export default async function globalSetup() {
       await db.user.deleteMany({ where: { nurseryId: old.id } });
       await db.nursery.delete({ where: { id: old.id } });
     }
-    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email] } } });
+    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email] } } });
     await db.searchSynonymGroup.deleteMany({ where: { terms: { has: 'אוליבה' } } });
     await db.rateLimit.deleteMany({});
 
@@ -52,6 +54,18 @@ export default async function globalSetup() {
     ] as const) {
       await db.nurseryProduct.create({ data: { nurseryId: n.id, customTitle: title, price, stockQuantity: 20 } });
     }
+    // מוצר עם שני וריאנטים (§7.01): ברירת מחדל יורשת מחיר, השני עם מחיר משלו
+    const ficus = await db.nurseryProduct.create({
+      data: { nurseryId: n.id, customTitle: 'פיקוס כינורי', price: '59.90', stockQuantity: 5, optionLabel: 'גודל עציץ' },
+    });
+    await db.productVariant.updateMany({ where: { nurseryProductId: ficus.id, isDefault: true }, data: { name: 'עציץ 1 ליטר' } });
+    await db.productVariant.create({
+      data: { nurseryId: n.id, nurseryProductId: ficus.id, name: 'עציץ 4 ליטר', price: '89.00', stockQuantity: 2, sortOrder: 1 },
+    });
+    await db.productVariant.create({
+      data: { nurseryId: n.id, nurseryProductId: ficus.id, name: 'עציץ 10 ליטר', price: '149.00', stockQuantity: 0, sortOrder: 2 },
+    });
+
     await db.nurseryPaymentMethod.createMany({
       data: [
         { nurseryId: n.id, method: 'PAYPAL', isEnabled: true, destination: 'https://paypal.me/e2e-shop', sortOrder: 1 },
@@ -69,6 +83,14 @@ export default async function globalSetup() {
     });
     await db.user.create({
       data: { email: E2E_SUPER.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER.password, 4) },
+    });
+    await db.user.create({
+      data: {
+        email: E2E_OWNER2.email,
+        role: 'NURSERY_OWNER',
+        nurseryId: n.id,
+        passwordHash: await bcrypt.hash(E2E_OWNER2.password, 4),
+      },
     });
   } finally {
     await db.$disconnect();

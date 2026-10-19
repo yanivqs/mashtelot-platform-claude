@@ -66,12 +66,16 @@ export async function updateProduct(
     const price = toDecimalString(formData.get('price'));
     if (!price) return { error: 'מחיר לא תקין' };
 
-    const stock = parseInt(String(formData.get('stockQuantity') || '0'), 10);
-    const nextStock = Number.isFinite(stock) && stock >= 0 ? stock : 0;
-
-    // מלאי: דרך שירות המלאי — לא מתחת לכמות השמורה להזמנות, ונרשם כתנועת מלאי (C-P1-02)
-    const stockRes = await setOnHandStock(prisma, { nurseryId, productId: id, quantity: nextStock, actorEmail });
-    if (!stockRes.ok) return { error: stockRes.error };
+    // מלאי ברמת המוצר רק כשיש וריאנט יחיד (השדה לא מוצג כשיש כמה — המלאי לכל וריאנט, §7.01)
+    const stockField = formData.get('stockQuantity');
+    let nextStock = before?.stockQuantity ?? 0;
+    if (stockField !== null) {
+      const stock = parseInt(String(stockField || '0'), 10);
+      nextStock = Number.isFinite(stock) && stock >= 0 ? stock : 0;
+      // דרך שירות המלאי — לא מתחת לכמות השמורה להזמנות, ונרשם כתנועת מלאי (C-P1-02)
+      const stockRes = await setOnHandStock(prisma, { nurseryId, productId: id, quantity: nextStock, actorEmail });
+      if (!stockRes.ok) return { error: stockRes.error };
+    }
 
     await prisma.nurseryProduct.update({
       where: { id },
@@ -84,6 +88,9 @@ export async function updateProduct(
         customImageUrl: optionalUrl(formData.get('customImageUrl')),
         seoMetaTitle: (String(formData.get('seoMetaTitle') || '').trim() || null),
         seoMetaDescription: (String(formData.get('seoMetaDescription') || '').trim() || null),
+        ...(formData.has('optionLabel')
+          ? { optionLabel: String(formData.get('optionLabel') || '').trim().slice(0, 40) || null }
+          : {}),
       },
     });
 

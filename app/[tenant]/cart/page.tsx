@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Trash2 } from 'lucide-react';
-import { useCart } from '@/components/cart/cart-provider';
+import { cartKey, useCart } from '@/components/cart/cart-provider';
 import { formatPrice } from '@/lib/utils';
 
 export default function CartPage() {
@@ -53,7 +53,7 @@ export default function CartPage() {
 
       <ul className="divide-y divide-gray-100 rounded-xl border border-gray-100">
         {items.map((item) => (
-          <li key={item.productId} className="flex items-center gap-4 p-4">
+          <li key={cartKey(item)} className="flex items-center gap-4 p-4">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-50 text-2xl">
               {item.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -77,7 +77,7 @@ export default function CartPage() {
               <button
                 aria-label="הפחת"
                 className="px-2.5 py-1.5 text-gray-500 hover:text-gray-900"
-                onClick={() => setQuantity(item.productId, item.quantity - 1)}
+                onClick={() => setQuantity(cartKey(item), item.quantity - 1)}
               >
                 −
               </button>
@@ -85,7 +85,7 @@ export default function CartPage() {
               <button
                 aria-label="הוסף"
                 className="px-2.5 py-1.5 text-gray-500 hover:text-gray-900"
-                onClick={() => setQuantity(item.productId, item.quantity + 1)}
+                onClick={() => setQuantity(cartKey(item), item.quantity + 1)}
               >
                 +
               </button>
@@ -97,7 +97,7 @@ export default function CartPage() {
 
             <button
               aria-label="הסר מהעגלה"
-              onClick={() => remove(item.productId)}
+              onClick={() => remove(cartKey(item))}
               className="text-gray-400 hover:text-red-600"
             >
               <Trash2 className="h-4 w-4" />

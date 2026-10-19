@@ -9,11 +9,22 @@ export class CheckoutError extends Error {}
 
 export interface CartLine {
   productId: string;
+  /** וריאנט (§7.01); חסר = ברירת המחדל */
+  variantId?: string | null;
   quantity: number;
+  /** מפתח השורה במפה (מוצר+וריאנט); ברירת מחדל — lineKey(productId, variantId) */
+  key?: string;
+}
+
+/** מפתח שורת עגלה: מוצר + וריאנט. */
+export function lineKey(productId: string, variantId: string | null | undefined): string {
+  return `${productId}:${variantId ?? ''}`;
 }
 
 export interface ProductForCheckout {
   id: string;
+  variantId?: string | null;
+  variantName?: string | null;
   title: string;
   price: number;
   stockQuantity: number;
@@ -21,25 +32,32 @@ export interface ProductForCheckout {
 
 export interface ResolvedLineItem {
   nurseryProductId: string;
+  variantId: string | null;
+  variantName: string | null;
   productTitle: string;
   quantity: number;
   unitPrice: number;
 }
 
-/** ממיר שורות עגלה למוצרים שנפתרו, וזורק אם מוצר לא קיים או שאין מספיק מלאי. */
+/**
+ * ממיר שורות עגלה למוצרים שנפתרו, וזורק אם מוצר/וריאנט לא קיים או שאין מספיק מלאי.
+ * `productsByKey` — לפי lineKey(מוצר, וריאנט); לתאימות, גם מפתח של מזהה מוצר בלבד מתקבל.
+ */
 export function buildLineItems(
   cart: CartLine[],
-  productsById: Map<string, ProductForCheckout>,
+  productsByKey: Map<string, ProductForCheckout>,
   opts: { isQuote: boolean },
 ): ResolvedLineItem[] {
   return cart.map((c) => {
-    const product = productsById.get(c.productId);
+    const product = productsByKey.get(c.key ?? lineKey(c.productId, c.variantId)) ?? productsByKey.get(c.productId);
     if (!product) throw new CheckoutError('אחד המוצרים בעגלה אינו זמין יותר');
     if (!opts.isQuote && product.stockQuantity < c.quantity) {
       throw new CheckoutError(`אין מספיק מלאי עבור "${product.title}"`);
     }
     return {
       nurseryProductId: product.id,
+      variantId: product.variantId ?? null,
+      variantName: product.variantName ?? null,
       productTitle: product.title,
       quantity: c.quantity,
       unitPrice: product.price,
@@ -47,7 +65,7 @@ export function buildLineItems(
   });
 }
 
-export function calcSubtotal(lineItems: ResolvedLineItem[]): number {
+export function calcSubtotal<T extends { unitPrice: number; quantity: number }>(lineItems: T[]): number {
   return lineItems.reduce((sum, li) => sum + li.unitPrice * li.quantity, 0);
 }
 
