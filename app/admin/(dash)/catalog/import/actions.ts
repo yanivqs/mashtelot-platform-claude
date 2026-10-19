@@ -94,7 +94,7 @@ export async function commitImport(jobId: string, _formData: FormData): Promise<
   const payload = job.payload as unknown as ImportPayload;
 
   try {
-    await upsertPlantRows(prisma, payload.rows);
+    await upsertPlantRows(prisma, payload.rows, { source: 'csv', actorEmail: user.email });
     await prisma.importJob.update({
       where: { id: jobId },
       data: { status: 'COMMITTED', completedAt: new Date() },

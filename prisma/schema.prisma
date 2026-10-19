@@ -58,6 +58,7 @@ model Nursery {
   paymentMethods  NurseryPaymentMethod[]
   redirects       Redirect[]
   productVariants ProductVariant[]
+  syncDecisions   CatalogSyncDecision[]
   printOrders     PrintOrder[]
   promotions      Promotion[]
   users           User[]
@@ -195,6 +196,7 @@ model Plant {
   updatedAt       DateTime                  @updatedAt @map("updated_at")
   nurseryProducts NurseryProduct[]
   categories      PlantCategoryAssignment[]
+  revisions       CatalogRevision[]
 
   @@map("plants")
 }
@@ -224,16 +226,17 @@ model PlantCategoryAssignment {
 }
 
 model MasterSupply {
-  id              String           @id @default(uuid())
+  id              String            @id @default(uuid())
   title           String
   brand           String?
-  category        SupplyCategory   @default(GENERAL)
-  barcode         String?          @unique
+  category        SupplyCategory    @default(GENERAL)
+  barcode         String?           @unique
   description     String?
-  imageUrl        String?          @map("image_url")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  imageUrl        String?           @map("image_url")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
   nurseryProducts NurseryProduct[]
+  revisions       CatalogRevision[]
 
   @@map("master_supplies")
 }
@@ -257,6 +260,12 @@ model NurseryProduct {
   seoMetaDescription String?                  @map("seo_meta_description")
   /// שם האפשרות בבחירת וריאנט (למשל "גודל עציץ"); ריק = "אפשרות"
   optionLabel        String?                  @map("option_label")
+  /// §6: גרסת הפריט המרכזי שאושרה למוצר — החנות מציגה אותה (לא את הקטלוג החי)
+  catalogRevisionId  String?                  @map("catalog_revision_id")
+  /// §6.02: שדות שנשמרו מקומית ואינם מוצעים לסנכרון — { שדה: ערך }
+  catalogOverrides   Json?                    @map("catalog_overrides")
+  catalogRevision    CatalogRevision?         @relation(fields: [catalogRevisionId], references: [id], onDelete: SetNull)
+  syncDecisions      CatalogSyncDecision[]
   createdAt          DateTime                 @default(now()) @map("created_at")
   updatedAt          DateTime                 @updatedAt @map("updated_at")
   variants           ProductVariant[]
@@ -706,4 +715,43 @@ model ProductVariant {
   @@unique([nurseryId, barcode])
   @@index([nurseryProductId])
   @@map("product_variants")
+}
+
+/// §6.03 / R02-02: צילום של פריט מרכזי (צמח או ציוד) — נוצר ע"י trigger בכל שינוי תוכן.
+model CatalogRevision {
+  id         String           @id @default(uuid())
+  plantId    String?          @map("plant_id")
+  supplyId   String?          @map("supply_id")
+  version    Int
+  /// שדות התוכן בלבד (camelCase, כשמות השדות ב-Prisma)
+  data       Json
+  /// backfill | admin | csv | system
+  source     String
+  actorEmail String?          @map("actor_email")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  plant      Plant?           @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  supply     MasterSupply?    @relation(fields: [supplyId], references: [id], onDelete: Cascade)
+  products   NurseryProduct[]
+
+  @@unique([plantId, version])
+  @@unique([supplyId, version])
+  @@map("catalog_revisions")
+}
+
+/// §6.05: תיעוד אישור/דחייה של הצעת סנכרון.
+model CatalogSyncDecision {
+  id               String         @id @default(uuid())
+  nurseryId        String         @map("nursery_id")
+  nurseryProductId String         @map("nursery_product_id")
+  fromRevisionId   String?        @map("from_revision_id")
+  toRevisionId     String         @map("to_revision_id")
+  accepted         String[]
+  rejected         String[]
+  actorEmail       String?        @map("actor_email")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  nursery          Nursery        @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  product          NurseryProduct @relation(fields: [nurseryProductId], references: [id], onDelete: Cascade)
+
+  @@index([nurseryId, createdAt])
+  @@map("catalog_sync_decisions")
 }

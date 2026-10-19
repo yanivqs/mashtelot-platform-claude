@@ -11,6 +11,8 @@ export const E2E_SUPER = { email: 'super@e2e.invalid', password: 'e2e-super-pass
 export const E2E_OWNER2 = { email: 'owner2@e2e.invalid', password: 'e2e-owner2-pass-123' };
 /** קבוצת נרדפות שבדיקת הניהול יוצרת — נמחקת בתחילת כל ריצה */
 export const E2E_SYNONYM = ['זית', 'אוליבה'];
+/** צמח בקטלוג המרכזי שמשמש את בדיקת הסנכרון (§6) — נוצר מחדש בכל ריצה */
+export const E2E_PLANT = 'צמח בדיקה E2E';
 
 export default async function globalSetup() {
   const url = process.env.DATABASE_URL ?? '';
@@ -27,6 +29,8 @@ export default async function globalSetup() {
       await db.nursery.delete({ where: { id: old.id } });
     }
     await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email] } } });
+    // המוצרים נמחקו עם המשתלה; הצמח המרכזי (והגרסאות שלו) נמחק כאן
+    await db.plant.deleteMany({ where: { hebrewName: E2E_PLANT } });
     await db.searchSynonymGroup.deleteMany({ where: { terms: { has: 'אוליבה' } } });
     await db.rateLimit.deleteMany({});
 
@@ -65,6 +69,12 @@ export default async function globalSetup() {
     await db.productVariant.create({
       data: { nurseryId: n.id, nurseryProductId: ficus.id, name: 'עציץ 10 ליטר', price: '149.00', stockQuantity: 0, sortOrder: 2 },
     });
+
+    // §6: מוצר מקושר לצמח מהקטלוג המרכזי (נעוץ לגרסה 1 ע"י trigger)
+    const plant = await db.plant.create({
+      data: { hebrewName: E2E_PLANT, description: 'תיאור מקורי', light: 'שמש מלאה', water: 'מעט' },
+    });
+    await db.nurseryProduct.create({ data: { nurseryId: n.id, plantId: plant.id, price: '33.00', stockQuantity: 4 } });
 
     await db.nurseryPaymentMethod.createMany({
       data: [

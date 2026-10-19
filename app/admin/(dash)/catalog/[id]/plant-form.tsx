@@ -145,7 +145,7 @@ export function PlantForm({
 
       <div className="flex items-center gap-3">
         <SaveButton />
-        {state.ok && <span className="text-sm text-green-700">נשמר ✓</span>}
+        {state.ok && <span className="text-sm text-green-700">{state.message ?? 'נשמר ✓'}</span>}
         {state.error && <span className="text-sm text-red-600">{state.error}</span>}
       </div>
     </form>

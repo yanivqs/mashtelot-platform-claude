@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
 import { assignPlantCategoriesToProduct } from '@/lib/category-provision';
+import { productsBehind } from '@/lib/catalog-sync-admin';
 
 const EDITABLE_FIELDS = [
   'hebrewName',
@@ -37,13 +38,15 @@ const EDITABLE_FIELDS = [
 export interface PlantFormState {
   ok?: boolean;
   error?: string;
+  /** §6: כמה מוצרים בחנויות יקבלו הצעת עדכון */
+  message?: string;
 }
 
 export async function updatePlant(
   _prev: PlantFormState,
   formData: FormData,
 ): Promise<PlantFormState> {
-  await requireUser(['SUPER_ADMIN']);
+  const user = await requireUser(['SUPER_ADMIN']);
   const id = String(formData.get('id') || '');
   if (!id) return { error: 'מזהה חסר' };
 
@@ -60,17 +63,17 @@ export async function updatePlant(
   const categoryIds = formData.getAll('categoryIds').map(String);
 
   try {
-    await prisma.$transaction([
-      prisma.plant.update({ where: { id }, data }),
-      prisma.plantCategoryAssignment.deleteMany({ where: { plantId: id } }),
-      ...(categoryIds.length > 0
-        ? [
-            prisma.plantCategoryAssignment.createMany({
-              data: categoryIds.map((categoryId) => ({ plantId: id, categoryId })),
-            }),
-          ]
-        : []),
-    ]);
+    await prisma.$transaction(async (tx) => {
+      // §6: מקור ומבצע לגרסה שה-trigger יוצר (plants_record_revision)
+      await tx.$executeRaw`SELECT set_config('app.catalog_source', 'admin', true), set_config('app.catalog_actor', ${user.email}, true)`;
+      await tx.plant.update({ where: { id }, data });
+      await tx.plantCategoryAssignment.deleteMany({ where: { plantId: id } });
+      if (categoryIds.length > 0) {
+        await tx.plantCategoryAssignment.createMany({
+          data: categoryIds.map((categoryId) => ({ plantId: id, categoryId })),
+        });
+      }
+    });
     const linked = await prisma.nurseryProduct.findMany({
       where: { plantId: id },
       select: { id: true, nurseryId: true },
@@ -82,7 +85,12 @@ export async function updatePlant(
 
   revalidatePath(`/admin/catalog/${id}`);
   revalidatePath('/admin/catalog');
-  return { ok: true };
+  // §6: שינוי תוכן אינו משנה את החנויות — כל משתלה מקבלת הצעת עדכון לאישור
+  const behind = await productsBehind(prisma, { plantId: id });
+  return {
+    ok: true,
+    message: behind > 0 ? `נשמר ✓ — ${behind} מוצרים בחנויות יקבלו הצעת עדכון לאישור בעל המשתלה` : 'נשמר ✓',
+  };
 }
 
 export async function deletePlant(formData: FormData): Promise<void> {

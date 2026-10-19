@@ -6,6 +6,7 @@ import { scoreProductSeo } from '@/lib/seo-score';
 import { flattenCategoryTree } from '@/lib/category-tree';
 import { firstLetter, parseLetter } from '@/lib/alphabet';
 import { lettersOf } from '@/lib/letter-filter';
+import { catalogRevisionInclude, localizeProduct } from '@/lib/catalog-localize';
 import { AlphabetBar } from '@/components/alphabet-bar';
 import { ProductRow, type RowProduct } from './product-row';
 
@@ -28,6 +29,7 @@ export default async function AdminProductsPage(
         supply: true,
         categories: true,
         variants: { orderBy: [{ isDefault: 'desc' }, { sortOrder: 'asc' }] },
+        ...catalogRevisionInclude,
       },
       orderBy: { createdAt: 'desc' },
     }),
@@ -36,7 +38,7 @@ export default async function AdminProductsPage(
 
   const categoryOptions = flattenCategoryTree(nurseryCategories);
 
-  const rows: RowProduct[] = products.map((p) => {
+  const rows: RowProduct[] = products.map(localizeProduct).map((p) => {
     const { title, image } = resolveProductContent(p);
     return {
       id: p.id,

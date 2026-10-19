@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { scoreProductSeo } from '@/lib/seo-score';
 import { denialMessage } from '@/lib/nursery-scope';
 import { lineTitle } from '@/lib/variants';
+import { catalogRevisionInclude, localizeProduct } from '@/lib/catalog-localize';
+import { pendingUpdateCount } from '@/lib/catalog-sync-admin';
 
 /** §8.04: סף מלאי נמוך לווריאנט (ברירת מחדל) */
 const LOW_STOCK_THRESHOLD = 5;
@@ -88,10 +90,14 @@ export default async function AdminOverviewPage(
         seoMetaDescription: true,
         plant: { select: { description: true, imageUrl: true } },
         supply: { select: { description: true, imageUrl: true } },
+        catalogOverrides: true,
+        ...catalogRevisionInclude,
       },
-    }),
+    }).then((rows) => rows.map(localizeProduct)),
   ]);
   const needsSeo = seoProducts.filter((p) => scoreProductSeo(p).level !== 'good').length;
+
+  const catalogUpdates = await pendingUpdateCount(prisma, user.nurseryId);
 
   // §8.04: התראת מלאי נמוך לפי וריאנט (סף ברירת מחדל 5), במוצרים ובווריאנטים פעילים בלבד
   const lowStock = await prisma.$queryRaw<
@@ -120,6 +126,16 @@ export default async function AdminOverviewPage(
         <Stat label="הזמנות" value={orders} href="/admin/orders" />
         <Stat label="מוצרים לשיפור SEO" value={needsSeo} href="/admin/products" />
       </div>
+
+      {catalogUpdates > 0 && (
+        <Link
+          href="/admin/catalog-updates"
+          className="mt-8 block rounded-xl border border-sky-200 bg-sky-50 p-5 text-sky-900 hover:bg-sky-100"
+        >
+          <span className="font-bold">{catalogUpdates} עדכונים מהקטלוג המרכזי ממתינים לאישורכם</span>
+          <span className="mt-1 block text-sm">מידע על צמחים/ציוד שמוצגים בחנות שלכם השתנה. הם לא יתעדכנו בחנות עד שתאשרו.</span>
+        </Link>
+      )}
 
       {lowStock.length > 0 && (
         <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-6">

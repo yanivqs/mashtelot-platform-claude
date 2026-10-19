@@ -1,4 +1,5 @@
 import 'server-only';
+import { catalogRevisionInclude, localizeProduct } from '@/lib/catalog-localize';
 import { prisma } from '@/lib/prisma';
 import { isModuleEnabled } from '@/lib/module-access';
 import { getCategoryNav, type CategoryNode } from '@/lib/catalog';
@@ -20,8 +21,10 @@ export async function nurserySitemapEntries(nurseryId: string): Promise<SitemapE
         customTitle: true,
         plant: { select: { hebrewName: true } },
         supply: { select: { title: true } },
+        catalogOverrides: true,
+        ...catalogRevisionInclude,
       },
-    }),
+    }).then((rows) => rows.map(localizeProduct)),
     getCategoryNav(nurseryId),
     isModuleEnabled(nurseryId, 'static_pages'),
     isModuleEnabled(nurseryId, 'blog'),

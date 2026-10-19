@@ -267,7 +267,7 @@ export function ProductRow({
           {product.plant && (
             <details className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
               <summary className="cursor-pointer text-sm font-medium text-gray-900">
-                מידע בוטני מלא (קריאה בלבד — מהקטלוג המרכזי)
+                מידע בוטני מלא (קריאה בלבד — הגרסה שאישרתם מהקטלוג המרכזי)
               </summary>
               <div className="mt-3">
                 <SpecTable plant={product.plant} />

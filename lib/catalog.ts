@@ -2,6 +2,7 @@ import { cache } from 'react';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getSynonymIndex } from '@/lib/synonyms';
+import { catalogRevisionInclude, localizeProduct } from '@/lib/catalog-localize';
 import { categoryAndDescendantIds } from '@/lib/category-tree';
 import { parseLetter } from '@/lib/alphabet';
 import { PLANT_FACETS } from '@/lib/plant-facets';
@@ -19,6 +20,8 @@ const withRefs = {
   supply: true,
   // וריאנטים פעילים (§7.01) — מחיר "החל מ-", זמינות ובחירה בדף המוצר
   variants: { where: { isActive: true }, orderBy: [{ isDefault: 'desc' }, { sortOrder: 'asc' }] },
+  // §6: הגרסה המאושרת של הפריט המרכזי — מוחלת ע"י localizeProduct
+  ...catalogRevisionInclude,
 } satisfies Prisma.NurseryProductInclude;
 
 export type CatalogProduct = Prisma.NurseryProductGetPayload<{ include: typeof withRefs }>;
@@ -129,10 +132,12 @@ const getCatalogIndex = cache(async (nurseryId: string) => {
       },
       supply: { select: { title: true } },
       categories: { select: { nurseryCategoryId: true, sortOrder: true } },
+      catalogOverrides: true,
+      ...catalogRevisionInclude,
     },
   });
 
-  return rows.map((r) =>
+  return rows.map(localizeProduct).map((r) =>
     toIndexEntry({
       id: r.id,
       createdAt: r.createdAt,
@@ -197,7 +202,7 @@ export async function getCatalogPage(
         include: withRefs,
       })
     : [];
-  const byId = new Map(found.map((p) => [p.id, p]));
+  const byId = new Map(found.map((p) => [p.id, localizeProduct(p)]));
 
   return {
     ...view,
@@ -209,17 +214,19 @@ export async function getCatalogPage(
 }
 
 export async function getFeaturedProducts(nurseryId: string, take = 8) {
-  return prisma.nurseryProduct.findMany({
+  const rows = await prisma.nurseryProduct.findMany({
     where: { nurseryId, isActive: true },
     include: withRefs,
     orderBy: { createdAt: 'desc' },
     take,
   });
+  return rows.map(localizeProduct);
 }
 
 export async function getProductById(nurseryId: string, id: string) {
-  return prisma.nurseryProduct.findFirst({
+  const p = await prisma.nurseryProduct.findFirst({
     where: { id, nurseryId, isActive: true },
     include: withRefs,
   });
+  return p ? localizeProduct(p) : null;
 }

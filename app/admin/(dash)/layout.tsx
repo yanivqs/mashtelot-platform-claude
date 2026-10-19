@@ -21,12 +21,15 @@ import {
   ShieldCheck,
   SearchCode,
   Signpost,
+  RefreshCw,
   type LucideIcon,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { getEnabledModuleKeys } from '@/lib/module-access';
 import { MODULES } from '@/lib/modules';
 import { tenantOrigin } from '@/lib/seo';
+import { prisma } from '@/lib/prisma';
+import { pendingUpdateCount } from '@/lib/catalog-sync-admin';
 import { logout } from './actions';
 
 export const metadata: Metadata = {
@@ -73,6 +76,13 @@ async function buildOwnerNav(nurseryId: string | null): Promise<NavItem[]> {
     nav.push({ href: '/admin/products', label: 'המלאי שלי', icon: Package });
     nav.push({ href: '/admin/products/browse', label: 'שיוך מוצרים', icon: PlusSquare });
     nav.push({ href: '/admin/products/categories', label: 'הקטגוריות שלי', icon: Tags });
+    // §6: עדכונים ממתינים מהקטלוג המרכזי (ללא הודעות יזומות — מונה בתפריט בלבד, Q3-א)
+    const pending = nurseryId ? await pendingUpdateCount(prisma, nurseryId) : 0;
+    nav.push({
+      href: '/admin/catalog-updates',
+      label: pending > 0 ? `עדכונים מהקטלוג (${pending})` : 'עדכונים מהקטלוג',
+      icon: RefreshCw,
+    });
   }
 
   for (const mod of MODULES) {

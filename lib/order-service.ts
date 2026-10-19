@@ -31,6 +31,7 @@ import {
   ORDER_STATUS_LABELS,
 } from '@/lib/order-state';
 import { resolveProductContent } from '@/lib/seo';
+import { catalogRevisionInclude, localizeProduct } from '@/lib/catalog-localize';
 import { activeVariants, effectivePrice, lineTitle } from '@/lib/variants';
 import { availableQuantity } from '@/lib/stock';
 
@@ -203,9 +204,10 @@ export async function createOrderRecord(db: PrismaClient, input: CreateOrderInpu
     const orderId = await db.$transaction(async (tx) => {
       const products = await tx.nurseryProduct.findMany({
         where: { id: { in: input.items.map((c) => c.productId) }, nurseryId: input.nurseryId, isActive: true },
-        include: { plant: true, supply: true, variants: true },
+        include: { plant: true, supply: true, variants: true, ...catalogRevisionInclude },
       });
-      const productById = new Map(products.map((p) => [p.id, p]));
+      // §6: שם המוצר בהזמנה — לפי הגרסה המאושרת של הפריט המרכזי
+      const productById = new Map(products.map((p) => [p.id, localizeProduct(p)]));
 
       // כל שורת עגלה → מוצר + וריאנט פעיל שלו (וריאנט של מוצר אחר / לא פעיל → "אינו זמין")
       const resolved = new Map<string, ProductForCheckout>();

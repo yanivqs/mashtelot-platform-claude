@@ -1,3 +1,4 @@
+import { catalogRevisionInclude, localizeProduct } from '@/lib/catalog-localize';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowRight, ArrowUp, ArrowDown, X } from 'lucide-react';
@@ -21,13 +22,13 @@ export default async function CategoryManagerPage(props: { params: Promise<{ id:
     prisma.nurseryProductCategory.findMany({
       where: { nurseryCategoryId: category.id },
       orderBy: [{ sortOrder: 'asc' }, { nurseryProductId: 'asc' }],
-      include: { nurseryProduct: { include: { plant: true, supply: true } } },
-    }),
+      include: { nurseryProduct: { include: { plant: true, supply: true, ...catalogRevisionInclude } } },
+    }).then((rows) => rows.map((a) => ({ ...a, nurseryProduct: localizeProduct(a.nurseryProduct) }))),
     prisma.nurseryProduct.findMany({
       where: { nurseryId: category.nurseryId },
-      include: { plant: true, supply: true },
+      include: { plant: true, supply: true, ...catalogRevisionInclude },
       orderBy: { createdAt: 'desc' },
-    }),
+    }).then((rows) => rows.map(localizeProduct)),
   ]);
 
   const byId = new Map(allCategories.map((c) => [c.id, c]));
