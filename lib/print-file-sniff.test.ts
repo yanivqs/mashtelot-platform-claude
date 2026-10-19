@@ -40,3 +40,14 @@ describe('safeFileName', () => {
     expect(safeFileName('', 'pdf')).toBe('file.pdf');
   });
 });
+
+describe('isPublicKey (storage misconfiguration guard)', () => {
+  it('detects publishable and anon keys, not secret/service_role ones', async () => {
+    const { isPublicKey } = await import('./print-storage');
+    const jwt = (role: string) => `x.${Buffer.from(JSON.stringify({ role })).toString('base64url')}.y`;
+    expect(isPublicKey('sb_publishable_abc')).toBe(true);
+    expect(isPublicKey(jwt('anon'))).toBe(true);
+    expect(isPublicKey(jwt('service_role'))).toBe(false);
+    expect(isPublicKey('sb_secret_abc')).toBe(false);
+  });
+});

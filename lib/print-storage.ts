@@ -153,8 +153,24 @@ const localDriver: Driver = {
   },
 };
 
+/** מפתח ציבורי של Supabase: החדש (sb_publishable_) או JWT ישן עם role=anon. */
+export function isPublicKey(key: string): boolean {
+  if (key.startsWith('sb_publishable_')) return true;
+  const parts = key.split('.');
+  if (parts.length !== 3) return false;
+  try {
+    return JSON.parse(Buffer.from(parts[1]!, 'base64url').toString()).role === 'anon';
+  } catch {
+    return false;
+  }
+}
+
 export function storageDriver(): Driver {
   const cfg = supabaseConfig();
+  // מפתח ציבורי (publishable/anon) לא עוקף RLS — האחסון הפרטי ייכשל בהודעה לא ברורה; עדיף לעצור מיד
+  if (cfg && isPublicKey(cfg.key)) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY מוגדר עם המפתח הציבורי — יש להגדיר את המפתח הסודי (service_role / sb_secret)');
+  }
   if (cfg) return supabaseDriver(cfg);
   if (process.env.NODE_ENV !== 'production' || process.env.E2E === '1') return localDriver;
   throw new Error('אחסון הקבצים לא מוגדר (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY חסרים)');
