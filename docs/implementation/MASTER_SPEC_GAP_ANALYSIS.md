@@ -14,7 +14,7 @@
 | §2.01 זיהוי Tenant בשרת | BLOCKER | Verified | `middleware.ts`, `lib/tenant.ts` | זיוף Host |
 | §2.03 Lifecycle משתלה | BLOCKER | Partial | `isActive` בלבד; בעלים מושעה מתחבר | Tenant C |
 | §2.05 Tenants סינתטיים | BLOCKER | Partial | `test/db/fixtures.ts` (בענף E01) | — |
-| §4.01 / R06-01 תפקידים | BLOCKER | Missing | enum: SUPER_ADMIN/NURSERY_OWNER/CUSTOMER | — |
+| §4.01 / R06-01 תפקידים | BLOCKER | Partial (2026-10-20) | צוות משתלה: עובד + כותב תוכן, עד 5 (`lib/nursery-team.ts`); תפקידי צוות הפלטפורמה (§4.01) — טרם | E2E `team.desktop.spec.ts` |
 | §4.04 MFA | BLOCKER | Partial (2026-10-20) | TOTP + קודי שחזור (`lib/mfa.ts`); **החלטת בעלים: אופציונלי גם לסופר-אדמין — חריגה מ"מחייב בחשבונות ניהול מרכזיים"** | E2E `mfa.desktop.spec.ts` |
 | §4.07 אכיפה בשרת | BLOCKER | Partial | IDOR בעמודים; מודולים לא באכיפת Actions | בדיקות שליליות |
 | §10.01 Credentials מוצפנים לכל Tenant | BLOCKER | Missing | אין סליקה | — |

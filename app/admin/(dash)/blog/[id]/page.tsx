@@ -21,7 +21,7 @@ const EMPTY: BlogFormValues = {
 
 export default async function EditBlogPostPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const { nurseryId } = await requireNurseryPage({ all: ['blog'] });
+  const { nurseryId } = await requireNurseryPage({ all: ['blog'], area: 'content' });
 
   const isNew = params.id === 'new';
   let values = EMPTY;

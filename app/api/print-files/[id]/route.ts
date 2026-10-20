@@ -18,7 +18,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   if (!user) return new Response('Unauthorized', { status: 401 });
   const file = await prisma.printFile.findUnique({ where: { id } });
   if (!file) return new Response('Not found', { status: 404 });
-  const allowed = user.role === 'SUPER_ADMIN' || (user.role === 'NURSERY_OWNER' && user.nurseryId === file.nurseryId);
+  // R06: עובד המשתלה כמו בעליה; כותב תוכן — לא (אין לו גישה לבית הדפוס)
+  const allowed =
+    user.role === 'SUPER_ADMIN' ||
+    ((user.role === 'NURSERY_OWNER' || user.role === 'NURSERY_STAFF') && user.nurseryId === file.nurseryId);
   if (!allowed) return new Response('Not found', { status: 404 });
 
   const bytes = await storageDriver().read(file.storageKey);

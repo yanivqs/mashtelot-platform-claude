@@ -33,6 +33,7 @@ async function evaluate(req: ModuleRequirement) {
           role: user.role,
           nurseryId: user.nurseryId,
           nurseryActive: user.nursery ? user.nursery.isActive : null,
+          disabled: Boolean(user.disabledAt),
         }
       : null,
     enabled,

@@ -113,6 +113,7 @@ export const getSessionUser = cache(async () => {
         role: user.role,
         nurseryId: user.nurseryId,
         nurseryActive: user.nursery ? user.nursery.isActive : null,
+        disabled: Boolean(user.disabledAt),
       })
     ) {
       return null;

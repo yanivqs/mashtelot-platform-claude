@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminBlogList() {
-  const { nurseryId } = await requireNurseryPage({ all: ['blog'] });
+  const { nurseryId } = await requireNurseryPage({ all: ['blog'], area: 'content' });
 
 
   const posts = await prisma.blogPost.findMany({

@@ -21,7 +21,7 @@ const EMPTY: PageFormValues = {
 
 export default async function EditPagePage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const { nurseryId } = await requireNurseryPage({ all: ['static_pages'] });
+  const { nurseryId } = await requireNurseryPage({ all: ['static_pages'], area: 'content' });
 
   const isNew = params.id === 'new';
   let values = EMPTY;

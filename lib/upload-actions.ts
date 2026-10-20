@@ -28,7 +28,8 @@ const BUCKET = 'uploads';
  * וקיום bucket ציבורי בשם "uploads" בפרויקט Supabase.
  */
 export async function uploadImage(formData: FormData): Promise<UploadResult> {
-  await requireUser(['SUPER_ADMIN', 'NURSERY_OWNER']);
+  // R06: גם צוות המשתלה (כותב תוכן — תמונות לבלוג/עמודים)
+  await requireUser(['SUPER_ADMIN', 'NURSERY_OWNER', 'NURSERY_STAFF', 'NURSERY_WRITER']);
 
   if (!(await rateLimit(`upload:ip:${await clientIp()}`, 40, 10 * 60_000)).ok) {
     return { error: 'יותר מדי העלאות בזמן קצר. נסו שוב בעוד מספר דקות.' };

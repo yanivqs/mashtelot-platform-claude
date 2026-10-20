@@ -21,6 +21,8 @@ model User {
   mfaEnabledAt   DateTime?          @map("mfa_enabled_at")
   /// הצעד האחרון שנוצל — קוד מאותו צעד או מוקדם יותר נדחה (מניעת שימוש חוזר)
   mfaLastStep    Int?               @map("mfa_last_step")
+  /// R06: משתמש צוות שהושבת בידי בעל המשתלה (חסום, כולל sessions קיימים)
+  disabledAt     DateTime?          @map("disabled_at")
   recoveryCodes  UserRecoveryCode[]
   role           Role               @default(CUSTOMER)
   nurseryId      String?            @map("nursery_id")
@@ -559,6 +561,10 @@ enum Role {
   SUPER_ADMIN
   NURSERY_OWNER
   CUSTOMER
+  /// R06-01: עובד משתלה — כל הניהול חוץ מצוות ו"החשבון שלי"
+  NURSERY_STAFF
+  /// R06-01: כותב תוכן — עמודים ובלוג בלבד
+  NURSERY_WRITER
 }
 
 enum SupplyCategory {

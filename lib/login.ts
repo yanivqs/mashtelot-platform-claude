@@ -31,6 +31,7 @@ export async function authenticateAdmin(
     role: user.role,
     nurseryId: user.nurseryId,
     nurseryActive: user.nursery ? user.nursery.isActive : null,
+    disabled: Boolean(user.disabledAt),
   });
   if (!portal.ok) return { ok: false, reason: 'portal_denied', error: portal.error, user };
 

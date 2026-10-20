@@ -14,7 +14,7 @@ const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,80}[a-z0-9])?$/;
 
 /** הקשר המשתלה של המשתמש המחובר בלבד + אכיפת המודול (C-P1-01). */
 async function resolveNurseryId(): Promise<string> {
-  return (await requireNurseryAction({ all: ['blog'] })).nurseryId;
+  return (await requireNurseryAction({ all: ['blog'], area: 'content' })).nurseryId;
 }
 
 export async function saveBlogPost(_prev: BlogFormState, formData: FormData): Promise<BlogFormState> {

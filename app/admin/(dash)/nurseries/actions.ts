@@ -84,7 +84,8 @@ export async function updateNursery(
   _prev: NurseryFormState,
   formData: FormData,
 ): Promise<NurseryFormState> {
-  const user = await requireUser(['SUPER_ADMIN', 'NURSERY_OWNER']);
+  // R06: גם עובד (לא כותב תוכן — נאכף ב-nurseryActionScope) עורך את פרטי המשתלה
+  const user = await requireUser(['SUPER_ADMIN', 'NURSERY_OWNER', 'NURSERY_STAFF']);
   const id = String(formData.get('id') || '');
   if (!id) return { error: 'מזהה חסר' };
 

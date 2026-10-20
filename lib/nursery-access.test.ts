@@ -59,3 +59,29 @@ describe('session and login policy', () => {
     expect(canUseAdminPortal(owner({ role: 'SUPER_ADMIN', nurseryId: null, nurseryActive: null })).ok).toBe(true);
   });
 });
+
+describe('nursery staff roles (R06-01, owner decision 2026-10-20)', () => {
+  const staff = owner({ role: 'NURSERY_STAFF' });
+  const writer = owner({ role: 'NURSERY_WRITER' });
+  const reason = (s: AccessSubject, area?: 'general' | 'content' | 'owner') => {
+    const d = decideNurseryAccess(s, mods('orders', 'blog'), { area });
+    return d.ok ? 'ok' : d.reason;
+  };
+
+  it('role × area matrix', () => {
+    expect([undefined, 'content', 'owner'].map((a) => reason(owner(), a as 'owner'))).toEqual(['ok', 'ok', 'ok']);
+    expect([undefined, 'content', 'owner'].map((a) => reason(staff, a as 'owner'))).toEqual(['ok', 'ok', 'ROLE_FORBIDDEN']);
+    expect([undefined, 'content', 'owner'].map((a) => reason(writer, a as 'owner'))).toEqual(['ROLE_FORBIDDEN', 'ok', 'ROLE_FORBIDDEN']);
+  });
+
+  it('modules and suspension still apply to staff; disabled staff are cut off', () => {
+    expect(decideNurseryAccess(writer, mods(), { all: ['blog'], area: 'content' })).toEqual({ ok: false, reason: 'MODULE_DISABLED' });
+    expect(reason(owner({ role: 'NURSERY_STAFF', nurseryActive: false }))).toBe('NURSERY_SUSPENDED');
+    expect(reason(owner({ role: 'NURSERY_STAFF', disabled: true }))).toBe('NOT_AUTHENTICATED');
+    expect(isSessionAllowed(owner({ role: 'NURSERY_WRITER', disabled: true }))).toBe(false);
+    expect(isSessionAllowed(owner({ role: 'NURSERY_STAFF', nurseryActive: false }))).toBe(false);
+    expect(canUseAdminPortal(staff).ok).toBe(true);
+    expect(canUseAdminPortal(writer).ok).toBe(true);
+    expect(canUseAdminPortal(owner({ role: 'NURSERY_STAFF', disabled: true }))).toEqual({ ok: false, error: 'החשבון הושבת. לפרטים פנו לבעל המשתלה.' });
+  });
+});

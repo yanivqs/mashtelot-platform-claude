@@ -6,6 +6,7 @@ import { denialMessage } from '@/lib/nursery-scope';
 import { lineTitle } from '@/lib/variants';
 import { catalogRevisionInclude, localizeProduct } from '@/lib/catalog-localize';
 import { pendingUpdateCount } from '@/lib/catalog-sync-admin';
+import { getEnabledModuleKeys } from '@/lib/module-access';
 
 /** §8.04: סף מלאי נמוך לווריאנט (ברירת מחדל) */
 const LOW_STOCK_THRESHOLD = 5;
@@ -63,6 +64,31 @@ export default async function AdminOverviewPage(
           <Stat label="מוצרים משויכים" value={products} />
           <Stat label="הזמנות" value={orders} />
         </div>
+      </div>
+    );
+  }
+
+  // R06: כותב תוכן — במקום נתוני החנות, קישורים למסכי התוכן בלבד
+  if (user.role === 'NURSERY_WRITER' && user.nurseryId) {
+    const enabled = await getEnabledModuleKeys(user.nurseryId);
+    const links = [
+      enabled.has('static_pages') ? { href: '/admin/pages', label: 'עמודים' } : null,
+      enabled.has('blog') ? { href: '/admin/blog', label: 'בלוג' } : null,
+    ].filter((l): l is { href: string; label: string } => Boolean(l));
+    return (
+      <div>
+        <Notice reason={searchParams.notice} />
+        <h1 className="mb-2 text-2xl font-bold">שלום</h1>
+        <p className="mb-6 text-sm text-gray-500">כותב תוכן — יש לך גישה לעריכת התוכן של האתר.</p>
+        {links.length ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {links.map((l) => (
+              <Stat key={l.href} label="מעבר לעריכה" value={l.label} href={l.href} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">מסכי התוכן אינם פעילים במשתלה זו.</p>
+        )}
       </div>
     );
   }

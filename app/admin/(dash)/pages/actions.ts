@@ -14,7 +14,7 @@ export interface PageFormState {
 
 /** הקשר המשתלה של המשתמש המחובר בלבד + אכיפת המודול (C-P1-01). */
 async function resolveNurseryId(): Promise<string> {
-  return (await requireNurseryAction({ all: ['static_pages'] })).nurseryId;
+  return (await requireNurseryAction({ all: ['static_pages'], area: 'content' })).nurseryId;
 }
 
 export async function savePage(

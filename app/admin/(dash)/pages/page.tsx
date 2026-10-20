@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPagesList() {
-  const { nurseryId } = await requireNurseryPage({ all: ['static_pages'] });
+  const { nurseryId } = await requireNurseryPage({ all: ['static_pages'], area: 'content' });
 
 
   const pages = await prisma.staticPage.findMany({

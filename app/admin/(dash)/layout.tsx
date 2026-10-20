@@ -24,6 +24,7 @@ import {
   Image as ImageIcon,
   Signpost,
   RefreshCw,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
@@ -32,6 +33,8 @@ import { MODULES } from '@/lib/modules';
 import { tenantOrigin } from '@/lib/seo';
 import { prisma } from '@/lib/prisma';
 import { pendingUpdateCount } from '@/lib/catalog-sync-admin';
+import { ROLE_LABELS, roleAllowsArea } from '@/lib/nursery-access';
+import type { Role } from '@prisma/client';
 import { logout } from './actions';
 
 export const metadata: Metadata = {
@@ -71,8 +74,18 @@ const adminNav: NavItem[] = [
   { href: '/admin/security', label: 'יומן התחברויות', icon: ShieldCheck },
 ];
 
-/** ניווט בעל משתלה — נבנה מתוך המודולים המשויכים בלבד. */
-async function buildOwnerNav(nurseryId: string | null): Promise<NavItem[]> {
+/** מסכי תוכן (R06: כותב תוכן רואה רק אותם). */
+const CONTENT_HREFS = new Set(['/admin/pages', '/admin/blog']);
+
+/** ניווט משתלה — נבנה מתוך המודולים המשויכים, ומסונן לפי התפקיד (R06-01). */
+async function buildOwnerNav(nurseryId: string | null, role: Role): Promise<NavItem[]> {
+  const nav = await buildFullNurseryNav(nurseryId);
+  if (role === 'NURSERY_WRITER') return nav.filter((i) => i.href === '/admin' || CONTENT_HREFS.has(i.href));
+  if (roleAllowsArea(role, 'owner')) nav.splice(nav.length - 1, 0, { href: '/admin/team', label: 'צוות', icon: Users });
+  return nav;
+}
+
+async function buildFullNurseryNav(nurseryId: string | null): Promise<NavItem[]> {
   const nav: NavItem[] = [{ href: '/admin', label: 'סקירה', icon: LayoutDashboard }];
   const enabled = nurseryId ? await getEnabledModuleKeys(nurseryId) : new Set<string>();
 
@@ -119,7 +132,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let storeUrl: string | null = null;
   if (!isSuper) {
     const nursery = user.nursery; // לעולם לא "המשתלה הראשונה" (C-P1-01)
-    ownerNav = await buildOwnerNav(nursery?.id ?? null);
+    ownerNav = await buildOwnerNav(nursery?.id ?? null, user.role);
     storeUrl = nursery ? tenantOrigin(nursery) : null;
   }
 
@@ -131,6 +144,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
             {isSuper ? 'ניהול פלטפורמה' : user.nursery?.name ?? 'המשתלה שלי'}
           </p>
           <p className="mt-0.5 truncate text-xs text-gray-500">{user.email}</p>
+          {ROLE_LABELS[user.role] && user.role !== 'NURSERY_OWNER' && (
+            <p className="mt-0.5 text-xs text-gray-400">{ROLE_LABELS[user.role]}</p>
+          )}
           {storeUrl && (
             <a
               href={storeUrl}
@@ -180,6 +196,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
           )}
         </nav>
 
+        {/* R06: לעובדים אין "החשבון שלי" — הסיסמה מנוהלת בידי בעל המשתלה */}
+        {(isSuper || user.role === 'NURSERY_OWNER') && (
         <div className="border-t border-gray-100 p-3 pb-0">
           <Link
             href="/admin/account"
@@ -189,6 +207,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             החשבון שלי
           </Link>
         </div>
+        )}
         <form action={logout} className="p-3">
           <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100">
             <LogOut className="h-4 w-4" />
