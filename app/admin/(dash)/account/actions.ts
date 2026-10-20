@@ -17,9 +17,10 @@ export interface ChangePasswordState {
 async function reissueCurrentSession(userId: string) {
   const fresh = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, sessionVersion: true },
+    select: { id: true, sessionVersion: true, mfaEnabledAt: true },
   });
-  if (fresh) await createSession(fresh);
+  // המכשיר הנוכחי כבר עבר את ה-MFA (אחרת לא היה מגיע לכאן)
+  if (fresh) await createSession(fresh, { mfa: Boolean(fresh.mfaEnabledAt) });
 }
 
 export async function changePasswordAction(

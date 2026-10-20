@@ -46,6 +46,8 @@ const env = {
   DATABASE_URL: testUrl,
   DIRECT_URL: testUrl,
   AUTH_SECRET: 'e2e-only-secret-not-used-anywhere',
+  // מפתח הצפנת MFA לבדיקות בלבד (32 בתים, base64) — לא בשימוש בשום סביבה אחרת
+  MFA_ENCRYPTION_KEY: Buffer.from('e2e-only-mfa-key-32-bytes-long!!').toString('base64'),
   ROOT_DOMAIN: 'localhost:3100',
   RESEND_API_KEY: '',
   E2E: '1',

@@ -3,7 +3,7 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import { createSession } from '@/lib/auth';
+import { createMfaChallenge, createSession } from '@/lib/auth';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
 import { recordAudit } from '@/lib/audit';
 import { authenticateAdmin, loginAuditEvent, LOGIN_ACTIONS, type LoginContext } from '@/lib/login';
@@ -53,6 +53,13 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
       loginAuditEvent(LOGIN_ACTIONS.failed, { email, user: res.user, reason: res.reason, ctx }),
     );
     return { error: res.error, email };
+  }
+
+  // §4.04: סיסמה נכונה + MFA פעיל → מסך קוד (ה-session נפתח רק אחרי הקוד)
+  if (res.user.mfaEnabledAt) {
+    await recordAudit(loginAuditEvent(LOGIN_ACTIONS.mfaChallenge, { email, user: res.user, ctx }));
+    await createMfaChallenge(res.user);
+    redirect('/admin/login/mfa');
   }
 
   await recordAudit(loginAuditEvent(LOGIN_ACTIONS.success, { email, user: res.user, ctx }));

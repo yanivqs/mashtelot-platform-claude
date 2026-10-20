@@ -43,6 +43,13 @@ export const LOGIN_ACTIONS = {
   blocked: 'auth.login_blocked',
   logout: 'auth.logout',
   sessionsRevoked: 'auth.sessions_revoked',
+  /** §4.04: סיסמה נכונה, ממתין לקוד אימות */
+  mfaChallenge: 'auth.mfa_challenge',
+  mfaFailed: 'auth.mfa_failed',
+  mfaEnabled: 'auth.mfa_enabled',
+  mfaDisabled: 'auth.mfa_disabled',
+  mfaReset: 'auth.mfa_reset',
+  mfaRecoveryRegenerated: 'auth.mfa_recovery_regenerated',
 } as const;
 
 export type LoginAction = (typeof LOGIN_ACTIONS)[keyof typeof LOGIN_ACTIONS];

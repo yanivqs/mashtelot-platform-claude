@@ -15,6 +15,12 @@ const ACTION_LABELS: Record<LoginAction, { label: string; className: string }> =
   [LOGIN_ACTIONS.blocked]: { label: 'נחסם (יותר מדי ניסיונות)', className: 'bg-amber-50 text-amber-800' },
   [LOGIN_ACTIONS.logout]: { label: 'התנתקות', className: 'bg-gray-100 text-gray-700' },
   [LOGIN_ACTIONS.sessionsRevoked]: { label: 'ניתוק כל המכשירים', className: 'bg-blue-50 text-blue-700' },
+  [LOGIN_ACTIONS.mfaChallenge]: { label: 'סיסמה נכונה — ממתין לקוד', className: 'bg-gray-100 text-gray-700' },
+  [LOGIN_ACTIONS.mfaFailed]: { label: 'קוד אימות שגוי', className: 'bg-red-50 text-red-700' },
+  [LOGIN_ACTIONS.mfaEnabled]: { label: 'הפעלת אימות דו-שלבי', className: 'bg-green-50 text-green-700' },
+  [LOGIN_ACTIONS.mfaDisabled]: { label: 'ביטול אימות דו-שלבי', className: 'bg-amber-50 text-amber-800' },
+  [LOGIN_ACTIONS.mfaReset]: { label: 'איפוס אימות דו-שלבי (סופר-אדמין)', className: 'bg-amber-50 text-amber-800' },
+  [LOGIN_ACTIONS.mfaRecoveryRegenerated]: { label: 'קודי שחזור חדשים', className: 'bg-blue-50 text-blue-700' },
 };
 
 const REASON_LABELS: Record<string, string> = {
@@ -23,6 +29,9 @@ const REASON_LABELS: Record<string, string> = {
   portal_denied: 'אין הרשאה / משתלה מושעית',
   rate_limit_ip: 'לפי IP',
   rate_limit_email: 'לפי אימייל',
+  rate_limit_mfa: 'יותר מדי קודים',
+  totp: 'קוד מהאפליקציה',
+  recovery: 'קוד שחזור',
 };
 
 const dateFmt = new Intl.DateTimeFormat('he-IL', {

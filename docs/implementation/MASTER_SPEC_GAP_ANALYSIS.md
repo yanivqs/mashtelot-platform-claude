@@ -15,7 +15,7 @@
 | §2.03 Lifecycle משתלה | BLOCKER | Partial | `isActive` בלבד; בעלים מושעה מתחבר | Tenant C |
 | §2.05 Tenants סינתטיים | BLOCKER | Partial | `test/db/fixtures.ts` (בענף E01) | — |
 | §4.01 / R06-01 תפקידים | BLOCKER | Missing | enum: SUPER_ADMIN/NURSERY_OWNER/CUSTOMER | — |
-| §4.04 MFA | BLOCKER | Missing | — | — |
+| §4.04 MFA | BLOCKER | Partial (2026-10-20) | TOTP + קודי שחזור (`lib/mfa.ts`); **החלטת בעלים: אופציונלי גם לסופר-אדמין — חריגה מ"מחייב בחשבונות ניהול מרכזיים"** | E2E `mfa.desktop.spec.ts` |
 | §4.07 אכיפה בשרת | BLOCKER | Partial | IDOR בעמודים; מודולים לא באכיפת Actions | בדיקות שליליות |
 | §10.01 Credentials מוצפנים לכל Tenant | BLOCKER | Missing | אין סליקה | — |
 | §19.02 Secrets | BLOCKER | Partial | `.env` מוחרג; סיסמאות seed קשיחות | סריקת סודות |

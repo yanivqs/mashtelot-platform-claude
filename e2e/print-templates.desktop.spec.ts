@@ -1,6 +1,6 @@
 import { expect, test, type Page } from './fixtures';
 import { ADMIN } from '../playwright.config';
-import { E2E_OWNER2, E2E_PRINT_TEMPLATE, E2E_SUPER2 as E2E_SUPER } from './global-setup';
+import { E2E_OWNER2, E2E_PRINT_TEMPLATE, E2E_SUPER5 as E2E_SUPER } from './global-setup';
 
 async function login(page: Page, user: { email: string; password: string }) {
   await page.context().clearCookies();

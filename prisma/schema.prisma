@@ -9,22 +9,41 @@ datasource db {
 }
 
 model User {
-  id             String       @id @default(uuid())
-  email          String       @unique
-  fullName       String?      @map("full_name")
-  phoneNumber    String?      @map("phone_number")
-  passwordHash   String?      @map("password_hash")
+  id             String             @id @default(uuid())
+  email          String             @unique
+  fullName       String?            @map("full_name")
+  phoneNumber    String?            @map("phone_number")
+  passwordHash   String?            @map("password_hash")
   /// SEC-02: מוגבר בהחלפת סיסמה / "נתק את כל המכשירים" — מבטל sessions ישנים
-  sessionVersion Int          @default(0) @map("session_version")
-  role           Role         @default(CUSTOMER)
-  nurseryId      String?      @map("nursery_id")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  sessionVersion Int                @default(0) @map("session_version")
+  /// §4.04: מפתח TOTP מוצפן (AES-256-GCM). קיים בלי mfaEnabledAt = הפעלה שטרם אושרה
+  mfaSecretEnc   String?            @map("mfa_secret_enc")
+  mfaEnabledAt   DateTime?          @map("mfa_enabled_at")
+  /// הצעד האחרון שנוצל — קוד מאותו צעד או מוקדם יותר נדחה (מניעת שימוש חוזר)
+  mfaLastStep    Int?               @map("mfa_last_step")
+  recoveryCodes  UserRecoveryCode[]
+  role           Role               @default(CUSTOMER)
+  nurseryId      String?            @map("nursery_id")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
   orders         Order[]
   printOrders    PrintOrder[]
-  nursery        Nursery?     @relation(fields: [nurseryId], references: [id])
+  nursery        Nursery?           @relation(fields: [nurseryId], references: [id])
 
   @@map("users")
+}
+
+/// §4.04: קודי שחזור חד-פעמיים ל-MFA — נשמר רק גיבוב SHA-256
+model UserRecoveryCode {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  codeHash  String    @map("code_hash")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, codeHash])
+  @@map("user_recovery_codes")
 }
 
 model Nursery {
