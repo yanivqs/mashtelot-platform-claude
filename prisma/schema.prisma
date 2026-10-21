@@ -74,6 +74,7 @@ model Nursery {
   customerLoyalty CustomerLoyalty[]
   customers       Customer[]
   customerOtps    CustomerOtp[]
+  customerGroups  CustomerGroup[]
   modules         NurseryModule[]
   staticPages     StaticPage[]
   nurseryProducts NurseryProduct[]
@@ -400,6 +401,15 @@ model Customer {
   email              String
   fullName           String?            @map("full_name")
   phone              String?
+  /// R06-07: פרטי / עסקי
+  type               CustomerType       @default(PRIVATE)
+  companyName        String?            @map("company_name")
+  taxId              String?            @map("tax_id")
+  /// R06-05: תגיות חופשיות (CRM)
+  tags               String[]           @default([])
+  groupId            String?            @map("group_id")
+  group              CustomerGroup?     @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  notes              CustomerNote[]
   /// R06-09: הסכמה לדיוור — רק לקוחות שהסכימו ייוצאו לשיווק
   marketingConsentAt DateTime?          @map("marketing_consent_at")
   /// מוגבר ביציאה מכל המכשירים — מבטל sessions ישנים
@@ -414,6 +424,37 @@ model Customer {
 
   @@unique([nurseryId, email])
   @@map("customers")
+}
+
+enum CustomerType {
+  PRIVATE
+  BUSINESS
+}
+
+/// R06-05/07: קבוצת לקוחות של משתלה (בשלב 4 — גם הנחת קבוצה)
+model CustomerGroup {
+  id        String     @id @default(uuid())
+  nurseryId String     @map("nursery_id")
+  name      String
+  createdAt DateTime   @default(now()) @map("created_at")
+  nursery   Nursery    @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  customers Customer[]
+
+  @@unique([nurseryId, name])
+  @@map("customer_groups")
+}
+
+/// R06-05: הערות פנימיות של המשתלה על לקוח (לא נראות ללקוח)
+model CustomerNote {
+  id          String   @id @default(uuid())
+  customerId  String   @map("customer_id")
+  body        String
+  authorEmail String?  @map("author_email")
+  createdAt   DateTime @default(now()) @map("created_at")
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("customer_notes")
 }
 
 /// R06-04: ספר כתובות של לקוח (עד 10), לבחירה בקופה

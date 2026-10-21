@@ -54,6 +54,7 @@ const ICONS: Record<string, LucideIcon> = {
   Newspaper,
   Truck,
   Tags,
+  Users,
 };
 
 interface NavItem {

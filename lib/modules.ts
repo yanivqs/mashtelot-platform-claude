@@ -18,6 +18,7 @@ export const MODULE_KEYS = [
   'shipping',
   'customer_accounts',
   'loyalty',
+  'crm',
 ] as const;
 
 export type ModuleKey = (typeof MODULE_KEYS)[number];
@@ -109,6 +110,12 @@ export const MODULES: ModuleDef[] = [
     key: 'loyalty',
     label: 'מועדון לקוחות',
     description: 'שדרוג (דורש חשבונות לקוח): "הזמן שוב" מהזמנות קודמות, וצבירה ומימוש נקודות.',
+  },
+  {
+    key: 'crm',
+    label: 'לקוחות (CRM)',
+    description: 'שדרוג: רשימת לקוחות (רשומים ואורחים), תגיות, הערות, קבוצות, סינון ויצוא למי שהסכים לדיוור.',
+    ownerNav: [{ href: '/admin/customers', label: 'לקוחות', icon: 'Users' }],
   },
 ];
 
