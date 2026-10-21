@@ -59,7 +59,7 @@
 | §3 / R03-04 Theme, Hero, קרוסלה | MVP | Verified | `lib/theme.ts`, `hero-carousel.tsx` |
 | R03 Page Builder | הרחבה | Missing | — |
 | R01-04 ניווט תחתון במובייל | MVP | Missing | — |
-| §13 / R06-04 חשבון לקוח | LATER | Missing | `CUSTOMER` לא בשימוש |
+| §13 / R06-03..09 חשבון לקוח, CRM, מועדון | LATER | Verified (2026-10-22, מודולים) | `customer_accounts`, `loyalty`, `crm`; החלטת בעלים: מועדון ורכישה חוזרת כשדרוג — גובר על §13.05 |
 | §14.01 Canonical/Meta | MVP | Verified | `generateMetadata` |
 | §14.01 Sitemap/Robots/301 | MVP | Missing | — |
 | §14.03 Product/LocalBusiness Schema | MVP | Verified | `lib/seo.ts` |

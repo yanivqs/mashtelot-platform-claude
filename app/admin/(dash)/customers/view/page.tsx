@@ -5,7 +5,9 @@ import { requireNurseryPage } from '@/lib/nursery-scope';
 import { getCrmRow } from '@/lib/crm';
 import { ORDER_STATUS_LABELS } from '@/lib/order-state';
 import { formatPrice } from '@/lib/utils';
-import { CustomerCrmForm, NoteForm } from '../forms';
+import { AdjustPointsForm, CustomerCrmForm, NoteForm } from '../forms';
+import { isModuleEnabled } from '@/lib/module-access';
+import { LOYALTY_KIND_LABELS } from '@/lib/loyalty-labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +35,10 @@ export default async function CustomerViewPage(props: { searchParams: Promise<{ 
     }),
   ]);
 
+  const loyaltyOn = await isModuleEnabled(nurseryId, 'loyalty');
+  const ledger = loyaltyOn && customer ? await prisma.loyaltyEntry.findMany({ where: { customerId: customer.id }, orderBy: { createdAt: 'desc' }, take: 50 }) : [];
+  const balance = ledger.length && customer ? (await prisma.loyaltyEntry.aggregate({ where: { customerId: customer.id }, _sum: { points: true } }))._sum.points ?? 0 : 0;
+
   return (
     <div className="max-w-3xl space-y-5">
       <Link href="/admin/customers" className="text-sm text-gray-500 hover:underline">
@@ -57,6 +63,28 @@ export default async function CustomerViewPage(props: { searchParams: Promise<{ 
           value={{ tags: row.tags, groupId: row.groupId, type: row.type, companyName: row.companyName, taxId: customer?.taxId ?? null }}
         />
       </section>
+
+      {loyaltyOn && (
+        <section className={card}>
+          <h2 className="mb-1 font-bold">נקודות מועדון</h2>
+          <p className="mb-3 text-sm text-gray-600" data-testid="points-balance">
+            יתרה: {balance} נקודות
+          </p>
+          {customer ? <AdjustPointsForm email={row.email} /> : <p className="text-sm text-gray-500">ללקוח אין חשבון — נקודות נצברות רק ללקוחות רשומים.</p>}
+          {ledger.length > 0 && (
+            <ul className="mt-3 divide-y divide-gray-100 text-sm">
+              {ledger.map((e) => (
+                <li key={e.id} className="flex flex-wrap gap-3 py-1.5">
+                  <span className={e.points > 0 ? 'text-green-700' : 'text-rose-700'}>{e.points > 0 ? `+${e.points}` : e.points}</span>
+                  <span>{LOYALTY_KIND_LABELS[e.kind]}</span>
+                  {e.note && <span className="text-gray-500">{e.note}</span>}
+                  <span className="ms-auto text-xs text-gray-500">{dateFmt.format(e.createdAt)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       <section className={card}>
         <h2 className="mb-3 font-bold">הערות פנימיות</h2>

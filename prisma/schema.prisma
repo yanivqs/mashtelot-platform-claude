@@ -75,6 +75,8 @@ model Nursery {
   customers       Customer[]
   customerOtps    CustomerOtp[]
   customerGroups  CustomerGroup[]
+  loyaltySettings LoyaltySettings?
+  loyaltyEntries  LoyaltyEntry[]
   modules         NurseryModule[]
   staticPages     StaticPage[]
   nurseryProducts NurseryProduct[]
@@ -370,6 +372,13 @@ model Order {
   idempotencyKey       String?         @map("idempotency_key")
   subtotalAmount       Decimal?        @map("subtotal_amount") @db.Decimal(10, 2)
   discountAmount       Decimal?        @map("discount_amount") @db.Decimal(10, 2)
+  /// R06-07: Snapshot של הנחת קבוצת הלקוח (לפני הקופון)
+  groupDiscountPct     Decimal?        @map("group_discount_pct") @db.Decimal(5, 2)
+  groupDiscountAmount  Decimal?        @map("group_discount_amount") @db.Decimal(10, 2)
+  /// R06-06: נקודות שמומשו בהזמנה וערכן בש"ח
+  loyaltyPointsUsed    Int?            @map("loyalty_points_used")
+  loyaltyDiscount      Decimal?        @map("loyalty_discount") @db.Decimal(10, 2)
+  loyaltyEntries       LoyaltyEntry[]
   discountPct          Decimal?        @map("discount_pct") @db.Decimal(5, 2)
   couponCode           String?         @map("coupon_code")
   couponId             String?         @map("coupon_id")
@@ -420,10 +429,54 @@ model Customer {
   nursery            Nursery            @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
   orders             Order[]
   addresses          CustomerAddress[]
+  loyaltyEntries     LoyaltyEntry[]
   favorites          CustomerFavorite[]
 
   @@unique([nurseryId, email])
   @@map("customers")
+}
+
+/// R06-06: הגדרות מועדון הנקודות של משתלה. pointValue = 0 → צבירה ומימוש כבויים.
+model LoyaltySettings {
+  nurseryId       String   @id @map("nursery_id")
+  /// נקודות לכל ₪1 ששולם על מוצרים (אחרי הנחות, בלי משלוח)
+  pointsPerShekel Decimal  @default(1) @map("points_per_shekel") @db.Decimal(6, 2)
+  /// שווי נקודה בש"ח — בעל המשתלה מגדיר
+  pointValue      Decimal  @default(0) @map("point_value") @db.Decimal(8, 4)
+  /// מימוש עד X% מסכום המוצרים אחרי הנחות
+  maxRedeemPct    Int      @default(50) @map("max_redeem_pct")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  nursery         Nursery  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@map("loyalty_settings")
+}
+
+enum LoyaltyKind {
+  EARN
+  REDEEM
+  REVERSE_EARN
+  REFUND_REDEEM
+  ADJUST
+}
+
+/// R06-06: יומן הנקודות (Ledger) — שורות לא משתנות; היתרה = סכום הנקודות. פעולה אחת מכל סוג להזמנה.
+model LoyaltyEntry {
+  id         String      @id @default(uuid())
+  nurseryId  String      @map("nursery_id")
+  customerId String      @map("customer_id")
+  orderId    String?     @map("order_id")
+  kind       LoyaltyKind
+  points     Int
+  note       String?
+  actorEmail String?     @map("actor_email")
+  createdAt  DateTime    @default(now()) @map("created_at")
+  nursery    Nursery     @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  customer   Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  order      Order?      @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@unique([orderId, kind])
+  @@index([customerId])
+  @@map("loyalty_entries")
 }
 
 enum CustomerType {
@@ -433,12 +486,14 @@ enum CustomerType {
 
 /// R06-05/07: קבוצת לקוחות של משתלה (בשלב 4 — גם הנחת קבוצה)
 model CustomerGroup {
-  id        String     @id @default(uuid())
-  nurseryId String     @map("nursery_id")
-  name      String
-  createdAt DateTime   @default(now()) @map("created_at")
-  nursery   Nursery    @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
-  customers Customer[]
+  id          String     @id @default(uuid())
+  nurseryId   String     @map("nursery_id")
+  name        String
+  /// R06-07: הנחה באחוזים לכל הקטלוג ללקוחות הקבוצה (0–50)
+  discountPct Decimal    @default(0) @map("discount_pct") @db.Decimal(5, 2)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  nursery     Nursery    @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  customers   Customer[]
 
   @@unique([nurseryId, name])
   @@map("customer_groups")

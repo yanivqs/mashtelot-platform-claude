@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { nurseryActionScope } from '@/lib/nursery-scope';
 import { recordAudit } from '@/lib/audit';
-import { addNote, createGroup, deleteGroup, exportCustomersCsv, parseCrmFilter, updateCrmFields } from '@/lib/crm';
+import { addNote, adjustPoints, createGroup, deleteGroup, exportCustomersCsv, parseCrmFilter, setGroupDiscount, updateCrmFields } from '@/lib/crm';
+import { isModuleEnabled } from '@/lib/module-access';
 
 export interface CrmState {
   ok?: boolean;
@@ -42,11 +43,31 @@ export async function addNoteAction(_prev: CrmState, fd: FormData): Promise<CrmS
 export async function groupAction(_prev: CrmState, fd: FormData): Promise<CrmState> {
   const s = await scope();
   if (!s.ok) return { error: s.error };
+  const op = fd.get('op');
   const r =
-    fd.get('op') === 'delete'
+    op === 'delete'
       ? await deleteGroup(prisma, s.nurseryId, String(fd.get('id') || ''))
-      : await createGroup(prisma, s.nurseryId, String(fd.get('name') || ''));
+      : op === 'discount'
+        ? await setGroupDiscount(prisma, s.nurseryId, String(fd.get('id') || ''), fd.get('discountPct'))
+        : await createGroup(prisma, s.nurseryId, String(fd.get('name') || ''), fd.get('discountPct'));
+  if (r.ok && op === 'discount') {
+    await recordAudit({ nurseryId: s.nurseryId, actorEmail: s.user.email, action: 'crm.group_discount_changed', entityType: 'CustomerGroup', entityId: String(fd.get('id')), metadata: { discountPct: String(fd.get('discountPct') ?? '') } });
+  }
   if (!r.ok) return { error: r.error };
+  revalidatePath('/admin/customers');
+  return { ok: true };
+}
+
+/** R06-06: התאמת נקודות ידנית (מודול מועדון) — נרשמת ביומן הנקודות וב-Audit. */
+export async function adjustPointsAction(_prev: CrmState, fd: FormData): Promise<CrmState> {
+  const s = await scope();
+  if (!s.ok) return { error: s.error };
+  if (!(await isModuleEnabled(s.nurseryId, 'loyalty'))) return { error: 'מועדון הלקוחות אינו פעיל' };
+  const email = String(fd.get('email') || '');
+  const points = Number(fd.get('points'));
+  const r = await adjustPoints(prisma, s.nurseryId, email, points, String(fd.get('note') || ''), s.user.email);
+  if (!r.ok) return { error: r.error };
+  await recordAudit({ nurseryId: s.nurseryId, actorEmail: s.user.email, action: 'loyalty.points_adjusted', entityType: 'Customer', metadata: { email, points } });
   revalidatePath('/admin/customers');
   return { ok: true };
 }

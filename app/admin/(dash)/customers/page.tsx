@@ -4,7 +4,7 @@ import { requireNurseryPage } from '@/lib/nursery-scope';
 import { CRM_PAGE_SIZE, listCustomers, parseCrmFilter } from '@/lib/crm';
 import { formatPrice } from '@/lib/utils';
 import { Pagination } from '@/components/pagination';
-import { DeleteGroupButton, ExportButton, GroupForm } from './forms';
+import { DeleteGroupButton, ExportButton, GroupDiscountForm, GroupForm } from './forms';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,11 +119,12 @@ export default async function CustomersPage(props: { searchParams: Promise<Recor
       <Pagination page={page} pageCount={Math.max(1, Math.ceil(total / CRM_PAGE_SIZE))} hrefFor={qs} />
 
       <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-        <h2 className="mb-2 font-bold">קבוצות לקוחות</h2>
+        <h2 className="mb-1 font-bold">קבוצות לקוחות</h2>
+        <p className="mb-3 text-xs text-gray-500">הנחת קבוצה (0–50%) חלה על כל הקטלוג, בהזמנות של לקוחות מחוברים בקבוצה, לפני הקופון.</p>
         <ul className="mb-3 flex flex-wrap gap-2 text-sm">
           {groups.map((g) => (
-            <li key={g.id} className="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1">
-              {g.name} <DeleteGroupButton id={g.id} name={g.name} />
+            <li key={g.id} className="flex items-center gap-3 rounded-full border border-gray-200 px-3 py-1">
+              {g.name} <GroupDiscountForm id={g.id} name={g.name} discountPct={Number(g.discountPct)} /> <DeleteGroupButton id={g.id} name={g.name} />
             </li>
           ))}
           {groups.length === 0 && <li className="text-gray-500">אין קבוצות עדיין.</li>}

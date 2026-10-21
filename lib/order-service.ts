@@ -9,6 +9,7 @@
  * מלאי המוצר (nursery_products) = סכום הווריאנטים הפעילים — מתוחזק ב-DB (trigger, מיגרציה 20261019050000).
  */
 import { Prisma, type OrderStatus, type PaymentStatus, type PaymentMethod, type PrismaClient } from '@prisma/client';
+import { activeLoyaltyConfig, addEntry, balanceOf, groupDiscountAmount, lockCustomer, loyaltyOnTransition, maxRedeemablePoints, pointsDiscount, round2 } from '@/lib/loyalty';
 import {
   CheckoutError,
   applyDiscount,
@@ -174,6 +175,10 @@ export interface CreateOrderInput {
   shippingPostcode?: string | null;
   /** R06-03: חשבון הלקוח (לקוח מחובר באותה משתלה) */
   customerId?: string | null;
+  /** R06-07: להחיל את הנחת הקבוצה של הלקוח (מודול CRM פעיל) */
+  applyGroupDiscount?: boolean;
+  /** R06-06: נקודות למימוש (לקוח מחובר, מודול מועדון פעיל) */
+  redeemPoints?: number;
   shippingZone: (ShippingZoneForCheckout & { id: string }) | null;
   paymentMethod: PaymentMethod | null;
   paymentReference: string | null;
@@ -236,7 +241,17 @@ export async function createOrderRecord(db: PrismaClient, input: CreateOrderInpu
 
       const lineItems = buildLineItems(cart, resolved, { isQuote: input.isQuote });
       const subtotal = calcSubtotal(lineItems);
-      let total = subtotal;
+
+      // R06-07: הנחת קבוצת הלקוח — לפני הקופון
+      let groupPct = 0;
+      let groupAmount = 0;
+      if (!input.isQuote && input.customerId && input.applyGroupDiscount) {
+        const c = await tx.customer.findFirst({ where: { id: input.customerId, nurseryId: input.nurseryId }, include: { group: true } });
+        groupPct = Number(c?.group?.discountPct ?? 0);
+        groupAmount = groupDiscountAmount(subtotal, groupPct);
+      }
+      const afterGroup = subtotal - groupAmount;
+      let total = afterGroup;
       let coupon: { id: string; code: string; discountPct: number } | null = null;
 
       if (!input.isQuote && input.couponCode?.trim()) {
@@ -271,15 +286,30 @@ export async function createOrderRecord(db: PrismaClient, input: CreateOrderInpu
           if (used >= c.perCustomerLimit) throw new CheckoutError('כבר נעשה שימוש בקופון זה עבור כתובת האימייל הזו');
         }
 
-        total = applyDiscount(subtotal, Number(c.discountPct));
+        total = round2(applyDiscount(afterGroup, Number(c.discountPct)));
         coupon = { id: c.id, code: c.code, discountPct: Number(c.discountPct) };
       }
 
+      const afterCoupon = total;
       let shippingCost = 0;
       if (input.shippingZone && !input.isQuote) {
-        shippingCost = resolveShippingCost(total, input.shippingZone);
-        total += shippingCost;
+        // סף משלוח חינם — לפי הסכום אחרי הנחות, לפני מימוש נקודות
+        shippingCost = resolveShippingCost(afterCoupon, input.shippingZone);
       }
+
+      // R06-06: מימוש נקודות — עד היתרה ותקרת האחוז; הלקוח נעול עד סוף הטרנזקציה (אין מימוש כפול במקביל)
+      const redeem = input.redeemPoints && input.redeemPoints > 0 ? Math.floor(input.redeemPoints) : 0;
+      let loyaltyDiscountAmount = 0;
+      if (redeem > 0) {
+        if (input.isQuote || !input.customerId) throw new CheckoutError('מימוש נקודות זמין רק ללקוח מחובר');
+        const cfg = await activeLoyaltyConfig(tx, input.nurseryId);
+        if (!cfg) throw new CheckoutError('מימוש נקודות אינו פעיל בחנות זו');
+        await lockCustomer(tx, input.customerId);
+        const max = maxRedeemablePoints(await balanceOf(tx, input.customerId), afterCoupon, cfg);
+        if (redeem > max) throw new CheckoutError(max > 0 ? `אפשר לממש עד ${max} נקודות בהזמנה הזו` : 'אין נקודות למימוש');
+        loyaltyDiscountAmount = pointsDiscount(redeem, cfg);
+      }
+      total = round2(afterCoupon - loyaltyDiscountAmount + shippingCost);
 
       const order = await tx.order.create({
         data: {
@@ -298,7 +328,11 @@ export async function createOrderRecord(db: PrismaClient, input: CreateOrderInpu
           idempotencyKey: key,
           subtotalAmount: subtotal.toFixed(2),
           discountPct: coupon ? coupon.discountPct.toFixed(2) : null,
-          discountAmount: coupon ? (subtotal - applyDiscount(subtotal, coupon.discountPct)).toFixed(2) : null,
+          discountAmount: coupon ? (afterGroup - afterCoupon).toFixed(2) : null,
+          groupDiscountPct: groupAmount > 0 ? groupPct.toFixed(2) : null,
+          groupDiscountAmount: groupAmount > 0 ? groupAmount.toFixed(2) : null,
+          loyaltyPointsUsed: redeem > 0 ? redeem : null,
+          loyaltyDiscount: redeem > 0 ? loyaltyDiscountAmount.toFixed(2) : null,
           couponCode: coupon?.code ?? null,
           couponId: coupon?.id ?? null,
           totalAmount: total.toFixed(2),
@@ -311,6 +345,9 @@ export async function createOrderRecord(db: PrismaClient, input: CreateOrderInpu
       });
 
       if (!input.isQuote) await reserveLines(tx, input.nurseryId, order.id, lineItems);
+      if (redeem > 0) {
+        await addEntry(tx, { nurseryId: input.nurseryId, customerId: input.customerId!, orderId: order.id, kind: 'REDEEM', points: -redeem });
+      }
       return order.id;
     });
     return { orderId, reused: false };
@@ -376,6 +413,9 @@ export async function transitionOrder(
       if (effect === 'release') await releaseLines(tx, order.nurseryId, order.id, order.items, 'RELEASE_CANCELLED', args.actorEmail);
       if (effect === 'restore') await restoreLines(tx, order.nurseryId, order.id, order.items, args.actorEmail);
       if (effect === 'commit') await commitLines(tx, order.nurseryId, order.id, order.items, args.actorEmail);
+
+      // R06-06: נמסרה → צבירת נקודות; בוטלה → ביטול צבירה והחזרת מימוש (פעם אחת לכל סוג)
+      await loyaltyOnTransition(tx, order, args.to, args.actorEmail);
 
       // ביטול מחזיר את השימוש בקופון (פעם אחת — מעבר לבוטלה אפשרי פעם אחת בלבד)
       if (args.to === 'CANCELLED' && order.couponId) {

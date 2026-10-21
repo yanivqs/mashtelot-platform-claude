@@ -94,6 +94,13 @@ export default async function AdminOrdersPage() {
                         : ''}
                     </p>
                   )}
+                  {(o.groupDiscountAmount !== null || o.loyaltyDiscount !== null) && (
+                    <p className="text-sm text-gray-500">
+                      {o.groupDiscountAmount !== null ? `הנחת קבוצה ${Number(o.groupDiscountPct)}% · ${formatPrice(o.groupDiscountAmount.toString())}` : ''}
+                      {o.groupDiscountAmount !== null && o.loyaltyDiscount !== null ? ' · ' : ''}
+                      {o.loyaltyDiscount !== null ? `מימוש ${o.loyaltyPointsUsed} נקודות · ${formatPrice(o.loyaltyDiscount.toString())}` : ''}
+                    </p>
+                  )}
                   {o.couponCode && (
                     <p className="text-sm text-gray-500">
                       קופון {o.couponCode}

@@ -20,6 +20,8 @@ export const E2E_SUPER4 = { email: 'super4@e2e.invalid', password: 'e2e-super4-p
 export const E2E_SUPER5 = { email: 'super5@e2e.invalid', password: 'e2e-super5-pass-123' };
 /** R06: בעל משתלה לבדיקת הצוות (עובד / כותב תוכן) */
 export const E2E_OWNER6 = { email: 'owner6@e2e.invalid', password: 'e2e-owner6-pass-123' };
+/** R06-06: בעל משתלה לבדיקת המועדון (מגבלת 5 התחברויות לאימייל) */
+export const E2E_OWNER7 = { email: 'owner7@e2e.invalid', password: 'e2e-owner7-pass-123' };
 /** תבנית מפורסמת שנוצרת כאן לבדיקת המוצרים הקבועים (PT-04) */
 export const E2E_SAVED_TEMPLATE = 'תוויות קבועות E2E';
 export const E2E_PREFLIGHT_TEMPLATE = 'שלט ייצור E2E';
@@ -44,7 +46,7 @@ export default async function globalSetup() {
       await db.user.deleteMany({ where: { nurseryId: old.id } });
       await db.nursery.delete({ where: { id: old.id } });
     }
-    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
+    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, E2E_OWNER7.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
     // המוצרים נמחקו עם המשתלה; הצמח המרכזי (והגרסאות שלו) נמחק כאן
     await db.plant.deleteMany({ where: { hebrewName: E2E_PLANT } });
     // תבנית הדפוס שבדיקת PT יוצרת (ההזמנות שלה נמחקו עם המשתלה)
@@ -142,6 +144,9 @@ export default async function globalSetup() {
     });
     await db.user.create({
       data: { email: E2E_OWNER6.email, role: 'NURSERY_OWNER', nurseryId: n.id, passwordHash: await bcrypt.hash(E2E_OWNER6.password, 4) },
+    });
+    await db.user.create({
+      data: { email: E2E_OWNER7.email, role: 'NURSERY_OWNER', nurseryId: n.id, passwordHash: await bcrypt.hash(E2E_OWNER7.password, 4) },
     });
     // PT-04: תבנית מפורסמת ופעילה (תווית עם טקסט וגודל)
     await db.printTemplate.create({

@@ -5,6 +5,7 @@
  * יצוא לשיווק — **רק מי שהסכים לדיוור** (R06-09), עם הגנה מנוסחאות ב-CSV.
  */
 import { Prisma, type PrismaClient, type CustomerType } from '@prisma/client';
+import { addEntry, balanceOf, lockCustomer } from '@/lib/loyalty';
 
 export const CRM_PAGE_SIZE = 50;
 export const MAX_TAGS = 20;
@@ -165,12 +166,44 @@ export async function addNote(db: PrismaClient, nurseryId: string, email: string
   return { ok: true };
 }
 
-export async function createGroup(db: PrismaClient, nurseryId: string, name: string): Promise<CrmResult> {
+function parseDiscount(raw: unknown): number | null {
+  const s = String(raw ?? '').trim();
+  if (!s) return 0;
+  const n = Number(s);
+  return Number.isFinite(n) && n >= 0 && n <= 50 ? Math.round(n * 100) / 100 : null;
+}
+
+export async function createGroup(db: PrismaClient, nurseryId: string, name: string, discountPct: unknown = 0): Promise<CrmResult> {
   const n = name.trim().slice(0, 60);
   if (!n) return { ok: false, error: 'יש לתת שם לקבוצה' };
+  const pct = parseDiscount(discountPct);
+  if (pct === null) return { ok: false, error: 'הנחת קבוצה — בין 0 ל-50%' };
   if (await db.customerGroup.count({ where: { nurseryId, name: n } })) return { ok: false, error: 'קבוצה בשם הזה כבר קיימת' };
-  await db.customerGroup.create({ data: { nurseryId, name: n } });
+  await db.customerGroup.create({ data: { nurseryId, name: n, discountPct: pct } });
   return { ok: true };
+}
+
+/** R06-07: הנחה באחוזים לכל הקטלוג ללקוחות הקבוצה (חלה על הזמנות חדשות בלבד). */
+export async function setGroupDiscount(db: PrismaClient, nurseryId: string, groupId: string, discountPct: unknown): Promise<CrmResult> {
+  const pct = parseDiscount(discountPct);
+  if (pct === null) return { ok: false, error: 'הנחת קבוצה — בין 0 ל-50%' };
+  const r = await db.customerGroup.updateMany({ where: { id: groupId, nurseryId }, data: { discountPct: pct } });
+  return r.count === 1 ? { ok: true } : { ok: false, error: 'הקבוצה לא נמצאה' };
+}
+
+/** R06-06: התאמה ידנית של נקודות (חיובית/שלילית) עם סיבה — לקוח קיים במשתלה; לא מתחת לאפס. */
+export async function adjustPoints(db: PrismaClient, nurseryId: string, email: string, points: number, note: string, actorEmail: string | null): Promise<CrmResult> {
+  if (!Number.isInteger(points) || points === 0 || Math.abs(points) > 1_000_000) return { ok: false, error: 'כמות נקודות לא תקינה' };
+  const reason = note.trim().slice(0, 200);
+  if (!reason) return { ok: false, error: 'יש לכתוב סיבה' };
+  const c = await db.customer.findUnique({ where: { nurseryId_email: { nurseryId, email: email.toLowerCase() } } });
+  if (!c) return { ok: false, error: 'ללקוח אין חשבון' };
+  return db.$transaction(async (tx) => {
+    await lockCustomer(tx, c.id);
+    if (points < 0 && (await balanceOf(tx, c.id)) + points < 0) return { ok: false as const, error: 'אין מספיק נקודות' };
+    await addEntry(tx, { nurseryId, customerId: c.id, kind: 'ADJUST', points, note: reason, actorEmail });
+    return { ok: true as const };
+  });
 }
 
 export async function deleteGroup(db: PrismaClient, nurseryId: string, groupId: string): Promise<CrmResult> {

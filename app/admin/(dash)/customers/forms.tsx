@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { addNoteAction, exportCustomersAction, groupAction, updateCustomerAction, type CrmState } from './actions';
+import { addNoteAction, adjustPointsAction, exportCustomersAction, groupAction, updateCustomerAction, type CrmState } from './actions';
 
 const initial: CrmState = {};
 const field = 'rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500';
@@ -53,6 +53,7 @@ export function GroupForm() {
     <form action={action} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="op" value="create" />
       <input name="name" required placeholder="שם קבוצה חדשה" aria-label="שם קבוצה חדשה" className={field} />
+      <input name="discountPct" type="number" min="0" max="50" step="0.5" placeholder="הנחה %" aria-label="הנחת קבוצה חדשה" className={`${field} w-28`} />
       <Submit label="הוספת קבוצה" />
       {state.error && <span className="text-sm text-red-600">{state.error}</span>}
     </form>
@@ -73,6 +74,46 @@ export function DeleteGroupButton({ id, name }: { id: string; name: string }) {
       <button className="text-xs text-rose-700 hover:underline" aria-label={`מחיקת קבוצה ${name}`}>
         ✕
       </button>
+    </form>
+  );
+}
+
+/** R06-07: הנחת קבוצה באחוזים — חלה על הזמנות חדשות של לקוחות מחוברים בקבוצה. */
+export function GroupDiscountForm({ id, name, discountPct }: { id: string; name: string; discountPct: number }) {
+  const [state, action] = useActionState(groupAction, initial);
+  return (
+    <form action={action} className="flex items-center gap-1">
+      <input type="hidden" name="op" value="discount" />
+      <input type="hidden" name="id" value={id} />
+      <input
+        name="discountPct"
+        type="number"
+        min="0"
+        max="50"
+        step="0.5"
+        defaultValue={discountPct || ''}
+        placeholder="0"
+        aria-label={`הנחת קבוצה — ${name}`}
+        className="w-16 rounded border border-gray-200 px-1.5 py-0.5 text-xs"
+      />
+      <span className="text-xs text-gray-500">%</span>
+      <button className="text-xs text-brand-700 hover:underline">שמירה</button>
+      {state.ok && <span className="text-xs text-green-700">✓</span>}
+      {state.error && <span className="text-xs text-red-600">{state.error}</span>}
+    </form>
+  );
+}
+
+export function AdjustPointsForm({ email }: { email: string }) {
+  const [state, action] = useActionState(adjustPointsAction, initial);
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="email" value={email} />
+      <input name="points" type="number" required step="1" placeholder="+50 / -20" aria-label="נקודות להתאמה" className={`${field} w-28`} />
+      <input name="note" required placeholder="סיבה" aria-label="סיבת ההתאמה" className={`${field} min-w-40 flex-1`} />
+      <Submit label="התאמת נקודות" />
+      {state.ok && <span className="text-sm text-green-700">נשמר ✓</span>}
+      {state.error && <span className="text-sm text-red-600">{state.error}</span>}
     </form>
   );
 }

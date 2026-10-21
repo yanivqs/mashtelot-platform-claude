@@ -10,6 +10,7 @@ import { formatPrice } from '@/lib/utils';
 import { resolveShippingCost, type DeliveryChoice } from '@/lib/checkout-calc';
 import { isMethodAllowedFor, isPayOnSite } from '@/lib/payment-methods';
 import { pickZone } from '@/lib/shipping-zones';
+import { groupDiscountAmount, maxRedeemablePoints, pointsDiscount } from '@/lib/loyalty';
 import { createOrder, getCheckoutOptions, type CheckoutOptions } from './actions';
 
 const field =
@@ -47,6 +48,13 @@ export default function CheckoutPage() {
   // ולכן ממלאים רק שדות ריקים — בלי למחוק מה שהלקוח כבר הקליד
   const prefill = options?.customer ?? null;
   const contactRef = useRef<HTMLElement>(null);
+  // R06-06/07: הערכה בדפדפן בלבד — הסכום הסופי (כולל קופון ותקרות) נקבע בשרת
+  const [redeem, setRedeem] = useState(0);
+  const groupAmount = !isQuote && prefill ? groupDiscountAmount(subtotal, prefill.groupDiscountPct) : 0;
+  const loyaltyCfg = !isQuote && prefill?.loyalty ? { pointsPerShekel: 0, pointValue: prefill.loyalty.pointValue, maxRedeemPct: prefill.loyalty.maxRedeemPct } : null;
+  const maxPoints = loyaltyCfg && prefill?.loyalty ? maxRedeemablePoints(prefill.loyalty.balance, subtotal - groupAmount, loyaltyCfg) : 0;
+  const redeemUsed = Math.min(redeem, maxPoints);
+  const redeemAmount = loyaltyCfg ? pointsDiscount(redeemUsed, loyaltyCfg) : 0;
   useEffect(() => {
     if (!prefill || !contactRef.current) return;
     const fill = (name: string, value: string | null) => {
@@ -103,6 +111,7 @@ export default function CheckoutPage() {
       city,
       postcode,
       couponCode: String(fd.get('couponCode') || ''),
+      redeemPoints: redeemUsed > 0 ? redeemUsed : undefined,
       paymentMethod: effectiveMethod || undefined,
       paymentReference: String(fd.get('paymentReference') || ''),
       items: items.map((i) => ({ productId: i.productId, variantId: i.variantId ?? null, quantity: i.quantity })),
@@ -299,6 +308,23 @@ export default function CheckoutPage() {
               <input name="couponCode" className={field} />
             </label>
           )}
+            {prefill?.loyalty && !isQuote && (
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-gray-700">
+                  מימוש נקודות — יש לך {prefill.loyalty.balance} נקודות (נקודה = {formatPrice(prefill.loyalty.pointValue)}){maxPoints > 0 ? `, עד ${maxPoints} בהזמנה הזו` : ''}
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={maxPoints}
+                  value={redeem || ''}
+                  disabled={maxPoints === 0}
+                  onChange={(e) => setRedeem(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                  aria-label="נקודות למימוש"
+                  className={field}
+                />
+              </label>
+            )}
 
           {paymentMethods.length > 0 && (
             <div className="rounded-lg border border-gray-200 p-4">
@@ -398,6 +424,18 @@ export default function CheckoutPage() {
             <span className="text-gray-600">{isQuote ? 'הערכת מחיר' : 'סה"כ מוצרים'}</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
+          {groupAmount > 0 && (
+            <div className="mt-1 flex justify-between text-sm text-green-700" data-testid="group-discount">
+              <span>הנחת {prefill?.groupName ?? 'קבוצה'} ({prefill?.groupDiscountPct}%)</span>
+              <span>-{formatPrice(groupAmount)}</span>
+            </div>
+          )}
+          {redeemAmount > 0 && (
+            <div className="mt-1 flex justify-between text-sm text-green-700" data-testid="points-discount">
+              <span>מימוש {redeemUsed} נקודות</span>
+              <span>-{formatPrice(redeemAmount)}</span>
+            </div>
+          )}
           {delivery && (
             <div className="mt-1 flex justify-between text-sm">
               <span className="text-gray-600">{delivery === 'PICKUP' ? 'איסוף עצמי' : 'משלוח'}</span>
@@ -418,7 +456,7 @@ export default function CheckoutPage() {
           )}
           <div className="mt-3 flex justify-between border-t border-gray-200 pt-3 font-bold">
             <span>{isQuote ? 'סה"כ משוער' : 'סה"כ לתשלום'}</span>
-            <span>{formatPrice(subtotal + (shippingEstimate ?? 0))}</span>
+            <span>{formatPrice(subtotal - groupAmount - redeemAmount + (shippingEstimate ?? 0))}</span>
           </div>
           <p className="mt-1 text-xs text-gray-400">
             {isQuote

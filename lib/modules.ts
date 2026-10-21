@@ -110,6 +110,7 @@ export const MODULES: ModuleDef[] = [
     key: 'loyalty',
     label: 'מועדון לקוחות',
     description: 'שדרוג (דורש חשבונות לקוח): "הזמן שוב" מהזמנות קודמות, וצבירה ומימוש נקודות.',
+    ownerNav: [{ href: '/admin/loyalty', label: 'מועדון לקוחות', icon: 'Gift' }],
   },
   {
     key: 'crm',

@@ -12,6 +12,8 @@ import { LoginForm, ProfileForm } from './forms';
 import { logoutAction } from './actions';
 import { addressOpAction, productSummaries } from './portal-actions';
 import { AddAddressForm, ProductGrid, RecentProducts } from './portal-ui';
+import { activeLoyaltyConfig } from '@/lib/loyalty';
+import { LOYALTY_KIND_LABELS } from '@/lib/loyalty-labels';
 
 // מידע אישי — לעולם לא במטמון, לא באינדקס
 export const dynamic = 'force-dynamic';
@@ -48,6 +50,11 @@ export default async function AccountPage(props: { params: Promise<{ tenant: str
     prisma.customerFavorite.findMany({ where: { customerId: customer.id }, orderBy: { createdAt: 'desc' }, take: 12, select: { nurseryProductId: true } }),
   ]);
   const favorites = await productSummaries(tenant, favoriteRows.map((f) => f.nurseryProductId));
+  // R06-06/07: נקודות (כשהמועדון פעיל) והנחת קבוצה (כשה-CRM פעיל)
+  const [loyalty, crm] = await Promise.all([activeLoyaltyConfig(prisma, nursery.id), isModuleEnabled(nursery.id, 'crm')]);
+  const ledger = loyalty ? await prisma.loyaltyEntry.findMany({ where: { customerId: customer.id }, orderBy: { createdAt: 'desc' }, take: 10 }) : [];
+  const balance = loyalty ? (await prisma.loyaltyEntry.aggregate({ where: { customerId: customer.id }, _sum: { points: true } }))._sum.points ?? 0 : 0;
+  const group = crm && customer.groupId ? await prisma.customerGroup.findUnique({ where: { id: customer.groupId } }) : null;
 
   return (
     <div dir="rtl" className="mx-auto max-w-3xl space-y-6 px-6 py-10">
@@ -63,6 +70,35 @@ export default async function AccountPage(props: { params: Promise<{ tenant: str
           <button className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">יציאה</button>
         </form>
       </div>
+
+      {(loyalty || (group && Number(group.discountPct) > 0)) && (
+        <section className={card}>
+          <h2 className="mb-2 font-bold">ההטבות שלי</h2>
+          {group && Number(group.discountPct) > 0 && (
+            <p className="text-sm text-green-700" data-testid="my-group">
+              {group.name}: {Number(group.discountPct)}% הנחה על כל הקטלוג — מחושבת אוטומטית בקופה.
+            </p>
+          )}
+          {loyalty && (
+            <>
+              <p className="text-sm text-gray-700" data-testid="my-points">
+                יש לך <b>{balance}</b> נקודות (שווי {formatPrice(balance * loyalty.pointValue)}). אפשר לממש בקופה.
+              </p>
+              {ledger.length > 0 && (
+                <ul className="mt-2 divide-y divide-gray-100 text-sm">
+                  {ledger.map((e) => (
+                    <li key={e.id} className="flex gap-3 py-1.5">
+                      <span className={e.points > 0 ? 'text-green-700' : 'text-rose-700'}>{e.points > 0 ? `+${e.points}` : e.points}</span>
+                      <span>{LOYALTY_KIND_LABELS[e.kind]}</span>
+                      <span className="ms-auto text-xs text-gray-500">{dateFmt.format(e.createdAt)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </section>
+      )}
 
       <section className={card}>
         <h2 className="mb-3 font-bold">ההזמנות שלי</h2>

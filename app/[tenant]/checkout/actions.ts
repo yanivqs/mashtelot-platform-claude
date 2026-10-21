@@ -18,6 +18,7 @@ import { normalizePostcode } from '@/lib/shipping-zones';
 import { getCustomer } from '@/lib/customer-session';
 import { isModuleEnabled } from '@/lib/module-access';
 import { customerAddresses } from '@/lib/customer-portal';
+import { activeLoyaltyConfig, balanceOf } from '@/lib/loyalty';
 import { recordAudit } from '@/lib/audit';
 import { createOrderRecord } from '@/lib/order-service';
 import {
@@ -44,6 +45,8 @@ export interface CheckoutInput {
   /** §11.01: אופציונלי; מיקוד שתואם אזור גובר על העיר */
   postcode?: string;
   couponCode?: string;
+  /** R06-06: נקודות למימוש */
+  redeemPoints?: number;
   paymentMethod?: PaymentMethod;
   paymentReference?: string;
   items: Array<{ productId: string; variantId?: string | null; quantity: number }>;
@@ -72,6 +75,11 @@ export interface CheckoutOptions {
     phone: string | null;
     /** R06-04: ספר הכתובות (ברירת המחדל ראשונה) */
     addresses: Array<{ id: string; label: string | null; city: string; street: string; postcode: string | null }>;
+    /** R06-07: הנחת הקבוצה של הלקוח (0 = אין) */
+    groupDiscountPct: number;
+    groupName: string | null;
+    /** R06-06: יתרת נקודות והגדרות המימוש (null — המועדון כבוי) */
+    loyalty: { balance: number; pointValue: number; maxRedeemPct: number } | null;
   } | null;
 }
 
@@ -80,11 +88,19 @@ async function checkoutCustomer(nurseryId: string) {
   if (!(await isModuleEnabled(nurseryId, 'customer_accounts'))) return null;
   const c = await getCustomer(nurseryId);
   if (!c) return null;
-  const addresses = await customerAddresses(prisma, c.id);
+  const [addresses, crm, loyalty] = await Promise.all([
+    customerAddresses(prisma, c.id),
+    isModuleEnabled(nurseryId, 'crm'),
+    activeLoyaltyConfig(prisma, nurseryId),
+  ]);
+  const group = crm && c.groupId ? await prisma.customerGroup.findUnique({ where: { id: c.groupId } }) : null;
   return {
     email: c.email,
     fullName: c.fullName,
     phone: c.phone,
+    groupDiscountPct: Number(group?.discountPct ?? 0),
+    groupName: group?.name ?? null,
+    loyalty: loyalty ? { balance: await balanceOf(prisma, c.id), pointValue: loyalty.pointValue, maxRedeemPct: loyalty.maxRedeemPct } : null,
     addresses: addresses.map((a) => ({ id: a.id, label: a.label, city: a.city, street: a.street, postcode: a.postcode })),
   };
 }
@@ -201,6 +217,7 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
   }
 
   try {
+    const customerId = await checkoutCustomerId(nursery.id, email);
     // יצירת ההזמנה, שמירת המלאי, הקופון וה-Snapshot — lib/order-service.ts (C-P1-02)
     const { orderId, reused } = await createOrderRecord(prisma, {
       nurseryId: nursery.id,
@@ -212,7 +229,10 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
       shippingAddress,
       shippingPostcode,
       shippingZone,
-      customerId: await checkoutCustomerId(nursery.id, email),
+      customerId,
+      // R06-07: הנחת קבוצה — רק ללקוח מחובר כשמודול ה-CRM פעיל (שם מוגדרות הקבוצות)
+      applyGroupDiscount: Boolean(customerId) && (await isModuleEnabled(nursery.id, 'crm')),
+      redeemPoints: customerId && Number.isInteger(input.redeemPoints) && input.redeemPoints! > 0 ? input.redeemPoints : 0,
       paymentMethod,
       paymentReference,
       couponCode: input.couponCode,

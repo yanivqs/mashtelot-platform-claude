@@ -25,6 +25,7 @@ import {
   Signpost,
   RefreshCw,
   Users,
+  Gift,
   type LucideIcon,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
@@ -55,6 +56,7 @@ const ICONS: Record<string, LucideIcon> = {
   Truck,
   Tags,
   Users,
+  Gift,
 };
 
 interface NavItem {

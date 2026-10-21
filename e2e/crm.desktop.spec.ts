@@ -22,7 +22,7 @@ test('CRM (R06-05/07/08): guests and registered customers, group, tags, business
   await page.locator('input[name="password"]').fill(E2E_OWNER6.password);
   await page.getByRole('button', { name: 'כניסה' }).click();
   await expect(page).toHaveURL(`${ADMIN}/admin`);
-  await page.locator('aside nav').getByRole('link', { name: 'לקוחות' }).click();
+  await page.locator('aside nav').getByRole('link', { name: 'לקוחות', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'לקוחות', exact: true })).toBeVisible();
 
   // קבוצה חדשה
