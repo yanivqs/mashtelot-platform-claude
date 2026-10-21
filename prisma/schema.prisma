@@ -72,6 +72,8 @@ model Nursery {
   updatedAt       DateTime               @updatedAt @map("updated_at")
   coupons         Coupon[]
   customerLoyalty CustomerLoyalty[]
+  customers       Customer[]
+  customerOtps    CustomerOtp[]
   modules         NurseryModule[]
   staticPages     StaticPage[]
   nurseryProducts NurseryProduct[]
@@ -349,6 +351,8 @@ model Order {
   id                   String          @id @default(uuid())
   nurseryId            String          @map("nursery_id")
   userId               String?         @map("user_id")
+  /// R06-03: חשבון הלקוח בחנות (הזמנה כאורח — ריק; משויך אחרי אימות המייל)
+  customerId           String?         @map("customer_id")
   customerName         String          @map("customer_name")
   customerEmail        String          @map("customer_email")
   customerPhone        String          @map("customer_phone")
@@ -376,13 +380,53 @@ model Order {
   items                OrderItem[]
   nursery              Nursery         @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
   user                 User?           @relation(fields: [userId], references: [id])
+  customer             Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
   shippingZone         ShippingZone?   @relation(fields: [shippingZoneId], references: [id], onDelete: SetNull)
   coupon               Coupon?         @relation(fields: [couponId], references: [id], onDelete: SetNull)
   stockMovements       StockMovement[]
 
   @@unique([nurseryId, idempotencyKey])
   @@index([stockState, reservationExpiresAt])
+  @@index([customerId])
   @@map("orders")
+}
+
+/// R06-03/04: חשבון לקוח בחנות של משתלה אחת (אותו אדם בשתי משתלות — שני חשבונות). התחברות בקוד חד-פעמי במייל.
+model Customer {
+  id                 String    @id @default(uuid())
+  nurseryId          String    @map("nursery_id")
+  /// מנורמל (אותיות קטנות)
+  email              String
+  fullName           String?   @map("full_name")
+  phone              String?
+  /// R06-09: הסכמה לדיוור — רק לקוחות שהסכימו ייוצאו לשיווק
+  marketingConsentAt DateTime? @map("marketing_consent_at")
+  /// מוגבר ביציאה מכל המכשירים — מבטל sessions ישנים
+  sessionVersion     Int       @default(0) @map("session_version")
+  lastLoginAt        DateTime? @map("last_login_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  nursery            Nursery   @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  orders             Order[]
+
+  @@unique([nurseryId, email])
+  @@map("customers")
+}
+
+/// R06-03: קוד התחברות חד-פעמי (6 ספרות, 10 דקות). נשמר רק HMAC של הקוד.
+model CustomerOtp {
+  id         String    @id @default(uuid())
+  nurseryId  String    @map("nursery_id")
+  email      String
+  codeHash   String    @map("code_hash")
+  expiresAt  DateTime  @map("expires_at")
+  attempts   Int       @default(0)
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  nursery    Nursery   @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@index([nurseryId, email])
+  @@map("customer_otps")
 }
 
 model OrderItem {

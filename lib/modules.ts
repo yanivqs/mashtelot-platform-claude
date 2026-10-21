@@ -16,6 +16,7 @@ export const MODULE_KEYS = [
   'design',
   'sales',
   'shipping',
+  'customer_accounts',
 ] as const;
 
 export type ModuleKey = (typeof MODULE_KEYS)[number];
@@ -97,6 +98,11 @@ export const MODULES: ModuleDef[] = [
     label: 'אזורי משלוח',
     description: 'הגדרת אזורי משלוח לפי ערים, עם עלות ורף למשלוח חינם.',
     ownerNav: [{ href: '/admin/shipping', label: 'משלוחים', icon: 'Truck' }],
+  },
+  {
+    key: 'customer_accounts',
+    label: 'חשבונות לקוח',
+    description: 'שדרוג: לקוחות נרשמים ומתחברים בחנות עם קוד במייל, ורואים את ההזמנות והפרטים שלהם.',
   },
 ];
 

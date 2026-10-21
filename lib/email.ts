@@ -233,3 +233,14 @@ export function newOrderNotificationEmail(
   `);
   return { subject, html };
 }
+
+/** R06-03: קוד התחברות לחשבון לקוח בחנות. */
+export function customerOtpEmail(nurseryName: string, code: string): { subject: string; html: string } {
+  const subject = `קוד הכניסה שלך: ${code} · ${nurseryName}`;
+  const html = shell('קוד כניסה לחשבון', `
+    <p style="color:#374151;line-height:1.6">זה הקוד לכניסה לחשבון שלך ב<strong>${escapeHtml(nurseryName)}</strong>:</p>
+    <p style="font-size:32px;font-weight:bold;letter-spacing:8px;text-align:center;color:#111827;margin:20px 0" dir="ltr">${escapeHtml(code)}</p>
+    <p style="color:#6b7280;font-size:13px">הקוד תקף ל-10 דקות. לא ביקשת קוד? אפשר להתעלם מהמייל — בלי הקוד אי אפשר להיכנס לחשבון.</p>
+  `);
+  return { subject, html };
+}

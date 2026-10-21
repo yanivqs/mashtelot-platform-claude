@@ -15,6 +15,8 @@ import {
 } from '@/lib/payment-methods';
 import { resolveShippingZone, hasAnyShippingZone } from '@/lib/shipping';
 import { normalizePostcode } from '@/lib/shipping-zones';
+import { getCustomer } from '@/lib/customer-session';
+import { isModuleEnabled } from '@/lib/module-access';
 import { recordAudit } from '@/lib/audit';
 import { createOrderRecord } from '@/lib/order-service';
 import {
@@ -62,6 +64,15 @@ export interface CheckoutOptions {
   pickupAddress: string | null;
   /** אזורי משלוח פעילים (ריק = עיר חופשית ועלות שתתואם מול המשתלה) */
   zones: CheckoutShippingZone[];
+  /** R06-03: לקוח מחובר — מילוי מראש */
+  customer: { email: string; fullName: string | null; phone: string | null } | null;
+}
+
+/** לקוח מחובר בחנות הזו (רק כשמודול החשבונות פעיל). */
+async function checkoutCustomer(nurseryId: string) {
+  if (!(await isModuleEnabled(nurseryId, 'customer_accounts'))) return null;
+  const c = await getCustomer(nurseryId);
+  return c ? { email: c.email, fullName: c.fullName, phone: c.phone } : null;
 }
 
 /** כל מה שטופס ה-checkout צריך: אמצעי תשלום, אופני קבלה ואזורי משלוח. */
@@ -81,6 +92,7 @@ export async function getCheckoutOptions(tenant: string): Promise<CheckoutOption
     deliveryMethods: availableDeliveryMethods(nursery),
     deliveryNote: nursery.deliveryNote,
     pickupAddress: [nursery.addressLine, nursery.city].filter(Boolean).join(', ') || null,
+    customer: await checkoutCustomer(nursery.id),
     zones: zones
       .filter((z) => z.cities.length > 0 || z.postcodes.length > 0)
       .map((z) => ({
@@ -186,6 +198,7 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
       shippingAddress,
       shippingPostcode,
       shippingZone,
+      customerId: await checkoutCustomerId(nursery.id, email),
       paymentMethod,
       paymentReference,
       couponCode: input.couponCode,
@@ -203,6 +216,16 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
     console.error('[checkout] יצירת הזמנה נכשלה', e);
     return { error: 'אירעה שגיאה ביצירת ההזמנה. נסו שוב בעוד רגע.' };
   }
+}
+
+/**
+ * R06-03: הזמנה של לקוח מחובר משויכת לחשבון — רק כשהמייל בהזמנה הוא המייל המאומת של החשבון
+ * (מייל אחר = הזמנה עבור מישהו אחר; תשויך אליו אם יתחבר).
+ */
+async function checkoutCustomerId(nurseryId: string, email: string): Promise<string | null> {
+  if (!(await isModuleEnabled(nurseryId, 'customer_accounts'))) return null;
+  const c = await getCustomer(nurseryId);
+  return c && c.email === email ? c.id : null;
 }
 
 async function sendOrderEmails(

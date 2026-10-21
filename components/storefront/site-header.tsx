@@ -66,6 +66,7 @@ export function SiteHeader({
   navPages = [],
   categories = [],
   showBlog = false,
+  showAccount = false,
 }: {
   nursery: Nursery;
   basePath: string;
@@ -74,6 +75,8 @@ export function SiteHeader({
   categories?: CategoryNode[];
   /** קישור לבלוג — רק כשהמודול פעיל ויש פוסטים מפורסמים */
   showBlog?: boolean;
+  /** R06-03: מודול חשבונות לקוח */
+  showAccount?: boolean;
 }) {
   const nav = [
     { href: basePath || '/', label: 'בית' },
@@ -81,6 +84,7 @@ export function SiteHeader({
     ...(showBlog ? [{ href: `${basePath}/blog`, label: 'בלוג' }] : []),
     ...navPages.map((p) => ({ href: `${basePath}/${p.slug}`, label: p.title })),
     { href: `${basePath}/contact`, label: 'צור קשר' },
+    ...(showAccount ? [{ href: `${basePath}/account`, label: 'החשבון שלי' }] : []),
   ];
 
   return (

@@ -42,6 +42,8 @@ export default function CheckoutPage() {
       if (o?.deliveryMethods.length === 1) setDelivery(o.deliveryMethods[0]);
     });
   }, [tenant]);
+  // R06-03: לקוח מחובר — מילוי מראש (ניתן לשינוי)
+  const prefill = options?.customer ?? null;
 
   const zones = useMemo(() => options?.zones ?? [], [options]);
   const zoneCities = useMemo(() => zones.flatMap((z) => z.cities), [zones]);
@@ -117,21 +119,23 @@ export default function CheckoutPage() {
 
       <div className="grid gap-8 md:grid-cols-[1fr_320px]">
         <form onSubmit={handleSubmit} className="space-y-6">
-          <section className="space-y-4">
+          {/* key: הפרטים של לקוח מחובר נטענים אחרי הרינדור הראשון — מרכיבים מחדש כדי שה-defaultValue ייקלט */}
+          <section key={prefill?.email ?? 'guest'} className="space-y-4">
             <h2 className="font-bold text-gray-900">פרטי התקשרות</h2>
+            {prefill && <p className="text-xs text-gray-500">מחובר/ת לחשבון — הפרטים מולאו מראש.</p>}
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="text-sm">
                 <span className="mb-1 block font-medium text-gray-700">שם מלא *</span>
-                <input name="customerName" required autoComplete="name" className={field} />
+                <input name="customerName" required autoComplete="name" defaultValue={prefill?.fullName ?? undefined} className={field} />
               </label>
               <label className="text-sm">
                 <span className="mb-1 block font-medium text-gray-700">טלפון *</span>
-                <input name="customerPhone" required inputMode="tel" autoComplete="tel" className={field} />
+                <input name="customerPhone" required inputMode="tel" autoComplete="tel" defaultValue={prefill?.phone ?? undefined} className={field} />
               </label>
             </div>
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-gray-700">אימייל *</span>
-              <input name="customerEmail" type="email" required autoComplete="email" className={field} />
+              <input name="customerEmail" type="email" required autoComplete="email" defaultValue={prefill?.email} className={field} />
             </label>
           </section>
 

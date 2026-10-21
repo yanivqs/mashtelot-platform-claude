@@ -70,6 +70,7 @@ export default async function globalSetup() {
         { nurseryId: n.id, moduleKey: 'shipping', isEnabled: true },
         { nurseryId: n.id, moduleKey: 'static_pages', isEnabled: true },
         { nurseryId: n.id, moduleKey: 'blog', isEnabled: true },
+        { nurseryId: n.id, moduleKey: 'customer_accounts', isEnabled: true },
       ],
     });
     for (const [title, price] of [

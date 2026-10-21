@@ -172,6 +172,8 @@ export interface CreateOrderInput {
   shippingAddress: string | null;
   /** §11.01: מיקוד (7 ספרות) — אופציונלי */
   shippingPostcode?: string | null;
+  /** R06-03: חשבון הלקוח (לקוח מחובר באותה משתלה) */
+  customerId?: string | null;
   shippingZone: (ShippingZoneForCheckout & { id: string }) | null;
   paymentMethod: PaymentMethod | null;
   paymentReference: string | null;
@@ -288,6 +290,7 @@ export async function createOrderRecord(db: PrismaClient, input: CreateOrderInpu
           deliveryMethod: input.deliveryMethod,
           shippingAddress: input.shippingAddress,
           shippingPostcode: input.shippingPostcode || null,
+          customerId: input.customerId || null,
           status: input.isQuote ? 'QUOTE_REQUESTED' : 'RECEIVED',
           paymentStatus: 'UNPAID',
           stockState: input.isQuote ? 'NONE' : 'RESERVED',
