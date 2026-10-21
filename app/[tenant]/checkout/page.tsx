@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Store, Truck } from 'lucide-react';
@@ -33,6 +33,7 @@ export default function CheckoutPage() {
   const [delivery, setDelivery] = useState<DeliveryChoice | ''>('');
   const [city, setCity] = useState('');
   const [postcode, setPostcode] = useState('');
+  const streetRef = useRef<HTMLInputElement>(null);
   // מפתח קבוע לניסיון ה-checkout הזה: לחיצה כפולה / ניסיון חוזר מחזירים את אותה הזמנה (C-P1-02)
   const [idempotencyKey] = useState(() => crypto.randomUUID());
 
@@ -42,8 +43,20 @@ export default function CheckoutPage() {
       if (o?.deliveryMethods.length === 1) setDelivery(o.deliveryMethods[0]);
     });
   }, [tenant]);
-  // R06-03: לקוח מחובר — מילוי מראש (ניתן לשינוי)
+  // R06-03: לקוח מחובר — מילוי מראש (ניתן לשינוי). הפרטים מגיעים אחרי הרינדור הראשון,
+  // ולכן ממלאים רק שדות ריקים — בלי למחוק מה שהלקוח כבר הקליד
   const prefill = options?.customer ?? null;
+  const contactRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!prefill || !contactRef.current) return;
+    const fill = (name: string, value: string | null) => {
+      const el = contactRef.current?.querySelector<HTMLInputElement>(`input[name="${name}"]`);
+      if (el && !el.value && value) el.value = value;
+    };
+    fill('customerName', prefill.fullName);
+    fill('customerPhone', prefill.phone);
+    fill('customerEmail', prefill.email);
+  }, [prefill]);
 
   const zones = useMemo(() => options?.zones ?? [], [options]);
   const zoneCities = useMemo(() => zones.flatMap((z) => z.cities), [zones]);
@@ -119,23 +132,22 @@ export default function CheckoutPage() {
 
       <div className="grid gap-8 md:grid-cols-[1fr_320px]">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* key: הפרטים של לקוח מחובר נטענים אחרי הרינדור הראשון — מרכיבים מחדש כדי שה-defaultValue ייקלט */}
-          <section key={prefill?.email ?? 'guest'} className="space-y-4">
+          <section ref={contactRef} className="space-y-4">
             <h2 className="font-bold text-gray-900">פרטי התקשרות</h2>
             {prefill && <p className="text-xs text-gray-500">מחובר/ת לחשבון — הפרטים מולאו מראש.</p>}
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="text-sm">
                 <span className="mb-1 block font-medium text-gray-700">שם מלא *</span>
-                <input name="customerName" required autoComplete="name" defaultValue={prefill?.fullName ?? undefined} className={field} />
+                <input name="customerName" required autoComplete="name" className={field} />
               </label>
               <label className="text-sm">
                 <span className="mb-1 block font-medium text-gray-700">טלפון *</span>
-                <input name="customerPhone" required inputMode="tel" autoComplete="tel" defaultValue={prefill?.phone ?? undefined} className={field} />
+                <input name="customerPhone" required inputMode="tel" autoComplete="tel" className={field} />
               </label>
             </div>
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-gray-700">אימייל *</span>
-              <input name="customerEmail" type="email" required autoComplete="email" defaultValue={prefill?.email} className={field} />
+              <input name="customerEmail" type="email" required autoComplete="email" className={field} />
             </label>
           </section>
 
@@ -190,6 +202,30 @@ export default function CheckoutPage() {
                 {options?.deliveryNote && (
                   <p className="text-xs text-gray-600">{options.deliveryNote}</p>
                 )}
+                {prefill && prefill.addresses.length > 0 && (
+                  <label className="block text-sm">
+                    <span className="mb-1 block font-medium text-gray-700">כתובת שמורה</span>
+                    <select
+                      defaultValue=""
+                      onChange={(e) => {
+                        const a = prefill.addresses.find((x) => x.id === e.target.value);
+                        if (!a) return;
+                        setCity(a.city);
+                        setPostcode(a.postcode ?? '');
+                        if (streetRef.current) streetRef.current.value = a.street;
+                      }}
+                      className={`${field} bg-white`}
+                    >
+                      <option value="">בחירת כתובת מהחשבון...</option>
+                      {prefill.addresses.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.label ? `${a.label}: ` : ''}
+                          {a.street}, {a.city}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <label className="block text-sm">
                   <span className="mb-1 block font-medium text-gray-700">עיר / יישוב *</span>
                   {zoneCities.length > 0 && !usesPostcodes ? (
@@ -241,6 +277,7 @@ export default function CheckoutPage() {
                 <label className="block text-sm">
                   <span className="mb-1 block font-medium text-gray-700">רחוב, מספר בית ודירה *</span>
                   <input
+                    ref={streetRef}
                     name="shippingAddress"
                     required
                     autoComplete="street-address"

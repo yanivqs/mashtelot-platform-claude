@@ -11,6 +11,8 @@ import { activeVariants, effectiveCompareAt, effectivePrice, variantImages } fro
 import { PlantFactsGrid } from '@/components/storefront/plant-key-facts';
 import { SpecTable } from '@/components/storefront/spec-table';
 import { redirectOrNotFound } from '@/lib/redirect-resolve';
+import { isModuleEnabled } from '@/lib/module-access';
+import { ProductPersonal } from '@/components/storefront/product-personal';
 
 export const revalidate = 300;
 export const dynamicParams = true;
@@ -70,6 +72,8 @@ export default async function ProductPage(props: ProductPageProps) {
   const kicker = plant?.plantType || product.supply?.brand || null;
   const canonicalPath = `/product/${productSlug(product.id, title)}`;
   const care = plant?.care?.trim();
+  // R06-04: מועדפים ו"נצפו לאחרונה" — רק כשמודול החשבונות פעיל (המצב נטען בדפדפן)
+  const personal = (await isModuleEnabled(nursery.id, 'customer_accounts')) ? <ProductPersonal tenant={params.tenant} productId={product.id} /> : null;
 
   const jsonLd = productJsonLd({ nursery, product, variants: product.variants, url: tenantUrl(nursery, canonicalPath) });
 
@@ -102,6 +106,7 @@ export default async function ProductPage(props: ProductPageProps) {
               )}
               <h1 className="mt-3 text-3xl font-bold leading-tight text-gray-900">{title}</h1>
               {plant?.latinName && <p className="mt-1 text-sm italic text-gray-400">{plant.latinName}</p>}
+              {personal}
             </>
           }
           footer={

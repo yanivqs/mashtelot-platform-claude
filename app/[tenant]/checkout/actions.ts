@@ -17,6 +17,7 @@ import { resolveShippingZone, hasAnyShippingZone } from '@/lib/shipping';
 import { normalizePostcode } from '@/lib/shipping-zones';
 import { getCustomer } from '@/lib/customer-session';
 import { isModuleEnabled } from '@/lib/module-access';
+import { customerAddresses } from '@/lib/customer-portal';
 import { recordAudit } from '@/lib/audit';
 import { createOrderRecord } from '@/lib/order-service';
 import {
@@ -65,14 +66,27 @@ export interface CheckoutOptions {
   /** אזורי משלוח פעילים (ריק = עיר חופשית ועלות שתתואם מול המשתלה) */
   zones: CheckoutShippingZone[];
   /** R06-03: לקוח מחובר — מילוי מראש */
-  customer: { email: string; fullName: string | null; phone: string | null } | null;
+  customer: {
+    email: string;
+    fullName: string | null;
+    phone: string | null;
+    /** R06-04: ספר הכתובות (ברירת המחדל ראשונה) */
+    addresses: Array<{ id: string; label: string | null; city: string; street: string; postcode: string | null }>;
+  } | null;
 }
 
 /** לקוח מחובר בחנות הזו (רק כשמודול החשבונות פעיל). */
 async function checkoutCustomer(nurseryId: string) {
   if (!(await isModuleEnabled(nurseryId, 'customer_accounts'))) return null;
   const c = await getCustomer(nurseryId);
-  return c ? { email: c.email, fullName: c.fullName, phone: c.phone } : null;
+  if (!c) return null;
+  const addresses = await customerAddresses(prisma, c.id);
+  return {
+    email: c.email,
+    fullName: c.fullName,
+    phone: c.phone,
+    addresses: addresses.map((a) => ({ id: a.id, label: a.label, city: a.city, street: a.street, postcode: a.postcode })),
+  };
 }
 
 /** כל מה שטופס ה-checkout צריך: אמצעי תשלום, אופני קבלה ואזורי משלוח. */

@@ -295,6 +295,7 @@ model NurseryProduct {
   createdAt          DateTime                 @default(now()) @map("created_at")
   updatedAt          DateTime                 @updatedAt @map("updated_at")
   variants           ProductVariant[]
+  favoritedBy        CustomerFavorite[]
   nursery            Nursery                  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
   plant              Plant?                   @relation(fields: [plantId], references: [id])
   supply             MasterSupply?            @relation(fields: [supplyId], references: [id])
@@ -393,24 +394,55 @@ model Order {
 
 /// R06-03/04: חשבון לקוח בחנות של משתלה אחת (אותו אדם בשתי משתלות — שני חשבונות). התחברות בקוד חד-פעמי במייל.
 model Customer {
-  id                 String    @id @default(uuid())
-  nurseryId          String    @map("nursery_id")
+  id                 String             @id @default(uuid())
+  nurseryId          String             @map("nursery_id")
   /// מנורמל (אותיות קטנות)
   email              String
-  fullName           String?   @map("full_name")
+  fullName           String?            @map("full_name")
   phone              String?
   /// R06-09: הסכמה לדיוור — רק לקוחות שהסכימו ייוצאו לשיווק
-  marketingConsentAt DateTime? @map("marketing_consent_at")
+  marketingConsentAt DateTime?          @map("marketing_consent_at")
   /// מוגבר ביציאה מכל המכשירים — מבטל sessions ישנים
-  sessionVersion     Int       @default(0) @map("session_version")
-  lastLoginAt        DateTime? @map("last_login_at")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
-  nursery            Nursery   @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  sessionVersion     Int                @default(0) @map("session_version")
+  lastLoginAt        DateTime?          @map("last_login_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  nursery            Nursery            @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
   orders             Order[]
+  addresses          CustomerAddress[]
+  favorites          CustomerFavorite[]
 
   @@unique([nurseryId, email])
   @@map("customers")
+}
+
+/// R06-04: ספר כתובות של לקוח (עד 10), לבחירה בקופה
+model CustomerAddress {
+  id         String   @id @default(uuid())
+  customerId String   @map("customer_id")
+  label      String?
+  city       String
+  street     String
+  postcode   String?
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at")
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("customer_addresses")
+}
+
+/// R06-04 / §13.03: מועדפים — מוצרים של אותה משתלה בלבד (trigger)
+model CustomerFavorite {
+  id               String         @id @default(uuid())
+  customerId       String         @map("customer_id")
+  nurseryProductId String         @map("nursery_product_id")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  customer         Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product          NurseryProduct @relation(fields: [nurseryProductId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, nurseryProductId])
+  @@map("customer_favorites")
 }
 
 /// R06-03: קוד התחברות חד-פעמי (6 ספרות, 10 דקות). נשמר רק HMAC של הקוד.

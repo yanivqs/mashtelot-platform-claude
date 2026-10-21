@@ -17,6 +17,7 @@ export const MODULE_KEYS = [
   'sales',
   'shipping',
   'customer_accounts',
+  'loyalty',
 ] as const;
 
 export type ModuleKey = (typeof MODULE_KEYS)[number];
@@ -103,6 +104,11 @@ export const MODULES: ModuleDef[] = [
     key: 'customer_accounts',
     label: 'חשבונות לקוח',
     description: 'שדרוג: לקוחות נרשמים ומתחברים בחנות עם קוד במייל, ורואים את ההזמנות והפרטים שלהם.',
+  },
+  {
+    key: 'loyalty',
+    label: 'מועדון לקוחות',
+    description: 'שדרוג (דורש חשבונות לקוח): "הזמן שוב" מהזמנות קודמות, וצבירה ומימוש נקודות.',
   },
 ];
 
