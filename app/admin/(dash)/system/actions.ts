@@ -4,6 +4,9 @@ import { requireUser } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
 import { sendEmail } from '@/lib/email';
 import { recordAudit } from '@/lib/audit';
+import { revalidatePath } from 'next/cache';
+import { prisma } from '@/lib/prisma';
+import { retryFailedEmail } from '@/lib/email-outbox';
 
 export interface TestEmailState {
   ok?: boolean;
@@ -39,4 +42,14 @@ export async function sendTestEmail(
     return { ok: false, message: 'לא נשלח: RESEND_API_KEY או EMAIL_FROM לא מוגדרים בסביבת השרת' };
   }
   return { ok: false, message: res.error ?? 'שגיאה לא ידועה' };
+}
+
+/** §21: "שליחה חוזרת" למייל שנכשל סופית — חוזר לתור ונשלח בריצת הרקע הבאה. */
+export async function retryEmailAction(formData: FormData): Promise<void> {
+  const user = await requireUser(['SUPER_ADMIN']);
+  const id = String(formData.get('id') || '');
+  if (await retryFailedEmail(prisma, id)) {
+    await recordAudit({ actorEmail: user.email, action: 'email.retry_requested', entityType: 'EmailJob', entityId: id });
+  }
+  revalidatePath('/admin/system');
 }

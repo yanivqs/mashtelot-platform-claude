@@ -9,7 +9,7 @@
 |---|---|---|---|---|
 | §1.01 / R10-02 Monorepo | BLOCKER | Conflict | אפליקציה יחידה | ADR-01 |
 | §1.03 / R10-03 tenant_id + RLS | BLOCKER | Partial | `nurseryId` בכל ישות; 11 טבלאות ללא RLS | anon/auth API |
-| §1.04, §21 Jobs/Queue | BLOCKER | Missing | אין cron/queue | — |
+| §1.04, §21 Jobs/Queue | BLOCKER | Verified (2026-10-23) | Vercel Cron + `job_runs` + תור מיילים עם Retry/Backoff (`lib/jobs.ts`, `lib/email-outbox.ts`); Webhooks — עם הסליקה | `test/db/background-jobs.test.ts` |
 | §1.05, §22.07 הפרדת סביבות | BLOCKER | Partial | E01 (בדיקות) בענף; Preview — Unknown | env של Vercel |
 | §2.01 זיהוי Tenant בשרת | BLOCKER | Verified | `middleware.ts`, `lib/tenant.ts` | זיוף Host |
 | §2.03 Lifecycle משתלה | BLOCKER | Partial | `isActive` בלבד; בעלים מושעה מתחבר | Tenant C |

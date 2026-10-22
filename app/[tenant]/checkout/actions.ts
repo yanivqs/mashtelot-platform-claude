@@ -21,6 +21,7 @@ import { customerAddresses } from '@/lib/customer-portal';
 import { activeLoyaltyConfig, balanceOf } from '@/lib/loyalty';
 import { recordAudit } from '@/lib/audit';
 import { createOrderRecord } from '@/lib/order-service';
+import { sendViaOutbox } from '@/lib/email-outbox';
 import {
   CheckoutError,
   availableDeliveryMethods,
@@ -298,19 +299,18 @@ async function sendOrderEmails(
     const owner = newOrderNotificationEmail(data, isQuote);
     const ownerRecipients = orderNotificationRecipients(nursery);
 
+    // §21: דרך תור המיילים — כשל זמני נשלח שוב ברקע, כשל סופי גלוי ב"מיילים ומערכת"
     const [customerRes, ownerRes] = await Promise.all([
-      sendEmail({
-        to: order.customerEmail,
-        subject: customer.subject,
-        html: customer.html,
-        replyTo: nursery.contactEmail || nursery.ownerEmail,
-      }),
-      sendEmail({
-        to: ownerRecipients,
-        subject: owner.subject,
-        html: owner.html,
-        replyTo: order.customerEmail,
-      }),
+      sendViaOutbox(
+        prisma,
+        { nurseryId: nursery.id, kind: 'order.customer', refId: order.id, to: order.customerEmail, subject: customer.subject, html: customer.html, replyTo: nursery.contactEmail || nursery.ownerEmail },
+        sendEmail,
+      ),
+      sendViaOutbox(
+        prisma,
+        { nurseryId: nursery.id, kind: 'order.owner', refId: order.id, to: ownerRecipients, subject: owner.subject, html: owner.html, replyTo: order.customerEmail },
+        sendEmail,
+      ),
     ]);
 
     // תיעוד תוצאת השליחה — מאפשר לאבחן תקלות מייל מתוך הפורטל

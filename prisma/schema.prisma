@@ -77,6 +77,7 @@ model Nursery {
   customerGroups  CustomerGroup[]
   loyaltySettings LoyaltySettings?
   loyaltyEntries  LoyaltyEntry[]
+  emailJobs       EmailJob[]
   modules         NurseryModule[]
   staticPages     StaticPage[]
   nurseryProducts NurseryProduct[]
@@ -127,6 +128,57 @@ model NurseryChannel {
 
   @@unique([nurseryId, provider])
   @@map("nursery_channels")
+}
+
+/// §21: הרצת משימת רקע — סטטוס, משך, תוצאה ושגיאה (כשל אינו נעלם בשקט)
+model JobRun {
+  id         String    @id @default(uuid())
+  name       String
+  status     JobStatus @default(RUNNING)
+  startedAt  DateTime  @default(now()) @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+  result     Json?
+  error      String?
+
+  @@index([name, startedAt])
+  @@map("job_runs")
+}
+
+enum JobStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+/// §21: תור מיילים (Outbox) — ניסיון מיידי, וניסיונות חוזרים עם השהיה גדלה; כשל סופי גלוי לתיקון
+model EmailJob {
+  id            String      @id @default(uuid())
+  nurseryId     String?     @map("nursery_id")
+  kind          String
+  /// מזהה עסקי (למשל הזמנה) — לאבחון
+  refId         String?     @map("ref_id")
+  to            String[]
+  subject       String
+  html          String
+  replyTo       String?     @map("reply_to")
+  status        EmailStatus @default(PENDING)
+  attempts      Int         @default(0)
+  nextAttemptAt DateTime    @default(now()) @map("next_attempt_at")
+  lastError     String?     @map("last_error")
+  providerId    String?     @map("provider_id")
+  sentAt        DateTime?   @map("sent_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  nursery       Nursery?    @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@map("email_jobs")
 }
 
 model AuditEvent {

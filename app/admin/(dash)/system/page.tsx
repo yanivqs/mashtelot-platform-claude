@@ -3,6 +3,8 @@ import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { emailConfigStatus } from '@/lib/email';
 import { TestEmailForm } from './test-email-form';
+import { JOB_LABELS, JOB_NAMES } from '@/lib/jobs';
+import { retryEmailAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +47,14 @@ function Row({ ok, warn, children }: { ok: boolean; warn?: boolean; children: Re
 
 export default async function SystemPage() {
   const user = await requireUser(['SUPER_ADMIN']);
+  // §21: מצב משימות הרקע ומיילים שנכשלו סופית
+  const [lastRuns, failedRuns, failedEmails, pendingEmails] = await Promise.all([
+    Promise.all(JOB_NAMES.map((name) => prisma.jobRun.findFirst({ where: { name }, orderBy: { startedAt: 'desc' } }))),
+    prisma.jobRun.findMany({ where: { status: 'FAILED' }, orderBy: { startedAt: 'desc' }, take: 10 }),
+    prisma.emailJob.findMany({ where: { status: 'FAILED' }, orderBy: { createdAt: 'desc' }, take: 20, include: { nursery: { select: { name: true } } } }),
+    prisma.emailJob.count({ where: { status: 'PENDING' } }),
+  ]);
+  const cronConfigured = Boolean(process.env.CRON_SECRET);
   const cfg = emailConfigStatus();
   const events = await prisma.auditEvent.findMany({
     where: { action: { in: ['order.emails', 'email.test'] } },
@@ -81,6 +91,65 @@ export default async function SystemPage() {
           דוחה כל שליחה לנמען שאינו בעל החשבון. התראות הזמנה נשלחות לאימייל הבעלים ולאימייל
           יצירת הקשר של המשתלה.
         </p>
+      </section>
+
+      <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm" data-testid="jobs">
+        <h2 className="mb-1 font-bold">משימות רקע</h2>
+        <p className="mb-3 text-xs text-gray-500">
+          {cronConfigured ? 'מופעלות אוטומטית ב-Vercel Cron.' : 'CRON_SECRET לא מוגדר — המשימות לא רצות.'} מיילים בתור לשליחה חוזרת: {pendingEmails}
+        </p>
+        <ul className="space-y-1 text-sm">
+          {JOB_NAMES.map((name, i) => {
+            const r = lastRuns[i];
+            return (
+              <li key={name} className="flex flex-wrap items-center gap-2">
+                {!r ? (
+                  <AlertTriangle className="h-4 w-4 text-gray-400" />
+                ) : r.status === 'FAILED' ? (
+                  <XCircle className="h-4 w-4 text-rose-600" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                )}
+                <span>{JOB_LABELS[name]}</span>
+                <span className="text-xs text-gray-500">
+                  {r ? `ריצה אחרונה ${r.startedAt.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}${r.result ? ` · ${JSON.stringify(r.result)}` : ''}` : 'עוד לא רצה'}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        {failedRuns.length > 0 && (
+          <div className="mt-3 rounded-lg bg-rose-50 p-3 text-xs text-rose-800">
+            <p className="mb-1 font-medium">ריצות שנכשלו</p>
+            {failedRuns.map((r) => (
+              <p key={r.id}>
+                {r.startedAt.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })} · {r.name} · {r.error}
+              </p>
+            ))}
+          </div>
+        )}
+        <h3 className="mb-2 mt-4 text-sm font-bold">מיילים שנכשלו סופית</h3>
+        {failedEmails.length === 0 ? (
+          <p className="text-sm text-gray-500">אין. ✓</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {failedEmails.map((e) => (
+              <li key={e.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 p-2">
+                <span className="font-medium">{e.subject}</span>
+                <span className="text-xs text-gray-500" dir="ltr">
+                  {e.to.join(', ')}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {e.nursery?.name ?? ''} · {e.attempts} ניסיונות · {e.lastError}
+                </span>
+                <form action={retryEmailAction} className="ms-auto">
+                  <input type="hidden" name="id" value={e.id} />
+                  <button className="rounded-lg border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50">שליחה חוזרת</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
