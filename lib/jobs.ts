@@ -6,6 +6,7 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { releaseExpiredReservations } from '@/lib/order-service';
 import { processEmailQueue, type SendFn } from '@/lib/email-outbox';
+import { logError } from '@/lib/log';
 
 export const JOB_NAMES = ['reservations', 'emails', 'cleanup'] as const;
 export type JobName = (typeof JOB_NAMES)[number];
@@ -25,7 +26,7 @@ export async function runJob<T>(db: PrismaClient, name: JobName, fn: () => Promi
   } catch (e) {
     const error = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
     await db.jobRun.update({ where: { id: run.id }, data: { status: 'FAILED', finishedAt: new Date(), error: error.slice(0, 2000) } });
-    console.error(JSON.stringify({ level: 'error', service: 'jobs', job: name, error }));
+    logError({ service: 'jobs', code: 'JOB_FAILED', job: name }, e);
     return { ok: false, error };
   }
 }

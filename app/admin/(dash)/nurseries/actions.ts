@@ -13,6 +13,7 @@ import { resolveDesignUpdate } from '@/lib/design-lock';
 import { isEmailTaken } from '@/lib/account';
 import { isNurseryStatus } from '@/lib/nursery-lifecycle';
 import { recordAudit } from '@/lib/audit';
+import { auditAsCurrentUser } from '@/lib/audit-actor';
 
 export interface NurseryFormState {
   ok?: boolean;
@@ -58,6 +59,7 @@ export async function createNursery(
     data: { name, subdomain, ownerEmail, logoUrl, status: 'DRAFT' },
   });
   await syncMasterCategoriesToNursery(nursery.id);
+  await auditAsCurrentUser({ nurseryId: nursery.id, action: 'nursery.created', entityType: 'Nursery', entityId: nursery.id, metadata: { name, subdomain, ownerEmail } });
 
   if (ownerPassword) {
     if (ownerPassword.length < 8) {
@@ -190,6 +192,7 @@ export async function updateNursery(
     return { error: 'שגיאה בשמירה (ייתכן שהדומיין המותאם כבר תפוס)' };
   }
 
+  await recordAudit({ nurseryId: id, actorEmail: user.email, action: 'nursery.updated', entityType: 'Nursery', entityId: id, metadata: { by: isSuper ? 'platform' : 'nursery' } });
   revalidatePath('/admin/nurseries');
   revalidatePath(`/admin/nurseries/${id}`);
   revalidatePath('/admin/settings');
@@ -259,6 +262,9 @@ export async function setNurseryModules(
     });
   }
 
+  // §20.02: שינוי מודולים (זכאות לשדרוגים) — נרשם עם הרשימה הפעילה אחרי השינוי
+  const enabledNow = await prisma.nurseryModule.findMany({ where: { nurseryId, isEnabled: true }, select: { moduleKey: true } });
+  await auditAsCurrentUser({ nurseryId, action: 'nursery.modules_changed', entityType: 'Nursery', entityId: nurseryId, metadata: { enabled: enabledNow.map((m) => m.moduleKey).sort() } });
   revalidatePath(`/admin/nurseries/${nurseryId}`);
   return { ok: true };
 }

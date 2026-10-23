@@ -19,7 +19,7 @@
 | §4.07 אכיפה בשרת | BLOCKER | Partial | IDOR בעמודים; מודולים לא באכיפת Actions | בדיקות שליליות |
 | §10.01 Credentials מוצפנים לכל Tenant | BLOCKER | Missing | אין סליקה | — |
 | §19.02 Secrets | BLOCKER | Partial | `.env` מוחרג; סיסמאות seed קשיחות | סריקת סודות |
-| §20 Audit | BLOCKER | Partial | `lib/audit.ts` — מחיר/מלאי/תשלום/מייל בלבד | — |
+| §20 Audit | BLOCKER | Verified (2026-10-23) | פעולות רגישות: הרשאות, מודולים, סטטוס, תשלום, פרסום, דפוס, פרטיות; "יומן פעולות" לפלטפורמה ולבעלים; לוג JSON מובנה | E2E `activity-log` |
 | §23.06 גיבוי ושחזור | BLOCKER | Unknown | — | תרגיל שחזור |
 
 ## קטלוג, מוצרים, מלאי

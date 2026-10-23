@@ -26,6 +26,7 @@ import {
   RefreshCw,
   Users,
   Gift,
+  History,
   type LucideIcon,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
@@ -75,6 +76,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/system', label: 'מיילים ומערכת', icon: Mail },
   { href: '/admin/search-synonyms', label: 'מילים נרדפות בחיפוש', icon: SearchCode },
   { href: '/admin/security', label: 'יומן התחברויות', icon: ShieldCheck },
+  { href: '/admin/activity', label: 'יומן פעולות', icon: History },
 ];
 
 /** מסכי תוכן (R06: כותב תוכן רואה רק אותם). */
@@ -84,7 +86,9 @@ const CONTENT_HREFS = new Set(['/admin/pages', '/admin/blog']);
 async function buildOwnerNav(nurseryId: string | null, role: Role): Promise<NavItem[]> {
   const nav = await buildFullNurseryNav(nurseryId);
   if (role === 'NURSERY_WRITER') return nav.filter((i) => i.href === '/admin' || CONTENT_HREFS.has(i.href));
-  if (roleAllowsArea(role, 'owner')) nav.splice(nav.length - 1, 0, { href: '/admin/team', label: 'צוות', icon: Users });
+  if (roleAllowsArea(role, 'owner')) {
+    nav.splice(nav.length - 1, 0, { href: '/admin/team', label: 'צוות', icon: Users }, { href: '/admin/activity', label: 'יומן פעולות', icon: History });
+  }
   return nav;
 }
 

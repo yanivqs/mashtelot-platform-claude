@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { auditAsCurrentUser } from '@/lib/audit-actor';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
@@ -36,6 +37,7 @@ export async function savePage(
     seoMetaDescription: String(formData.get('seoMetaDescription') || '').trim() || null,
   });
   if (!result.ok) return { error: result.error };
+  await auditAsCurrentUser({ nurseryId, action: 'page.saved', entityType: 'StaticPage', entityId: String(formData.get('id') || '') || null, metadata: { slug: String(formData.get('slug') || ''), isPublished: formData.get('isPublished') === 'on' } });
 
   revalidatePath('/admin/pages');
   redirect('/admin/pages');
@@ -46,6 +48,7 @@ export async function deletePage(formData: FormData): Promise<void> {
   const id = String(formData.get('id') || '');
   if (!nurseryId || !id) return;
   await deleteStaticPage(prisma, nurseryId, id);
+  await auditAsCurrentUser({ nurseryId, action: 'page.deleted', entityType: 'StaticPage', entityId: id });
   revalidatePath('/admin/pages');
   redirect('/admin/pages');
 }

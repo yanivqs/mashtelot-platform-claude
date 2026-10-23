@@ -1,5 +1,6 @@
 import 'server-only';
 import { formatPrice } from '@/lib/utils';
+import { logError } from '@/lib/log';
 
 /**
  * שליחת מיילים טרנזקציוניים דרך Resend (REST API, ללא SDK).
@@ -56,7 +57,7 @@ export async function sendEmail({ to, subject, html, replyTo }: SendEmailInput):
 
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
-      console.error('[email] שליחה נכשלה', res.status, detail);
+      logError({ service: 'email', code: 'EMAIL_PROVIDER_ERROR', status: res.status, detail: detail.slice(0, 300) });
       let message = detail;
       try {
         message = (JSON.parse(detail) as { message?: string }).message ?? detail;
@@ -69,7 +70,7 @@ export async function sendEmail({ to, subject, html, replyTo }: SendEmailInput):
     const data = (await res.json().catch(() => ({}))) as { id?: string };
     return { ok: true, id: data.id };
   } catch (e) {
-    console.error('[email] שגיאת רשת בשליחה', e);
+    logError({ service: 'email', code: 'EMAIL_NETWORK_ERROR' }, e);
     return { ok: false, error: e instanceof Error ? e.message : 'unknown' };
   } finally {
     clearTimeout(timeout);

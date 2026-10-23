@@ -22,6 +22,7 @@ import { activeLoyaltyConfig, balanceOf } from '@/lib/loyalty';
 import { recordAudit } from '@/lib/audit';
 import { createOrderRecord } from '@/lib/order-service';
 import { sendViaOutbox } from '@/lib/email-outbox';
+import { logError, requestId } from '@/lib/log';
 import {
   CheckoutError,
   availableDeliveryMethods,
@@ -248,7 +249,7 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
   } catch (e) {
     if (e instanceof CheckoutError) return { error: e.message };
     // שגיאה טכנית — לא חושפים פרטים ללקוח (אפיון §13.06)
-    console.error('[checkout] יצירת הזמנה נכשלה', e);
+    logError({ service: 'checkout', code: 'ORDER_CREATE_FAILED', nurseryId: nursery.id, requestId: await requestId() }, e);
     return { error: 'אירעה שגיאה ביצירת ההזמנה. נסו שוב בעוד רגע.' };
   }
 }
@@ -325,6 +326,6 @@ async function sendOrderEmails(
       },
     });
   } catch (e) {
-    console.error('[checkout] שליחת מיילים נכשלה', e);
+    logError({ service: 'checkout', code: 'ORDER_EMAILS_FAILED', nurseryId: nursery.id, orderId }, e);
   }
 }

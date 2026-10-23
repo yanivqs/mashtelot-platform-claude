@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { auditAsCurrentUser } from '@/lib/audit-actor';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
 import { assertOwnedBy } from '@/lib/ownership';
@@ -75,9 +76,10 @@ export async function createCoupon(
   const exists = await prisma.coupon.findFirst({ where: { nurseryId, code } });
   if (exists) return { error: 'קוד קופון זה כבר קיים' };
 
-  await prisma.coupon.create({
+  const coupon = await prisma.coupon.create({
     data: { nurseryId, code, discountPct: pct.toFixed(2), startsAt, endsAt, usageLimit, perCustomerLimit, minOrderAmount },
   });
+  await auditAsCurrentUser({ nurseryId, action: 'coupon.created', entityType: 'Coupon', entityId: coupon.id, metadata: { code, discountPct: pct, usageLimit, perCustomerLimit } });
   revalidatePath('/admin/marketing');
   return { ok: true };
 }
@@ -85,15 +87,17 @@ export async function createCoupon(
 export async function toggleCoupon(formData: FormData): Promise<void> {
   const id = String(formData.get('id') || '');
   await assertOwnsCoupon(id);
-  const row = await prisma.coupon.findUnique({ where: { id }, select: { isActive: true } });
+  const row = await prisma.coupon.findUnique({ where: { id }, select: { isActive: true, nurseryId: true, code: true } });
   await prisma.coupon.update({ where: { id }, data: { isActive: !row!.isActive } });
+  await auditAsCurrentUser({ nurseryId: row!.nurseryId, action: row!.isActive ? 'coupon.disabled' : 'coupon.enabled', entityType: 'Coupon', entityId: id, metadata: { code: row!.code } });
   revalidatePath('/admin/marketing');
 }
 
 export async function deleteCoupon(formData: FormData): Promise<void> {
   const id = String(formData.get('id') || '');
   await assertOwnsCoupon(id);
-  await prisma.coupon.delete({ where: { id } });
+  const gone = await prisma.coupon.delete({ where: { id } });
+  await auditAsCurrentUser({ nurseryId: gone.nurseryId, action: 'coupon.deleted', entityType: 'Coupon', entityId: id, metadata: { code: gone.code } });
   revalidatePath('/admin/marketing');
 }
 
@@ -108,9 +112,10 @@ export async function createPromotion(
   if (!title) return { error: 'יש להזין כותרת' };
   if (!popupText) return { error: 'יש להזין טקסט לפופאפ' };
 
-  await prisma.promotion.create({
+  const promo = await prisma.promotion.create({
     data: { nurseryId, title, popupText, triggerType: 'ON_LOAD' },
   });
+  await auditAsCurrentUser({ nurseryId, action: 'promotion.created', entityType: 'Promotion', entityId: promo.id, metadata: { title } });
   revalidatePath('/admin/marketing');
   return { ok: true };
 }
@@ -118,14 +123,16 @@ export async function createPromotion(
 export async function togglePromotion(formData: FormData): Promise<void> {
   const id = String(formData.get('id') || '');
   await assertOwnsPromotion(id);
-  const row = await prisma.promotion.findUnique({ where: { id }, select: { isActive: true } });
+  const row = await prisma.promotion.findUnique({ where: { id }, select: { isActive: true, nurseryId: true } });
   await prisma.promotion.update({ where: { id }, data: { isActive: !row!.isActive } });
+  await auditAsCurrentUser({ nurseryId: row!.nurseryId, action: row!.isActive ? 'promotion.disabled' : 'promotion.enabled', entityType: 'Promotion', entityId: id });
   revalidatePath('/admin/marketing');
 }
 
 export async function deletePromotion(formData: FormData): Promise<void> {
   const id = String(formData.get('id') || '');
   await assertOwnsPromotion(id);
-  await prisma.promotion.delete({ where: { id } });
+  const gonePromo = await prisma.promotion.delete({ where: { id } });
+  await auditAsCurrentUser({ nurseryId: gonePromo.nurseryId, action: 'promotion.deleted', entityType: 'Promotion', entityId: id });
   revalidatePath('/admin/marketing');
 }

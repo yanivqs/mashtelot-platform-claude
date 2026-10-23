@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { recordAudit } from '@/lib/audit';
 import { prisma } from '@/lib/prisma';
 import { nurseryActionScope } from '@/lib/nursery-scope';
 
@@ -29,6 +30,7 @@ export async function saveDeliverySettings(
     where: { id: nurseryId },
     data: { pickupEnabled, deliveryEnabled, deliveryNote },
   });
+  await recordAudit({ nurseryId, actorEmail: scope.user.email, action: 'delivery_settings.updated', entityType: 'Nursery', entityId: nurseryId, metadata: { pickupEnabled, deliveryEnabled } });
   revalidatePath('/admin/settings');
   return { ok: true };
 }

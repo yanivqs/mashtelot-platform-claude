@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { auditAsCurrentUser } from '@/lib/audit-actor';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
 import { PAYMENT_METHODS, PAYMENT_DESTINATION_LABELS, PAYMENT_METHOD_LABELS, validatePaymentDestination } from '@/lib/payment-methods';
@@ -47,6 +48,14 @@ export async function savePaymentMethods(
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'שמירת אפשרויות התשלום נכשלה' };
   }
+  // §20.02: יעדי תשלום (קישור PayPal, פרטי העברה) — שינוי רגיש
+  await auditAsCurrentUser({
+    nurseryId,
+    action: 'payment_methods.updated',
+    entityType: 'Nursery',
+    entityId: nurseryId,
+    metadata: Object.fromEntries(PAYMENT_METHODS.map((m) => [m, { enabled: read(m).isEnabled, destination: read(m).destination }])),
+  });
 
   revalidatePath('/admin/settings');
   return { ok: true };

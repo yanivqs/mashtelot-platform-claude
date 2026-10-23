@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { auditAsCurrentUser } from '@/lib/audit-actor';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
 import { CHANNEL_PROVIDERS } from '@/lib/channels';
@@ -36,6 +37,7 @@ export async function saveChannels(
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'שמירת הערוצים נכשלה' };
   }
+  await auditAsCurrentUser({ nurseryId, action: 'channels.updated', entityType: 'Nursery', entityId: nurseryId });
 
   revalidatePath('/admin/settings');
   return { ok: true };

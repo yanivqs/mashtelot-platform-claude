@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { auditAsCurrentUser } from '@/lib/audit-actor';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
@@ -59,11 +60,11 @@ export async function saveBlogPost(_prev: BlogFormState, formData: FormData): Pr
     seoMetaDescription,
   };
 
-  if (existing) {
-    await prisma.blogPost.update({ where: { id: existing.id }, data });
-  } else {
-    await prisma.blogPost.create({ data: { ...data, nurseryId } });
-  }
+  const saved = existing
+    ? await prisma.blogPost.update({ where: { id: existing.id }, data })
+    : await prisma.blogPost.create({ data: { ...data, nurseryId } });
+  // §20.02: פרסום/הסתרה ושמירה של תוכן ציבורי
+  await auditAsCurrentUser({ nurseryId, action: existing ? 'blog.post_updated' : 'blog.post_created', entityType: 'BlogPost', entityId: saved.id, metadata: { slug, isPublished, wasPublished: existing?.isPublished ?? false } });
 
   revalidatePath('/admin/blog');
   redirect('/admin/blog');
@@ -73,7 +74,8 @@ export async function deleteBlogPost(formData: FormData): Promise<void> {
   const nurseryId = await resolveNurseryId();
   const id = String(formData.get('id') || '');
   if (!nurseryId || !id) return;
-  await prisma.blogPost.deleteMany({ where: { id, nurseryId } });
+  const r = await prisma.blogPost.deleteMany({ where: { id, nurseryId } });
+  if (r.count) await auditAsCurrentUser({ nurseryId, action: 'blog.post_deleted', entityType: 'BlogPost', entityId: id });
   revalidatePath('/admin/blog');
   redirect('/admin/blog');
 }
