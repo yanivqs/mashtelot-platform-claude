@@ -1,9 +1,9 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
-import { requestCodeAction, updateProfileAction, verifyCodeAction, type AccountState } from './actions';
+import { deleteMyAccountAction, exportMyDataAction, requestCodeAction, updateProfileAction, verifyCodeAction, type AccountState } from './actions';
 
 const field = 'w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none focus:border-[var(--brand,#16a34a)]';
 
@@ -108,5 +108,53 @@ export function ProfileForm({
         {state.error && <span className="text-sm text-red-600">{state.error}</span>}
       </div>
     </form>
+  );
+}
+
+/** R06-09: הורדת המידע ומחיקת החשבון. */
+export function PrivacySection({ tenant }: { tenant: string }) {
+  // הצלחה — הדף מתרענן למסך כניסה עם הודעה (עוגיית Flash מהשרת)
+  const [state, action] = useActionState(deleteMyAccountAction, {} as AccountState);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            const r = await exportMyDataAction(tenant);
+            setBusy(false);
+            if (!r.json) return setErr(r.error ?? 'שגיאה');
+            const url = URL.createObjectURL(new Blob([r.json], { type: 'application/json' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'my-data.json';
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+        >
+          {busy ? '...' : 'הורדת המידע שלי'}
+        </button>
+        <p className="mt-1 text-xs text-gray-500">קובץ עם הפרטים, הכתובות, ההזמנות, המועדפים והנקודות שלכם בחנות הזו.</p>
+        {err && <p className="text-sm text-red-600">{err}</p>}
+      </div>
+      <form action={action} className="space-y-2 rounded-lg border border-rose-100 bg-rose-50/40 p-3">
+        <input type="hidden" name="tenant" value={tenant} />
+        <p className="text-sm font-medium text-rose-800">מחיקת החשבון</p>
+        <p className="text-xs text-gray-600">
+          החשבון, הכתובות, המועדפים והנקודות יימחקו. ההזמנות נשמרות אצל המשתלה לצורכי הנהלת חשבונות — בלי השם, המייל, הטלפון והכתובת שלכם.
+        </p>
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" name="confirm" className="h-4 w-4" /> אני מבין/ה שהמחיקה סופית
+        </label>
+        <button className="rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-sm text-rose-700 hover:bg-rose-50">מחיקת החשבון</button>
+        {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      </form>
+    </div>
   );
 }

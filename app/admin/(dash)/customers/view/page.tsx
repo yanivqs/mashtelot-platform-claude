@@ -5,7 +5,7 @@ import { requireNurseryPage } from '@/lib/nursery-scope';
 import { getCrmRow } from '@/lib/crm';
 import { ORDER_STATUS_LABELS } from '@/lib/order-state';
 import { formatPrice } from '@/lib/utils';
-import { AdjustPointsForm, CustomerCrmForm, NoteForm } from '../forms';
+import { AdjustPointsForm, CustomerCrmForm, DeleteCustomerForm, NoteForm } from '../forms';
 import { isModuleEnabled } from '@/lib/module-access';
 import { LOYALTY_KIND_LABELS } from '@/lib/loyalty-labels';
 
@@ -114,6 +114,11 @@ export default async function CustomerViewPage(props: { searchParams: Promise<{ 
           ))}
           {orders.length === 0 && <li className="text-gray-500">אין הזמנות.</li>}
         </ul>
+      </section>
+
+      <section className={card}>
+        <h2 className="mb-3 font-bold">פרטיות</h2>
+        <DeleteCustomerForm email={row.email} />
       </section>
     </div>
   );

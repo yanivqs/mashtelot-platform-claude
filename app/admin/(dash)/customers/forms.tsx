@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { addNoteAction, adjustPointsAction, exportCustomersAction, groupAction, updateCustomerAction, type CrmState } from './actions';
+import { addNoteAction, adjustPointsAction, deleteCustomerAction, exportCustomersAction, groupAction, updateCustomerAction, type CrmState } from './actions';
 
 const initial: CrmState = {};
 const field = 'rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500';
@@ -173,6 +173,22 @@ export function CustomerCrmForm({
         {state.ok && <span className="text-sm text-green-700">נשמר ✓</span>}
         {state.error && <span className="text-sm text-red-600">{state.error}</span>}
       </div>
+    </form>
+  );
+}
+
+/** R06-09: מחיקת לקוח לבקשתו. */
+export function DeleteCustomerForm({ email }: { email: string }) {
+  const [state, action] = useActionState(deleteCustomerAction, initial);
+  return (
+    <form action={action} className="space-y-2">
+      <input type="hidden" name="email" value={email} />
+      <p className="text-xs text-gray-600">לבקשת הלקוח: החשבון, הכתובות, המועדפים, ההערות והנקודות נמחקים; ההזמנות נשמרות בלי פרטים אישיים. לא אפשרי כשיש הזמנות פתוחות.</p>
+      <label className="flex items-center gap-2 text-sm text-gray-700">
+        <input type="checkbox" name="confirm" className="h-4 w-4" /> הלקוח ביקש למחוק את המידע, והמחיקה סופית
+      </label>
+      <button className="rounded-lg border border-rose-300 px-3 py-1.5 text-sm text-rose-700 hover:bg-rose-50">מחיקת הלקוח</button>
+      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
     </form>
   );
 }

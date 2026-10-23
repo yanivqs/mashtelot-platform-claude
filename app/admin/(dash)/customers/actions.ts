@@ -6,6 +6,8 @@ import { nurseryActionScope } from '@/lib/nursery-scope';
 import { recordAudit } from '@/lib/audit';
 import { addNote, adjustPoints, createGroup, deleteGroup, exportCustomersCsv, parseCrmFilter, setGroupDiscount, updateCrmFields } from '@/lib/crm';
 import { isModuleEnabled } from '@/lib/module-access';
+import { deleteCustomerData } from '@/lib/customer-privacy';
+import { redirect } from 'next/navigation';
 
 export interface CrmState {
   ok?: boolean;
@@ -70,6 +72,18 @@ export async function adjustPointsAction(_prev: CrmState, fd: FormData): Promise
   await recordAudit({ nurseryId: s.nurseryId, actorEmail: s.user.email, action: 'loyalty.points_adjusted', entityType: 'Customer', metadata: { email, points } });
   revalidatePath('/admin/customers');
   return { ok: true };
+}
+
+/** R06-09: מחיקת לקוח לבקשתו (גם אורח לפי מייל) — הזמנות נשמרות בלי פרטים אישיים. נרשם ב-Audit. */
+export async function deleteCustomerAction(_prev: CrmState, fd: FormData): Promise<CrmState> {
+  const s = await scope();
+  if (!s.ok) return { error: s.error };
+  if (fd.get('confirm') !== 'on') return { error: 'יש לסמן אישור — המחיקה סופית' };
+  const r = await deleteCustomerData(prisma, s.nurseryId, String(fd.get('email') || ''));
+  if (!r.ok) return { error: r.error };
+  await recordAudit({ nurseryId: s.nurseryId, actorEmail: s.user.email, action: 'privacy.customer_deleted', entityType: 'Customer', metadata: { by: 'nursery', ref: r.ref, anonymizedOrders: r.anonymizedOrders } });
+  revalidatePath('/admin/customers');
+  redirect('/admin/customers?deleted=1');
 }
 
 /** R06-08/09: יצוא לשיווק — רק מי שהסכים לדיוור. כל יצוא נרשם ב-Audit. */

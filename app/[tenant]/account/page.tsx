@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { getNurseryByTenant } from '@/lib/tenant';
 import { isModuleEnabled } from '@/lib/module-access';
@@ -8,7 +9,7 @@ import { getCustomer } from '@/lib/customer-session';
 import { customerAddresses, customerOrders } from '@/lib/customer-portal';
 import { ORDER_STATUS_LABELS } from '@/lib/order-state';
 import { formatPrice } from '@/lib/utils';
-import { LoginForm, ProfileForm } from './forms';
+import { LoginForm, PrivacySection, ProfileForm } from './forms';
 import { logoutAction } from './actions';
 import { addressOpAction, productSummaries } from './portal-actions';
 import { AddAddressForm, ProductGrid, RecentProducts } from './portal-ui';
@@ -26,8 +27,10 @@ export const metadata: Metadata = {
 const dateFmt = new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', dateStyle: 'medium' });
 const card = 'rounded-xl border border-gray-100 bg-white p-5 shadow-sm';
 
-export default async function AccountPage(props: { params: Promise<{ tenant: string }> }) {
+export default async function AccountPage(props: { params: Promise<{ tenant: string }>; searchParams: Promise<{ deleted?: string }> }) {
   const { tenant } = await props.params;
+  const { deleted: deletedParam } = await props.searchParams;
+  const deleted = deletedParam === '1' || (await cookies()).get('mashtelot_account_deleted')?.value === '1' ? '1' : undefined;
   const nursery = await getNurseryByTenant(tenant);
   if (!nursery || !(await isModuleEnabled(nursery.id, 'customer_accounts'))) notFound();
   const customer = await getCustomer(nursery.id);
@@ -35,6 +38,11 @@ export default async function AccountPage(props: { params: Promise<{ tenant: str
   if (!customer) {
     return (
       <div dir="rtl" className="mx-auto max-w-md px-6 py-14">
+        {deleted === '1' && (
+          <p className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800" data-testid="account-deleted">
+            החשבון נמחק.
+          </p>
+        )}
         <h1 className="mb-2 text-2xl font-bold text-gray-900">כניסה לחשבון</h1>
         <p className="mb-6 text-sm text-gray-500">
           נשלח לכם קוד חד-פעמי במייל — בלי סיסמה. אין לכם חשבון? הוא ייפתח אוטומטית בכניסה הראשונה, וההזמנות הקודמות שלכם עם אותו מייל יופיעו בו.
@@ -179,6 +187,11 @@ export default async function AccountPage(props: { params: Promise<{ tenant: str
           profile={{ fullName: customer.fullName ?? '', phone: customer.phone ?? '', consent: Boolean(customer.marketingConsentAt) }}
           nurseryName={nursery.name}
         />
+      </section>
+
+      <section className={card}>
+        <h2 className="mb-3 font-bold">פרטיות</h2>
+        <PrivacySection tenant={tenant} />
       </section>
 
       <form action={logoutAction} className="text-center">

@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { getNurseryByTenant } from '@/lib/tenant';
 import { isModuleEnabled } from '@/lib/module-access';
@@ -9,6 +10,7 @@ import { recordAudit } from '@/lib/audit';
 import { customerOtpEmail, sendEmail } from '@/lib/email';
 import { issueOtp, normalizeEmail, verifyOtp } from '@/lib/customer-otp';
 import { clearCustomerSession, createCustomerSession, getCustomer } from '@/lib/customer-session';
+import { deleteCustomerData, exportCustomerData } from '@/lib/customer-privacy';
 
 export interface AccountState {
   ok?: boolean;
@@ -114,4 +116,33 @@ export async function logoutAction(fd: FormData): Promise<void> {
   }
   await clearCustomerSession();
   revalidatePath('/[tenant]/account', 'page');
+}
+
+// ---------- פרטיות (R06-09) ----------
+
+/** "הורדת המידע שלי" — JSON של כל המידע על הלקוח בחנות הזו. נרשם ב-Audit. */
+export async function exportMyDataAction(tenant: string): Promise<{ json?: string; error?: string }> {
+  const nursery = await storeFor(String(tenant || ''));
+  if (!nursery) return { error: 'החשבונות אינם פעילים בחנות זו' };
+  const customer = await getCustomer(nursery.id);
+  if (!customer) return { error: 'יש להתחבר מחדש' };
+  const data = await exportCustomerData(prisma, nursery.id, customer.email);
+  await recordAudit({ nurseryId: nursery.id, actorEmail: customer.email, action: 'privacy.data_exported', entityType: 'Customer', entityId: customer.id, metadata: { by: 'customer' } });
+  return { json: JSON.stringify({ store: nursery.name, ...data }, null, 2) };
+}
+
+/** "מחיקת החשבון" — בקשת הלקוח עצמו (אישור מפורש בטופס). */
+export async function deleteMyAccountAction(_prev: AccountState, fd: FormData): Promise<AccountState> {
+  const nursery = await storeFor(String(fd.get('tenant') || ''));
+  if (!nursery) return { error: 'החשבונות אינם פעילים בחנות זו' };
+  const customer = await getCustomer(nursery.id);
+  if (!customer) return { error: 'יש להתחבר מחדש' };
+  if (fd.get('confirm') !== 'on') return { error: 'יש לסמן שאתם מבינים שהמחיקה סופית' };
+  const r = await deleteCustomerData(prisma, nursery.id, customer.email);
+  if (!r.ok) return { error: r.error };
+  await recordAudit({ nurseryId: nursery.id, action: 'privacy.customer_deleted', entityType: 'Customer', metadata: { by: 'customer', ref: r.ref, anonymizedOrders: r.anonymizedOrders } });
+  await clearCustomerSession();
+  // מחיקת העוגייה מרעננת את הדף מיד (מסך כניסה) — הודעה דרך עוגיית Flash קצרה
+  (await cookies()).set('mashtelot_account_deleted', '1', { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 30 });
+  return { ok: true };
 }

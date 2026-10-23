@@ -30,6 +30,7 @@ export default async function CustomersPage(props: { searchParams: Promise<Recor
         <div>
           <h1 className="text-2xl font-bold">לקוחות</h1>
           <p className="text-sm text-gray-500">לקוחות רשומים ואורחים מההזמנות, לפי אימייל. {total} לקוחות בסינון הנוכחי.</p>
+          {sp.deleted === '1' && <p className="mt-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800" data-testid="customer-deleted">הלקוח נמחק. ההזמנות נשמרו בלי פרטים אישיים.</p>}
         </div>
         <ExportButton params={params} />
       </div>
