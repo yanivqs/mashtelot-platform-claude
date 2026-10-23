@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { MODULES } from '@/lib/modules';
 import { setNurseryModules, type NurseryFormState } from './actions';
@@ -39,9 +40,10 @@ export function NurseryModulesForm({
   states: Record<string, ModuleStateVM>;
 }) {
   const [state, formAction] = useActionState(setNurseryModules, initial);
+  const keep = useKeepFormValues(state);
 
   return (
-    <form action={formAction} className="space-y-3">
+    <form ref={keep} action={formAction} className="space-y-3">
       <input type="hidden" name="nurseryId" value={nurseryId} />
 
       {MODULES.map((mod) => {

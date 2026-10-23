@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useMemo, useState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
 import { ImageUpload } from '@/components/admin/image-upload';
@@ -58,8 +59,9 @@ function Feedback({ state }: { state: TemplateFormState }) {
 
 export function NewTemplateForm() {
   const [state, action] = useActionState(createTemplateAction, initial);
+  const keep = useKeepFormValues(state);
   return (
-    <form action={action} className="flex flex-wrap items-center gap-3">
+    <form ref={keep} action={action} className="flex flex-wrap items-center gap-3">
       <input name="title" placeholder='למשל: מדבקות לעציצים' aria-label="שם המוצר" className={`${field} max-w-sm`} />
       <Submit label="יצירה" pendingLabel="יוצר..." />
       <Feedback state={state} />
@@ -81,8 +83,9 @@ export interface MetaValues {
 
 export function MetaForm({ meta }: { meta: MetaValues }) {
   const [state, action] = useActionState(updateTemplateMetaAction, initial);
+  const keep1 = useKeepFormValues(state);
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2">
+    <form ref={keep1} action={action} className="grid gap-3 sm:grid-cols-2">
       <input type="hidden" name="id" value={meta.id} />
       <label className="text-sm">
         <span className="mb-1 block font-medium text-gray-700">שם המוצר</span>
@@ -225,6 +228,7 @@ export function DraftEditor({
   notes: string | null;
 }) {
   const [saveState, saveAction] = useActionState(saveDraftAction, initial);
+  const keep2 = useKeepFormValues(saveState);
   const [pubState, pubAction] = useActionState(publishDraftAction, initial);
   const [fields, setFields] = useState<EditField[]>(() => toEdit(initialFields));
   const [pricing, setPricing] = useState({
@@ -291,7 +295,7 @@ export function DraftEditor({
 
   return (
     <div className="space-y-6">
-      <form action={saveAction} className="space-y-5">
+      <form ref={keep2} action={saveAction} className="space-y-5">
         <input type="hidden" name="id" value={templateId} />
         <input type="hidden" name="fields" value={JSON.stringify(fieldsJson)} />
         <input type="hidden" name="pricing" value={JSON.stringify(pricingJson)} />

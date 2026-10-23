@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useRef } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import {
   updatePrintOrderStatus,
@@ -62,9 +63,10 @@ export function PrintOptionForm({
   option?: { id: string; optionName: string; extraPrice: string };
 }) {
   const [state, action] = useActionState(savePrintOption, initial);
+  const keep = useKeepFormValues(state);
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <form action={action} className="flex flex-wrap items-center gap-2">
+      <form ref={keep} action={action} className="flex flex-wrap items-center gap-2">
         <input type="hidden" name="id" value={option?.id ?? ''} />
         <input
           name="optionName"
@@ -103,8 +105,9 @@ export function PrintOptionForm({
 /** בקשת הצעת מחיר: קביעת מחיר כולל → ההזמנה עוברת ל"התקבלה". */
 export function QuotePriceForm({ id }: { id: string }) {
   const [state, action] = useActionState(setQuotePrice, {} as QuoteState);
+  const keep1 = useKeepFormValues(state);
   return (
-    <form action={action} className="flex flex-wrap items-center gap-2">
+    <form ref={keep1} action={action} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="id" value={id} />
       <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">ממתינה להצעת מחיר</span>
       <input name="total" type="number" step="0.01" min="0" placeholder="סה״כ ₪" aria-label="מחיר כולל להצעה" className="w-28 rounded-md border border-gray-200 px-2 py-1 text-sm" />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { displayValue, type FieldDiff } from '@/lib/catalog-sync';
 import { applySyncAction, type SyncFormState } from './actions';
@@ -39,10 +40,11 @@ export function SyncForm({
   diffs: FieldDiff[];
 }) {
   const [state, action] = useActionState(applySyncAction, initial);
+  const keep = useKeepFormValues(state);
   if (state.ok) return <p className="text-sm text-green-700">{state.message}</p>;
 
   return (
-    <form action={action} className="space-y-3">
+    <form ref={keep} action={action} className="space-y-3">
       <input type="hidden" name="productId" value={productId} />
       <input type="hidden" name="toRevisionId" value={toRevisionId} />
       <div className="overflow-x-auto">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
 import { Check, X } from 'lucide-react';
@@ -49,6 +50,7 @@ export function ProductionPanel({ p }: { p: ProductionVM }) {
   const [specState, specAction] = useActionState(approveSpecAction, initial);
   const [relState, relAction] = useActionState(releaseAction, initial);
   const [moveState, moveAction] = useActionState(moveProductionAction, initial);
+  const keepMove = useKeepFormValues(moveState);
 
   return (
     <div className="space-y-3 rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm">
@@ -108,7 +110,7 @@ export function ProductionPanel({ p }: { p: ProductionVM }) {
       )}
 
       {p.next.length > 0 && (
-        <form action={moveAction} className="flex flex-wrap items-center gap-2">
+        <form ref={keepMove} action={moveAction} className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="id" value={p.orderId} />
           {p.next
             .filter((s) => s !== 'BLOCKED')

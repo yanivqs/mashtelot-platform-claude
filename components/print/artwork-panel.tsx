@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useRouter } from 'next/navigation';
 import { ownerDecision, startArtworkUpload, type DecisionState } from '@/app/admin/(dash)/print-shop/artwork-actions';
 import { PrintFileUpload } from './file-upload';
@@ -26,8 +27,9 @@ export interface ArtworkVersionVM {
 
 function Decide({ versionId }: { versionId: string }) {
   const [state, action] = useActionState(ownerDecision, {} as DecisionState);
+  const keep = useKeepFormValues(state);
   return (
-    <form action={action} className="flex flex-wrap items-center gap-2">
+    <form ref={keep} action={action} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="versionId" value={versionId} />
       <button name="decision" value="approve" className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700">
         אישור ההגהה לדפוס

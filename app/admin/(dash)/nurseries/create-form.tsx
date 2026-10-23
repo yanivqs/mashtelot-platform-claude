@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { ImageUpload } from '@/components/admin/image-upload';
 import { createNursery, type NurseryFormState } from './actions';
@@ -23,9 +24,10 @@ function SubmitButton() {
 
 export function CreateNurseryForm() {
   const [state, formAction] = useActionState(createNursery, initial);
+  const keep = useKeepFormValues(state);
 
   return (
-    <form action={formAction} className="grid gap-4 sm:grid-cols-2">
+    <form ref={keep} action={formAction} className="grid gap-4 sm:grid-cols-2">
       <label className="text-sm">
         <span className="mb-1 block font-medium text-gray-700">שם המשתלה</span>
         <input name="name" required className={field} />

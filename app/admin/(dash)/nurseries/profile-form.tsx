@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { ImageUpload } from '@/components/admin/image-upload';
 import type { CarouselConfig } from '@/lib/theme';
@@ -103,6 +104,7 @@ export function NurseryProfileForm({
   canEditCarousel?: boolean;
 }) {
   const [state, formAction] = useActionState(updateNursery, initial);
+  const keep = useKeepFormValues(state);
   const isSuper = scope === 'super';
   const showDesign = isSuper || canEditDesign;
   const showCarousel = showDesign && (isSuper || canEditCarousel);
@@ -114,7 +116,7 @@ export function NurseryProfileForm({
   );
 
   return (
-    <form action={formAction} className="grid gap-4 sm:grid-cols-2">
+    <form ref={keep} action={formAction} className="grid gap-4 sm:grid-cols-2">
       <input type="hidden" name="id" value={nursery.id} />
 
       <Section title="כללי">

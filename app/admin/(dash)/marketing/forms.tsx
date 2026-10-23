@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { createCoupon, createPromotion, type MarketingState } from './actions';
 
@@ -22,8 +23,9 @@ function Submit({ label }: { label: string }) {
 
 export function CouponForm() {
   const [state, action] = useActionState(createCoupon, initial);
+  const keep = useKeepFormValues(state);
   return (
-    <form action={action} className="flex flex-wrap items-end gap-3">
+    <form ref={keep} action={action} className="flex flex-wrap items-end gap-3">
       <label className="text-sm">
         <span className="mb-1 block font-medium text-gray-700">קוד</span>
         <input name="code" required placeholder="SPRING10" className={`${field} w-40`} />
@@ -61,8 +63,9 @@ export function CouponForm() {
 
 export function PromotionForm() {
   const [state, action] = useActionState(createPromotion, initial);
+  const keep1 = useKeepFormValues(state);
   return (
-    <form action={action} className="space-y-3">
+    <form ref={keep1} action={action} className="space-y-3">
       <label className="block text-sm">
         <span className="mb-1 block font-medium text-gray-700">כותרת (פנימי)</span>
         <input name="title" required className={field} />

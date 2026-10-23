@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { addNoteAction, adjustPointsAction, deleteCustomerAction, exportCustomersAction, groupAction, updateCustomerAction, type CrmState } from './actions';
 
@@ -49,8 +50,9 @@ export function ExportButton({ params }: { params: Record<string, string> }) {
 
 export function GroupForm() {
   const [state, action] = useActionState(groupAction, initial);
+  const keep = useKeepFormValues(state);
   return (
-    <form action={action} className="flex flex-wrap items-center gap-2">
+    <form ref={keep} action={action} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="op" value="create" />
       <input name="name" required placeholder="שם קבוצה חדשה" aria-label="שם קבוצה חדשה" className={field} />
       <input name="discountPct" type="number" min="0" max="50" step="0.5" placeholder="הנחה %" aria-label="הנחת קבוצה חדשה" className={`${field} w-28`} />
@@ -81,8 +83,9 @@ export function DeleteGroupButton({ id, name }: { id: string; name: string }) {
 /** R06-07: הנחת קבוצה באחוזים — חלה על הזמנות חדשות של לקוחות מחוברים בקבוצה. */
 export function GroupDiscountForm({ id, name, discountPct }: { id: string; name: string; discountPct: number }) {
   const [state, action] = useActionState(groupAction, initial);
+  const keep1 = useKeepFormValues(state);
   return (
-    <form action={action} className="flex items-center gap-1">
+    <form ref={keep1} action={action} className="flex items-center gap-1">
       <input type="hidden" name="op" value="discount" />
       <input type="hidden" name="id" value={id} />
       <input
@@ -106,8 +109,9 @@ export function GroupDiscountForm({ id, name, discountPct }: { id: string; name:
 
 export function AdjustPointsForm({ email }: { email: string }) {
   const [state, action] = useActionState(adjustPointsAction, initial);
+  const keep2 = useKeepFormValues(state);
   return (
-    <form action={action} className="flex flex-wrap items-center gap-2">
+    <form ref={keep2} action={action} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="email" value={email} />
       <input name="points" type="number" required step="1" placeholder="+50 / -20" aria-label="נקודות להתאמה" className={`${field} w-28`} />
       <input name="note" required placeholder="סיבה" aria-label="סיבת ההתאמה" className={`${field} min-w-40 flex-1`} />
@@ -128,9 +132,10 @@ export function CustomerCrmForm({
   value: { tags: string[]; groupId: string | null; type: 'PRIVATE' | 'BUSINESS'; companyName: string | null; taxId: string | null };
 }) {
   const [state, action] = useActionState(updateCustomerAction, initial);
+  const keep3 = useKeepFormValues(state);
   const [type, setType] = useState(value.type);
   return (
-    <form action={action} className="space-y-3">
+    <form ref={keep3} action={action} className="space-y-3">
       <input type="hidden" name="email" value={email} />
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm">
@@ -180,8 +185,9 @@ export function CustomerCrmForm({
 /** R06-09: מחיקת לקוח לבקשתו. */
 export function DeleteCustomerForm({ email }: { email: string }) {
   const [state, action] = useActionState(deleteCustomerAction, initial);
+  const keep4 = useKeepFormValues(state);
   return (
-    <form action={action} className="space-y-2">
+    <form ref={keep4} action={action} className="space-y-2">
       <input type="hidden" name="email" value={email} />
       <p className="text-xs text-gray-600">לבקשת הלקוח: החשבון, הכתובות, המועדפים, ההערות והנקודות נמחקים; ההזמנות נשמרות בלי פרטים אישיים. לא אפשרי כשיש הזמנות פתוחות.</p>
       <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -195,8 +201,9 @@ export function DeleteCustomerForm({ email }: { email: string }) {
 
 export function NoteForm({ email }: { email: string }) {
   const [state, action] = useActionState(addNoteAction, initial);
+  const keep5 = useKeepFormValues(state);
   return (
-    <form action={action} className="space-y-2">
+    <form ref={keep5} action={action} className="space-y-2">
       <input type="hidden" name="email" value={email} />
       <textarea name="body" rows={2} required placeholder="הערה פנימית (הלקוח לא רואה)" aria-label="הערה חדשה" className={`${field} w-full`} />
       <div className="flex items-center gap-3">

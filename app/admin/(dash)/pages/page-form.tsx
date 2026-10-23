@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import { savePage, deletePage, type PageFormState } from './actions';
@@ -35,10 +36,11 @@ function SaveButton() {
 
 export function PageForm({ page }: { page: PageFormValues }) {
   const [state, formAction] = useActionState(savePage, initial);
+  const keep = useKeepFormValues(state);
 
   return (
     <>
-      <form action={formAction} className="grid gap-4 sm:grid-cols-2">
+      <form ref={keep} action={formAction} className="grid gap-4 sm:grid-cols-2">
         {page.id && <input type="hidden" name="id" value={page.id} />}
 
         <label className="text-sm">

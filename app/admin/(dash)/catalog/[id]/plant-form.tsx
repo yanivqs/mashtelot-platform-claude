@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { ImageUpload } from '@/components/admin/image-upload';
 import { updatePlant, type PlantFormState } from './actions';
@@ -66,12 +67,13 @@ export function PlantForm({
   selectedCategoryIds?: string[];
 }) {
   const [state, formAction] = useActionState(updatePlant, initial);
+  const keep = useKeepFormValues(state);
   const [imageUrl, setImageUrl] = useState(plant.imageUrl ?? '');
 
   const groups = ['זיהוי', 'מאפיינים', 'תיאור וטיפול'] as const;
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form ref={keep} action={formAction} className="space-y-6">
       <input type="hidden" name="id" value={plant.id} />
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { ChevronDown, Trash2, AlertCircle } from 'lucide-react';
 import type { Plant } from '@prisma/client';
@@ -68,6 +69,7 @@ export function ProductRow({
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(updateProduct, initial);
+  const keep = useKeepFormValues(state);
   const [imageUrl, setImageUrl] = useState(product.customImageUrl ?? '');
   const multi = product.variants.length > 1;
 
@@ -153,7 +155,7 @@ export function ProductRow({
             )}
           </div>
 
-          <form action={formAction} className="grid gap-4 sm:grid-cols-2">
+          <form ref={keep} action={formAction} className="grid gap-4 sm:grid-cols-2">
             <input type="hidden" name="id" value={product.id} />
 
             <div className="sm:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-3">

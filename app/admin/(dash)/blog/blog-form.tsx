@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import { ImageUpload } from '@/components/admin/image-upload';
@@ -36,10 +37,11 @@ function SaveButton() {
 
 export function BlogForm({ post }: { post: BlogFormValues }) {
   const [state, formAction] = useActionState(saveBlogPost, initial);
+  const keep = useKeepFormValues(state);
 
   return (
     <>
-      <form action={formAction} className="grid gap-4 sm:grid-cols-2">
+      <form ref={keep} action={formAction} className="grid gap-4 sm:grid-cols-2">
         {post.id && <input type="hidden" name="id" value={post.id} />}
 
         <label className="text-sm">

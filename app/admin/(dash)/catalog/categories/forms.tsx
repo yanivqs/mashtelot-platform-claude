@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { createCategory, type CategoryState } from './actions';
 
@@ -22,8 +23,9 @@ function Submit() {
 
 export function CategoryForm({ options }: { options: Array<{ id: string; name: string; depth: number }> }) {
   const [state, action] = useActionState(createCategory, initial);
+  const keep = useKeepFormValues(state);
   return (
-    <form action={action} className="flex flex-wrap items-end gap-3">
+    <form ref={keep} action={action} className="flex flex-wrap items-end gap-3">
       <label className="text-sm">
         <span className="mb-1 block font-medium text-gray-700">שם קטגוריה</span>
         <input name="name" required placeholder='למשל "עצי פרי"' className={`${field} w-56`} />

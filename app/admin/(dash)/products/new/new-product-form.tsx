@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { ImageUpload } from '@/components/admin/image-upload';
 import { createCustomProduct, type ProductFormState } from '../actions';
@@ -26,10 +27,11 @@ export function NewProductForm({
   categoryOptions: Array<{ id: string; name: string; depth: number }>;
 }) {
   const [state, formAction] = useActionState(createCustomProduct, initial);
+  const keep = useKeepFormValues(state);
   const [imageUrl, setImageUrl] = useState('');
 
   return (
-    <form action={formAction} className="grid gap-4 sm:grid-cols-2">
+    <form ref={keep} action={formAction} className="grid gap-4 sm:grid-cols-2">
       <label className="text-sm sm:col-span-2">
         <span className="mb-1 block font-medium text-gray-700">שם המוצר *</span>
         <input name="customTitle" required className={field} />

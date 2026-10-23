@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import Link from 'next/link';
 import { useFormStatus } from 'react-dom';
 import { saveDeliverySettings, type SaveDeliveryState } from './delivery-actions';
@@ -31,8 +32,9 @@ export function DeliveryForm({
   showZonesLink: boolean;
 }) {
   const [state, action] = useActionState(saveDeliverySettings, initial);
+  const keep = useKeepFormValues(state);
   return (
-    <form action={action} className="space-y-4">
+    <form ref={keep} action={action} className="space-y-4">
       <label className="flex items-start gap-3 text-sm">
         <input type="checkbox" name="pickupEnabled" defaultChecked={pickupEnabled} className="mt-0.5 h-4 w-4" />
         <span>

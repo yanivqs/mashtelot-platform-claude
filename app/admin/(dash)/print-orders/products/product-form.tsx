@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useMemo, useState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { Plus, Trash2 } from 'lucide-react';
 import { ImageUpload } from '@/components/admin/image-upload';
@@ -59,6 +60,7 @@ export function PrintProductForm({
   categories: string[];
 }) {
   const [state, action] = useActionState(savePrintProduct, initial);
+  const keep = useKeepFormValues(state);
   const [basePrice, setBasePrice] = useState(product.basePrice);
   const [minQty, setMinQty] = useState(String(product.minQuantity));
   const [tiers, setTiers] = useState<Array<{ minQty: string; unitPrice: string }>>(
@@ -75,7 +77,7 @@ export function PrintProductForm({
   );
 
   return (
-    <form action={action} className="grid gap-5 sm:grid-cols-2">
+    <form ref={keep} action={action} className="grid gap-5 sm:grid-cols-2">
       <input type="hidden" name="id" value={product.id} />
       <input type="hidden" name="priceTiers" value={JSON.stringify(parsedTiers)} />
 

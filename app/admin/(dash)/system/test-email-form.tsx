@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { sendTestEmail, type TestEmailState } from './actions';
 
@@ -20,8 +21,9 @@ function SendButton() {
 
 export function TestEmailForm({ defaultTo }: { defaultTo: string }) {
   const [state, action] = useActionState(sendTestEmail, initial);
+  const keep = useKeepFormValues(state);
   return (
-    <form action={action} className="space-y-3">
+    <form ref={keep} action={action} className="space-y-3">
       <div className="flex flex-wrap gap-2">
         <input
           name="to"

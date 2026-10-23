@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import type { NurseryChannel } from '@prisma/client';
 import { saveChannels, type SaveChannelsState } from './channels-actions';
@@ -24,10 +25,11 @@ function Submit() {
 
 export function ChannelsForm({ channels }: { channels: NurseryChannel[] }) {
   const [state, action] = useActionState(saveChannels, initial);
+  const keep = useKeepFormValues(state);
   const byProvider = new Map(channels.map((c) => [c.provider, c]));
 
   return (
-    <form action={action} className="space-y-3">
+    <form ref={keep} action={action} className="space-y-3">
       {CHANNEL_PROVIDERS.map((provider) => {
         const row = byProvider.get(provider);
         return (
