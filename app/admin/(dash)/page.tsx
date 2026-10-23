@@ -93,6 +93,14 @@ export default async function AdminOverviewPage(
     );
   }
 
+  // §2.03: משתלה בהקמה — הפורטל עובד, החנות עוד לא ציבורית
+  const draftBanner =
+    user.nursery?.status === 'DRAFT' ? (
+      <div className="mb-6 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800" data-testid="draft-banner">
+        המשתלה בהקמה — החנות עדיין לא מוצגת ללקוחות. כשהכל מוכן, צוות הפלטפורמה יפעיל אותה.
+      </div>
+    ) : null;
+
   if (!user.nurseryId) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
@@ -143,6 +151,7 @@ export default async function AdminOverviewPage(
   return (
     <div>
       <Notice reason={searchParams.notice} />
+      {draftBanner}
       <h1 className="mb-1 text-2xl font-bold">{user.nursery?.name}</h1>
       <p className="mb-6 text-sm text-gray-500">סקירת החנות שלך</p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

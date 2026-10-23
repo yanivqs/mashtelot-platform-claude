@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getNurseryByTenant } from '@/lib/tenant';
+import { getNurseryByTenant, getSuspendedNursery } from '@/lib/tenant';
 import { getActivePromotion } from '@/lib/marketing';
 import { getNurseryTheme } from '@/lib/theme';
 import { isModuleEnabled } from '@/lib/module-access';
@@ -23,7 +23,11 @@ interface LayoutProps {
 export async function generateMetadata(props: LayoutProps): Promise<Metadata> {
   const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
-  if (!nursery) return { title: 'משתלה לא נמצאה' };
+  if (!nursery) {
+    // §2.03: חנות מושעית — לא באינדקס
+    const closed = await getSuspendedNursery(params.tenant);
+    return closed ? { title: `${closed.name} — סגורה זמנית`, robots: { index: false, follow: false } } : { title: 'משתלה לא נמצאה' };
+  }
 
   const origin = tenantOrigin(nursery);
   return {
@@ -51,7 +55,36 @@ export default async function TenantLayout(props: LayoutProps) {
   } = props;
 
   const nursery = await getNurseryByTenant(params.tenant);
-  if (!nursery) notFound();
+  if (!nursery) {
+    // §2.03: מושעית — "סגורה זמנית" עם פרטי קשר (במקום כל דפי החנות); טיוטה/ארכיון — 404
+    const closed = await getSuspendedNursery(params.tenant);
+    if (!closed) notFound();
+    return (
+      <div dir="rtl" className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
+        <div className="max-w-md rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm">
+          {closed.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={closed.logoUrl} alt={closed.name} className="mx-auto mb-4 h-12 w-auto" />
+          )}
+          <h1 className="text-2xl font-bold text-gray-900">{closed.name}</h1>
+          <p className="mt-2 text-gray-600">החנות המקוונת סגורה זמנית.</p>
+          {(closed.phoneNumber || closed.addressLine || closed.city) && (
+            <div className="mt-4 space-y-1 text-sm text-gray-700">
+              {closed.phoneNumber && (
+                <p>
+                  טלפון:{' '}
+                  <a href={`tel:${closed.phoneNumber}`} dir="ltr" className="font-medium hover:underline">
+                    {closed.phoneNumber}
+                  </a>
+                </p>
+              )}
+              {(closed.addressLine || closed.city) && <p>{[closed.addressLine, closed.city].filter(Boolean).join(', ')}</p>}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const promotion = await getActivePromotion(nursery.id);
   const theme = getNurseryTheme(nursery);

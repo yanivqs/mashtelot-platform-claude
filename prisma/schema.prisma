@@ -58,6 +58,8 @@ model Nursery {
   phoneNumber     String?                @map("phone_number")
   ownerEmail      String                 @map("owner_email")
   isActive        Boolean                @default(true) @map("is_active")
+  /// §2.03: מחזור חיים. isActive נשמר לתאימות ומסונכרן ב-trigger (פעילה ⇔ ACTIVE)
+  status          NurseryStatus          @default(ACTIVE)
   aboutText       String?                @map("about_text")
   addressLine     String?                @map("address_line")
   city            String?
@@ -779,6 +781,14 @@ model PrintGlobalOption {
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@map("print_global_options")
+}
+
+/// §2.03: טיוטה (בהקמה — החנות לא ציבורית), פעילה, מושעית (סגורה זמנית), ארכיון. השעיה אינה מחיקה.
+enum NurseryStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
 }
 
 enum Role {

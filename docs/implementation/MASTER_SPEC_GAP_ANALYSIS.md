@@ -12,7 +12,7 @@
 | §1.04, §21 Jobs/Queue | BLOCKER | Verified (2026-10-23) | Vercel Cron + `job_runs` + תור מיילים עם Retry/Backoff (`lib/jobs.ts`, `lib/email-outbox.ts`); Webhooks — עם הסליקה | `test/db/background-jobs.test.ts` |
 | §1.05, §22.07 הפרדת סביבות | BLOCKER | Partial | E01 (בדיקות) בענף; Preview — Unknown | env של Vercel |
 | §2.01 זיהוי Tenant בשרת | BLOCKER | Verified | `middleware.ts`, `lib/tenant.ts` | זיוף Host |
-| §2.03 Lifecycle משתלה | BLOCKER | Partial | `isActive` בלבד; בעלים מושעה מתחבר | Tenant C |
+| §2.03 Lifecycle משתלה | BLOCKER | Verified (2026-10-23) | `NurseryStatus` טיוטה/פעילה/מושעית/ארכיון, סנכרון עם `is_active`, Audit | E2E `nursery-lifecycle` |
 | §2.05 Tenants סינתטיים | BLOCKER | Partial | `test/db/fixtures.ts` (בענף E01) | — |
 | §4.01 / R06-01 תפקידים | BLOCKER | Partial (2026-10-20) | צוות משתלה: עובד + כותב תוכן, עד 5 (`lib/nursery-team.ts`); תפקידי צוות הפלטפורמה (§4.01) — טרם | E2E `team.desktop.spec.ts` |
 | §4.04 MFA | BLOCKER | Partial (2026-10-20) | TOTP + קודי שחזור (`lib/mfa.ts`); **החלטת בעלים: אופציונלי גם לסופר-אדמין — חריגה מ"מחייב בחשבונות ניהול מרכזיים"** | E2E `mfa.desktop.spec.ts` |

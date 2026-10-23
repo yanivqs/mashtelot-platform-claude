@@ -11,6 +11,8 @@ import { nurseryActionScope } from '@/lib/nursery-scope';
 import { isModuleEnabled, getModuleConfig } from '@/lib/module-access';
 import { resolveDesignUpdate } from '@/lib/design-lock';
 import { isEmailTaken } from '@/lib/account';
+import { isNurseryStatus } from '@/lib/nursery-lifecycle';
+import { recordAudit } from '@/lib/audit';
 
 export interface NurseryFormState {
   ok?: boolean;
@@ -52,7 +54,8 @@ export async function createNursery(
   }
 
   const nursery = await prisma.nursery.create({
-    data: { name, subdomain, ownerEmail, logoUrl },
+    // §2.03: משתלה חדשה נוצרת כטיוטה — החנות לא ציבורית עד שמפעילים אותה
+    data: { name, subdomain, ownerEmail, logoUrl, status: 'DRAFT' },
   });
   await syncMasterCategoriesToNursery(nursery.id);
 
@@ -260,11 +263,15 @@ export async function setNurseryModules(
   return { ok: true };
 }
 
-export async function toggleNurseryActive(formData: FormData): Promise<void> {
-  await requireUser(['SUPER_ADMIN']);
+/** §2.03: שינוי סטטוס מחזור החיים (השעיה אינה מחיקה). נרשם ב-Audit. */
+export async function setNurseryStatus(formData: FormData): Promise<void> {
+  const user = await requireUser(['SUPER_ADMIN']);
   const id = String(formData.get('id') || '');
-  const nursery = await prisma.nursery.findUnique({ where: { id }, select: { isActive: true } });
-  if (!nursery) return;
-  await prisma.nursery.update({ where: { id }, data: { isActive: !nursery.isActive } });
+  const status = formData.get('status');
+  if (!isNurseryStatus(status)) return;
+  const nursery = await prisma.nursery.findUnique({ where: { id }, select: { status: true } });
+  if (!nursery || nursery.status === status) return;
+  await prisma.nursery.update({ where: { id }, data: { status } });
+  await recordAudit({ nurseryId: id, actorEmail: user.email, action: 'nursery.status_changed', entityType: 'Nursery', entityId: id, metadata: { from: nursery.status, to: status } });
   revalidatePath('/admin/nurseries');
 }

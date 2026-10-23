@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import type { PrismaClient, User } from '@prisma/client';
+import { canOperate } from '@/lib/nursery-lifecycle';
 import { canUseAdminPortal } from '@/lib/nursery-access';
 
 /**
@@ -30,7 +31,7 @@ export async function authenticateAdmin(
   const portal = canUseAdminPortal({
     role: user.role,
     nurseryId: user.nurseryId,
-    nurseryActive: user.nursery ? user.nursery.isActive : null,
+    nurseryActive: user.nursery ? canOperate(user.nursery.status) : null,
     disabled: Boolean(user.disabledAt),
   });
   if (!portal.ok) return { ok: false, reason: 'portal_denied', error: portal.error, user };

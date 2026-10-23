@@ -38,7 +38,7 @@ const features = [
 export default async function LandingPage() {
   const [plantCount, nurseryCount, demoNursery] = await Promise.all([
     prisma.plant.count(),
-    prisma.nursery.count({ where: { isActive: true } }),
+    prisma.nursery.count({ where: { status: 'ACTIVE' } }),
     prisma.nursery.findFirst({
       where: { isActive: true },
       orderBy: { createdAt: 'asc' },

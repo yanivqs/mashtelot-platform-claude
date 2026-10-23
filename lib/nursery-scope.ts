@@ -1,5 +1,6 @@
 import 'server-only';
 import { redirect } from 'next/navigation';
+import { canOperate } from '@/lib/nursery-lifecycle';
 import { getSessionUser } from '@/lib/auth';
 import { getEnabledModuleKeys } from '@/lib/module-access';
 import type { ModuleKey } from '@/lib/modules';
@@ -32,7 +33,7 @@ async function evaluate(req: ModuleRequirement) {
       ? {
           role: user.role,
           nurseryId: user.nurseryId,
-          nurseryActive: user.nursery ? user.nursery.isActive : null,
+          nurseryActive: user.nursery ? canOperate(user.nursery.status) : null,
           disabled: Boolean(user.disabledAt),
         }
       : null,

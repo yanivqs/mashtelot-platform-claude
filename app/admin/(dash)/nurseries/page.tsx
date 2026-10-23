@@ -3,7 +3,8 @@ import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { tenantOrigin } from '@/lib/seo';
 import { CreateNurseryForm } from './create-form';
-import { toggleNurseryActive } from './actions';
+import { NurseryStatusSelect } from './status-select';
+import { NURSERY_STATUS_CLS, NURSERY_STATUS_LABELS } from '@/lib/nursery-lifecycle';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,12 +43,8 @@ export default async function AdminNurseriesPage() {
             <span className="hidden text-xs text-gray-500 sm:block">
               {n._count.nurseryProducts} מוצרים · {n._count.orders} הזמנות
             </span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                n.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
-              }`}
-            >
-              {n.isActive ? 'פעילה' : 'מושבתת'}
+            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${NURSERY_STATUS_CLS[n.status]}`} data-testid={`status-${n.subdomain}`}>
+              {NURSERY_STATUS_LABELS[n.status]}
             </span>
             <a
               href={tenantOrigin(n)}
@@ -63,12 +60,7 @@ export default async function AdminNurseriesPage() {
             >
               עריכה
             </Link>
-            <form action={toggleNurseryActive}>
-              <input type="hidden" name="id" value={n.id} />
-              <button className="text-xs text-gray-500 hover:text-gray-800">
-                {n.isActive ? 'השבת' : 'הפעל'}
-              </button>
-            </form>
+            <NurseryStatusSelect id={n.id} name={n.name} status={n.status} />
           </div>
         ))}
       </div>

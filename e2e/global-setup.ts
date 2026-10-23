@@ -22,6 +22,9 @@ export const E2E_SUPER5 = { email: 'super5@e2e.invalid', password: 'e2e-super5-p
 export const E2E_OWNER6 = { email: 'owner6@e2e.invalid', password: 'e2e-owner6-pass-123' };
 /** R06-06: בעל משתלה לבדיקת המועדון (מגבלת 5 התחברויות לאימייל) */
 export const E2E_OWNER7 = { email: 'owner7@e2e.invalid', password: 'e2e-owner7-pass-123' };
+/** §2.03: משתלה נפרדת לבדיקת מחזור החיים (כדי לא להשעות את משתלת הבדיקות המשותפת) */
+export const E2E_LIFE_OWNER = { email: 'life-owner@e2e.invalid', password: 'e2e-life-pass-1234' };
+export const E2E_SUPER6 = { email: 'super6@e2e.invalid', password: 'e2e-super6-pass-123' };
 /** תבנית מפורסמת שנוצרת כאן לבדיקת המוצרים הקבועים (PT-04) */
 export const E2E_SAVED_TEMPLATE = 'תוויות קבועות E2E';
 export const E2E_PREFLIGHT_TEMPLATE = 'שלט ייצור E2E';
@@ -40,13 +43,19 @@ export default async function globalSetup() {
 
   const db = new PrismaClient({ log: [] });
   try {
+    // משתלת מחזור החיים מהריצה הקודמת
+    const oldLife = await db.nursery.findUnique({ where: { subdomain: 'e2elife' } });
+    if (oldLife) {
+      await db.user.deleteMany({ where: { nurseryId: oldLife.id } });
+      await db.nursery.delete({ where: { id: oldLife.id } });
+    }
     const old = await db.nursery.findUnique({ where: { subdomain: 'e2eshop' } });
     if (old) {
       await db.order.deleteMany({ where: { nurseryId: old.id } });
       await db.user.deleteMany({ where: { nurseryId: old.id } });
       await db.nursery.delete({ where: { id: old.id } });
     }
-    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, E2E_OWNER7.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
+    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, E2E_OWNER7.email, E2E_LIFE_OWNER.email, E2E_SUPER6.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
     // המוצרים נמחקו עם המשתלה; הצמח המרכזי (והגרסאות שלו) נמחק כאן
     await db.plant.deleteMany({ where: { hebrewName: E2E_PLANT } });
     // תבנית הדפוס שבדיקת PT יוצרת (ההזמנות שלה נמחקו עם המשתלה)
@@ -147,6 +156,13 @@ export default async function globalSetup() {
     });
     await db.user.create({
       data: { email: E2E_OWNER7.email, role: 'NURSERY_OWNER', nurseryId: n.id, passwordHash: await bcrypt.hash(E2E_OWNER7.password, 4) },
+    });
+    const life = await db.nursery.create({ data: { name: 'משתלת מחזור חיים', subdomain: 'e2elife', ownerEmail: E2E_LIFE_OWNER.email, phoneNumber: '03-5551234', city: 'חולון' } });
+    await db.user.create({
+      data: { email: E2E_LIFE_OWNER.email, role: 'NURSERY_OWNER', nurseryId: life.id, passwordHash: await bcrypt.hash(E2E_LIFE_OWNER.password, 4) },
+    });
+    await db.user.create({
+      data: { email: E2E_SUPER6.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER6.password, 4) },
     });
     // PT-04: תבנית מפורסמת ופעילה (תווית עם טקסט וגודל)
     await db.printTemplate.create({

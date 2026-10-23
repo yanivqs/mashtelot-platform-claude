@@ -1,5 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
+import { canOperate } from '@/lib/nursery-lifecycle';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SignJWT, jwtVerify } from 'jose';
@@ -112,7 +113,7 @@ export const getSessionUser = cache(async () => {
       !isSessionAllowed({
         role: user.role,
         nurseryId: user.nurseryId,
-        nurseryActive: user.nursery ? user.nursery.isActive : null,
+        nurseryActive: user.nursery ? canOperate(user.nursery.status) : null,
         disabled: Boolean(user.disabledAt),
       })
     ) {
