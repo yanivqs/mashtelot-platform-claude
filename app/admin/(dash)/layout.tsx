@@ -26,6 +26,7 @@ import {
   RefreshCw,
   Users,
   Gift,
+  LayoutTemplate,
   History,
   type LucideIcon,
 } from 'lucide-react';
@@ -58,6 +59,7 @@ const ICONS: Record<string, LucideIcon> = {
   Tags,
   Users,
   Gift,
+  LayoutTemplate,
 };
 
 interface NavItem {

@@ -241,3 +241,42 @@ export async function getProductById(nurseryId: string, id: string) {
   });
   return p ? localizeProduct(p) : null;
 }
+
+/** R03-06: מוצרים לבלוק בעמוד — ידני (בסדר שנבחר), חדשים, במבצע או לפי קטגוריה (כולל תתי־קטגוריות). */
+export async function getBlockProducts(
+  nurseryId: string,
+  src: { source: 'manual' | 'newest' | 'sale' | 'category'; productIds: string[]; categoryId: string; limit: number },
+): Promise<CatalogProduct[]> {
+  const base = { nurseryId, isActive: true } satisfies Prisma.NurseryProductWhereInput;
+  if (src.source === 'manual') {
+    if (src.productIds.length === 0) return [];
+    const rows = await prisma.nurseryProduct.findMany({ where: { ...base, id: { in: src.productIds } }, include: withRefs });
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    return src.productIds.flatMap((id) => (byId.has(id) ? [localizeProduct(byId.get(id)!)] : [])).slice(0, src.limit);
+  }
+  if (src.source === 'category') {
+    const ids = categoryAndDescendantIds(await getRawCategories(nurseryId), src.categoryId);
+    if (ids.length === 0) return [];
+    const rows = await prisma.nurseryProduct.findMany({
+      where: { ...base, categories: { some: { nurseryCategoryId: { in: ids } } } },
+      include: withRefs,
+      orderBy: { createdAt: 'desc' },
+      take: src.limit,
+    });
+    return rows.map(localizeProduct);
+  }
+  if (src.source === 'sale') {
+    // "במבצע" = מחיר לפני הנחה גבוה מהמחיר (במוצר או בווריאנט) — מחושב כמו בכרטיס המוצר
+    const rows = await prisma.nurseryProduct.findMany({
+      where: { ...base, OR: [{ compareAtPrice: { not: null } }, { variants: { some: { isActive: true, compareAtPrice: { not: null } } } }] },
+      include: withRefs,
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    return rows
+      .filter((r) => priceSummary(r.variants, r).compareAt !== null)
+      .slice(0, src.limit)
+      .map(localizeProduct);
+  }
+  return getFeaturedProducts(nurseryId, src.limit);
+}

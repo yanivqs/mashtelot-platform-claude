@@ -19,8 +19,10 @@ import {
 
 interface Props {
   /** שם השדה הנסתר שיישלח עם הטופס (HTML) */
-  name: string;
+  name?: string;
   defaultValue?: string;
+  /** קריאה חוזרת עם ה-HTML בכל שינוי (טפסים מבוקרים, למשל בונה העמודים) */
+  onChange?: (html: string) => void;
 }
 
 function Btn({
@@ -105,7 +107,7 @@ function Toolbar({ editor }: { editor: Editor }) {
   );
 }
 
-export function RichTextEditor({ name, defaultValue = '' }: Props) {
+export function RichTextEditor({ name, defaultValue = '', onChange }: Props) {
   const [html, setHtml] = useState(defaultValue);
 
   const editor = useEditor({
@@ -122,12 +124,15 @@ export function RichTextEditor({ name, defaultValue = '' }: Props) {
           'min-h-[240px] px-3 py-3 outline-none [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-bold [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:text-lg [&_h3]:font-bold [&_p]:my-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pr-6 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pr-6 [&_blockquote]:border-r-2 [&_blockquote]:border-gray-300 [&_blockquote]:pr-3 [&_blockquote]:text-gray-600 [&_a]:text-brand-700 [&_a]:underline',
       },
     },
-    onUpdate: ({ editor }) => setHtml(editor.getHTML()),
+    onUpdate: ({ editor }) => {
+      setHtml(editor.getHTML());
+      onChange?.(editor.getHTML());
+    },
   });
 
   return (
     <div>
-      <input type="hidden" name={name} value={html} />
+      {name && <input type="hidden" name={name} value={html} />}
       <div className="overflow-hidden rounded-lg border border-gray-200">
         {editor && <Toolbar editor={editor} />}
         <EditorContent editor={editor} dir="rtl" className="text-sm text-gray-800" />

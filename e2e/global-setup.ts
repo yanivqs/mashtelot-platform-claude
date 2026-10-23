@@ -27,6 +27,8 @@ export const E2E_LIFE_OWNER = { email: 'life-owner@e2e.invalid', password: 'e2e-
 export const E2E_SUPER6 = { email: 'super6@e2e.invalid', password: 'e2e-super6-pass-123' };
 /** UX-01: בעל משתלה לבדיקת שמירת הקלט בטפסים אחרי שגיאה */
 export const E2E_OWNER8 = { email: 'owner8@e2e.invalid', password: 'e2e-owner8-pass-123' };
+/** R03: בעל משתלה לבדיקת בונה העמודים */
+export const E2E_OWNER9 = { email: 'owner9@e2e.invalid', password: 'e2e-owner9-pass-123' };
 /** תבנית מפורסמת שנוצרת כאן לבדיקת המוצרים הקבועים (PT-04) */
 export const E2E_SAVED_TEMPLATE = 'תוויות קבועות E2E';
 export const E2E_PREFLIGHT_TEMPLATE = 'שלט ייצור E2E';
@@ -57,7 +59,7 @@ export default async function globalSetup() {
       await db.user.deleteMany({ where: { nurseryId: old.id } });
       await db.nursery.delete({ where: { id: old.id } });
     }
-    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, E2E_OWNER7.email, E2E_LIFE_OWNER.email, E2E_SUPER6.email, E2E_OWNER8.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
+    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, E2E_OWNER7.email, E2E_LIFE_OWNER.email, E2E_SUPER6.email, E2E_OWNER8.email, E2E_OWNER9.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
     // המוצרים נמחקו עם המשתלה; הצמח המרכזי (והגרסאות שלו) נמחק כאן
     await db.plant.deleteMany({ where: { hebrewName: E2E_PLANT } });
     // תבנית הדפוס שבדיקת PT יוצרת (ההזמנות שלה נמחקו עם המשתלה)
@@ -87,6 +89,7 @@ export default async function globalSetup() {
         { nurseryId: n.id, moduleKey: 'loyalty', isEnabled: true },
         { nurseryId: n.id, moduleKey: 'crm', isEnabled: true },
         { nurseryId: n.id, moduleKey: 'promotions', isEnabled: true },
+        { nurseryId: n.id, moduleKey: 'page_builder', isEnabled: true },
       ],
     });
     for (const [title, price] of [
@@ -162,6 +165,9 @@ export default async function globalSetup() {
     });
     await db.user.create({
       data: { email: E2E_OWNER8.email, role: 'NURSERY_OWNER', nurseryId: n.id, passwordHash: await bcrypt.hash(E2E_OWNER8.password, 4) },
+    });
+    await db.user.create({
+      data: { email: E2E_OWNER9.email, role: 'NURSERY_OWNER', nurseryId: n.id, passwordHash: await bcrypt.hash(E2E_OWNER9.password, 4) },
     });
     const life = await db.nursery.create({ data: { name: 'משתלת מחזור חיים', subdomain: 'e2elife', ownerEmail: E2E_LIFE_OWNER.email, phoneNumber: '03-5551234', city: 'חולון' } });
     await db.user.create({

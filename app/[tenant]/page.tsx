@@ -5,6 +5,9 @@ import { getFeaturedProducts } from '@/lib/catalog';
 import { getNurseryTheme } from '@/lib/theme';
 import { ProductCard } from '@/components/storefront/product-card';
 import { Hero } from '@/components/storefront/hero';
+import { BlockList } from '@/components/page-blocks/block-list';
+import { getLiveLayout, loadBlockData } from '@/lib/page-builder';
+import { HOME_KEY } from '@/lib/page-builder-admin';
 
 export const revalidate = 300;
 
@@ -12,6 +15,12 @@ export default async function TenantHomePage(props: { params: Promise<{ tenant: 
   const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) notFound();
+
+  // R03: דף בית מבלוקים — רק כשהמודול פעיל ויש גרסה שפורסמה; אחרת התצוגה הרגילה
+  const blocks = await getLiveLayout(nursery.id, HOME_KEY);
+  if (blocks) {
+    return <BlockList blocks={blocks} nursery={nursery} data={await loadBlockData(nursery.id, blocks)} title={nursery.name} />;
+  }
 
   const featured = await getFeaturedProducts(nursery.id, 8);
   const theme = getNurseryTheme(nursery);

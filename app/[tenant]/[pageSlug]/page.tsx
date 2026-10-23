@@ -4,6 +4,9 @@ import { getNurseryByTenant } from '@/lib/tenant';
 import { getPublishedPage } from '@/lib/pages';
 import { htmlToText } from '@/lib/sanitize';
 import { redirectOrNotFound } from '@/lib/redirect-resolve';
+import { BlockList } from '@/components/page-blocks/block-list';
+import { getLiveLayout, loadBlockData } from '@/lib/page-builder';
+import { pageKey } from '@/lib/page-builder-admin';
 
 export const revalidate = 300;
 export const dynamicParams = true;
@@ -34,6 +37,12 @@ export default async function StaticPageView(props: Props) {
   const page = await getPublishedPage(nursery.id, params.pageSlug);
   // כתובת שלא קיימת: הפניה מכתובת ישנה (§14.01) או 404
   if (!page) return redirectOrNotFound(nursery.id, `/${params.pageSlug}`);
+
+  // R03: עמוד מבלוקים — כשהמודול פעיל ויש גרסה שפורסמה; אחרת התוכן הרגיל
+  const blocks = await getLiveLayout(nursery.id, pageKey(page.id));
+  if (blocks) {
+    return <BlockList blocks={blocks} nursery={nursery} data={await loadBlockData(nursery.id, blocks)} title={page.title} showTitle />;
+  }
 
   return (
     <article dir="rtl" className="mx-auto max-w-3xl px-6 py-12">

@@ -100,6 +100,7 @@ model Nursery {
   categories      NurseryCategory[]
   blogPosts       BlogPost[]
   stockMovements  StockMovement[]
+  pageLayouts     PageLayout[]
 
   @@map("nurseries")
 }
@@ -229,19 +230,20 @@ model NurseryModule {
 }
 
 model StaticPage {
-  id                 String   @id @default(uuid())
-  nurseryId          String   @map("nursery_id")
+  id                 String      @id @default(uuid())
+  nurseryId          String      @map("nursery_id")
   slug               String
   title              String
-  contentHtml        String   @default("") @map("content_html")
-  isPublished        Boolean  @default(false) @map("is_published")
-  showInNav          Boolean  @default(true) @map("show_in_nav")
-  sortOrder          Int      @default(0) @map("sort_order")
-  seoMetaTitle       String?  @map("seo_meta_title")
-  seoMetaDescription String?  @map("seo_meta_description")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-  nursery            Nursery  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  contentHtml        String      @default("") @map("content_html")
+  isPublished        Boolean     @default(false) @map("is_published")
+  showInNav          Boolean     @default(true) @map("show_in_nav")
+  sortOrder          Int         @default(0) @map("sort_order")
+  seoMetaTitle       String?     @map("seo_meta_title")
+  seoMetaDescription String?     @map("seo_meta_description")
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+  nursery            Nursery     @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  layout             PageLayout?
 
   @@unique([nurseryId, slug])
   @@map("static_pages")
@@ -1255,4 +1257,40 @@ enum PrintProductionStatus {
   QC
   COMPLETED
   BLOCKED
+}
+
+/// R03: Page Builder — פריסת בלוקים לדף הבית או לעמוד סטטי. הטיוטה נערכת; כל פרסום = גרסה נעולה.
+model PageLayout {
+  id           String              @id @default(uuid())
+  nurseryId    String              @map("nursery_id")
+  /// 'home' או 'page:<staticPageId>'
+  key          String
+  staticPageId String?             @unique @map("static_page_id")
+  draftBlocks  Json                @default("[]") @map("draft_blocks")
+  /// false = חזרה לתצוגה הרגילה (בלי למחוק גרסאות)
+  isActive     Boolean             @default(true) @map("is_active")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+  nursery      Nursery             @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  staticPage   StaticPage?         @relation(fields: [staticPageId], references: [id], onDelete: Cascade)
+  versions     PageLayoutVersion[]
+
+  @@unique([nurseryId, key])
+  @@map("page_layouts")
+}
+
+/// R03-07: גרסה שפורסמה (או מתוזמנת). החיה = האחרונה ש-publishAt שלה עבר.
+model PageLayoutVersion {
+  id             String     @id @default(uuid())
+  layoutId       String     @map("layout_id")
+  version        Int
+  blocks         Json
+  publishAt      DateTime   @map("publish_at")
+  createdByEmail String?    @map("created_by_email")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  layout         PageLayout @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+
+  @@unique([layoutId, version])
+  @@index([layoutId, publishAt])
+  @@map("page_layout_versions")
 }

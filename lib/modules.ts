@@ -19,6 +19,7 @@ export const MODULE_KEYS = [
   'customer_accounts',
   'loyalty',
   'crm',
+  'page_builder',
 ] as const;
 
 export type ModuleKey = (typeof MODULE_KEYS)[number];
@@ -117,6 +118,12 @@ export const MODULES: ModuleDef[] = [
     label: 'לקוחות (CRM)',
     description: 'שדרוג: רשימת לקוחות (רשומים ואורחים), תגיות, הערות, קבוצות, סינון ויצוא למי שהסכים לדיוור.',
     ownerNav: [{ href: '/admin/customers', label: 'לקוחות', icon: 'Users' }],
+  },
+  {
+    key: 'page_builder',
+    label: 'בונה עמודים',
+    description: 'שדרוג: בניית דף הבית ועמודי התוכן מבלוקים מאושרים — טיוטה, תצוגה מקדימה, תזמון והיסטוריה.',
+    ownerNav: [{ href: '/admin/page-builder', label: 'עיצוב דף הבית', icon: 'LayoutTemplate' }],
   },
 ];
 
