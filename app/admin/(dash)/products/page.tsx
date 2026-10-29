@@ -60,9 +60,13 @@ export default async function AdminProductsPage(
       plant: p.plant,
       seo: scoreProductSeo(p),
       optionLabel: p.optionLabel,
+      option2Label: p.option2Label,
       variants: p.variants.map((v) => ({
         id: v.id,
-        name: v.name,
+        // ערך הציר הראשון; וריאנטים ישנים (לפני שני הצירים) — השם
+        name: v.option1 ?? (v.option2 ? '' : v.name),
+        option2: v.option2,
+        colorHex: v.colorHex,
         sku: v.sku,
         barcode: v.barcode,
         price: v.price?.toString() ?? null,

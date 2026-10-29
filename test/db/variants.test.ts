@@ -219,4 +219,17 @@ describe('variant admin', () => {
     const r = await saveVariant(prisma, { nurseryId: f.A.nurseryId, productId: p.id, variantId: def.id, input: input({ name: '', stockQuantity: 1 }) });
     expect(r).toMatchObject({ ok: false });
   });
+
+  it('size × color: options are stored, the name is composed, and a duplicate combination is rejected', async () => {
+    const p = await newProduct(f.A.nurseryId, 0);
+    const id = await addVariant(f.A.nurseryId, p.id, { name: 'גדול', option2: 'כתום', colorHex: '#e07b39', stockQuantity: 2 });
+    const v = await prisma.productVariant.findUniqueOrThrow({ where: { id } });
+    expect(v).toMatchObject({ name: 'גדול / כתום', option1: 'גדול', option2: 'כתום', colorHex: '#e07b39' });
+    await addVariant(f.A.nurseryId, p.id, { name: 'גדול', option2: 'בז׳' });
+    const dup = await saveVariant(prisma, { nurseryId: f.A.nurseryId, productId: p.id, variantId: null, input: input({ name: 'גדול', option2: 'כתום' }) });
+    expect(dup).toMatchObject({ ok: false, error: expect.stringContaining('גדול / כתום') });
+    // אותו שילוב במוצר אחר — מותר
+    const other = await newProduct(f.A.nurseryId, 0);
+    await addVariant(f.A.nurseryId, other.id, { name: 'גדול', option2: 'כתום' });
+  });
 });

@@ -4,7 +4,7 @@
  * R03-08: אין HTML חופשי ואין סקריפטים — רק השדות שמוגדרים כאן נשמרים; כל שדה אחר נזרק.
  */
 
-export const BLOCK_TYPES = ['hero', 'text', 'imageText', 'products', 'categories', 'cta', 'faq', 'contact', 'spacer'] as const;
+export const BLOCK_TYPES = ['hero', 'text', 'imageText', 'products', 'categories', 'contentCards', 'cta', 'faq', 'contact', 'spacer'] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
 export const BLOCK_LABELS: Record<BlockType, string> = {
@@ -13,6 +13,7 @@ export const BLOCK_LABELS: Record<BlockType, string> = {
   imageText: 'תמונה וטקסט',
   products: 'מוצרים',
   categories: 'קטגוריות',
+  contentCards: 'דפי תוכן (כרטיסים)',
   cta: 'באנר קריאה לפעולה',
   faq: 'שאלות נפוצות',
   contact: 'שעות פתיחה ויצירת קשר',
@@ -24,6 +25,7 @@ export const MAX_SLIDES = 8;
 export const MAX_FAQ = 20;
 export const MAX_PRODUCTS = 24;
 export const MAX_CATEGORIES = 12;
+export const MAX_CARDS = 12;
 const MAX_TEXT = 300;
 const MAX_HTML = 20_000;
 
@@ -42,14 +44,24 @@ export interface Slide {
 }
 
 export type HeroVariant = 'plain' | 'image' | 'carousel' | 'video';
-export type ProductSource = 'manual' | 'newest' | 'sale' | 'category';
+/** mixed — מגוון: מוצרים מקטגוריות שונות לסירוגין */
+export type ProductSource = 'manual' | 'newest' | 'sale' | 'category' | 'mixed';
+
+/** כרטיס תוכן: תמונה, כותרת, תיאור וקישור לדף באתר */
+export interface ContentCard {
+  imageUrl: string;
+  title: string;
+  text: string;
+  href: string;
+}
 
 export type Block =
   | (BlockBase & { type: 'hero'; variant: HeroVariant; headline: string; subheadline: string; imageUrl: string; videoUrl: string; slides: Slide[]; ctaText: string; ctaHref: string })
   | (BlockBase & { type: 'text'; html: string; align: 'right' | 'center' })
   | (BlockBase & { type: 'imageText'; imageUrl: string; title: string; html: string; imageSide: 'right' | 'left'; ctaText: string; ctaHref: string })
-  | (BlockBase & { type: 'products'; title: string; source: ProductSource; productIds: string[]; categoryId: string; limit: number })
+  | (BlockBase & { type: 'products'; title: string; source: ProductSource; productIds: string[]; categoryId: string; limit: number; showCategory: boolean })
   | (BlockBase & { type: 'categories'; title: string; categoryIds: string[] })
+  | (BlockBase & { type: 'contentCards'; title: string; source: 'manual' | 'blog'; cards: ContentCard[]; limit: number })
   | (BlockBase & { type: 'cta'; title: string; text: string; ctaText: string; ctaHref: string; tone: 'brand' | 'light' })
   | (BlockBase & { type: 'faq'; title: string; items: Array<{ q: string; a: string }> })
   | (BlockBase & { type: 'contact'; title: string; showHours: boolean; showPhone: boolean; showAddress: boolean })
@@ -72,9 +84,11 @@ export function newBlock(type: BlockType): Block {
     case 'imageText':
       return { ...base, type, imageUrl: '', title: '', html: '', imageSide: 'right', ctaText: '', ctaHref: '' };
     case 'products':
-      return { ...base, type, title: 'מוצרים נבחרים', source: 'newest', productIds: [], categoryId: '', limit: 8 };
+      return { ...base, type, title: 'מוצרים נבחרים', source: 'newest', productIds: [], categoryId: '', limit: 8, showCategory: false };
     case 'categories':
       return { ...base, type, title: 'קטגוריות', categoryIds: [] };
+    case 'contentCards':
+      return { ...base, type, title: 'מדריכים וטיפים', source: 'blog', cards: [], limit: 3 };
     case 'cta':
       return { ...base, type, title: '', text: '', ctaText: 'לקטלוג', ctaHref: '/catalog', tone: 'brand' };
     case 'faq':
@@ -206,7 +220,7 @@ function parseBlock(o: Raw): Block {
         ctaHref: href(o, 'ctaHref', 'קישור כפתור'),
       };
     case 'products': {
-      const source = oneOf(o, 'source', ['manual', 'newest', 'sale', 'category'] as const, 'newest');
+      const source = oneOf(o, 'source', ['manual', 'newest', 'sale', 'category', 'mixed'] as const, 'newest');
       const productIds = ids(o, 'productIds', 'מוצרים', MAX_PRODUCTS);
       const categoryId = str(o, 'categoryId', 'קטגוריה', 64);
       if (source === 'manual' && productIds.length === 0) throw new BlockError('מוצרים: יש לבחור לפחות מוצר אחד');
@@ -220,10 +234,35 @@ function parseBlock(o: Raw): Block {
         productIds: source === 'manual' ? productIds : [],
         categoryId: source === 'category' ? categoryId : '',
         limit: Number.isInteger(limit) && limit >= 1 && limit <= MAX_PRODUCTS ? limit : 8,
+        showCategory: bool(o, 'showCategory', source === 'mixed'),
       };
     }
     case 'categories':
       return { ...base, type: 'categories', title: str(o, 'title', 'כותרת'), categoryIds: ids(o, 'categoryIds', 'קטגוריות', MAX_CATEGORIES) };
+    case 'contentCards': {
+      const source = oneOf(o, 'source', ['manual', 'blog'] as const, 'blog');
+      const raw = list(o, 'cards');
+      if (raw.length > MAX_CARDS) throw new BlockError(`דפי תוכן: עד ${MAX_CARDS} כרטיסים`);
+      const cards = raw
+        .map((c, i) => ({
+          imageUrl: image(c, 'imageUrl', `כרטיס ${i + 1}`),
+          title: str(c, 'title', `כרטיס ${i + 1}`, 120),
+          text: str(c, 'text', `כרטיס ${i + 1}`, 400),
+          href: href(c, 'href', `כרטיס ${i + 1}`),
+        }))
+        .filter((c) => c.title || c.text || c.imageUrl);
+      if (source === 'manual' && cards.length === 0) throw new BlockError('דפי תוכן: יש להוסיף לפחות כרטיס אחד');
+      if (cards.some((c) => !c.title)) throw new BlockError('דפי תוכן: לכל כרטיס צריכה להיות כותרת');
+      const limit = Number(o.limit);
+      return {
+        ...base,
+        type: 'contentCards',
+        title: str(o, 'title', 'כותרת'),
+        source,
+        cards: source === 'manual' ? cards : [],
+        limit: Number.isInteger(limit) && limit >= 1 && limit <= MAX_CARDS ? limit : 3,
+      };
+    }
     case 'cta': {
       const title = str(o, 'title', 'כותרת');
       if (!title) throw new BlockError('באנר: חסרה כותרת');

@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { setOnHandStock } from '@/lib/order-service';
-import { validateVariantInput, type VariantInput } from '@/lib/variants';
+import { composeVariantName, validateVariantInput, type VariantInput } from '@/lib/variants';
 
 /**
  * ניהול וריאנטים בידי בעל המשתלה (§7.01). מקבל את ה-DB כפרמטר (בר-בדיקה). כל פעולה
@@ -39,8 +39,23 @@ export async function saveVariant(
   const err = validateVariantInput(input, { isDefault: existing?.isDefault ?? false, hasSiblings: siblings > 0 });
   if (err) return { ok: false, error: err };
 
+  const option1 = input.name.trim() || null;
+  const option2 = input.option2?.trim() || null;
+  const name = composeVariantName(option1, option2);
+  // שני וריאנטים פעילים עם אותו שילוב — הלקוח לא יוכל להבדיל ביניהם
+  if (name) {
+    const dup = await db.productVariant.findFirst({
+      where: { nurseryProductId: productId, isActive: true, name, ...(existing ? { id: { not: existing.id } } : {}) },
+      select: { id: true },
+    });
+    if (dup) return { ok: false, error: `כבר קיים וריאנט "${name}" במוצר הזה` };
+  }
+
   const data = {
-    name: input.name.trim(),
+    name,
+    option1,
+    option2,
+    colorHex: input.colorHex || null,
     sku: input.sku?.trim() || null,
     barcode: input.barcode?.trim() || null,
     price: input.price === null ? null : input.price.toFixed(2),

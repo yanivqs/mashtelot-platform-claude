@@ -4,6 +4,7 @@ import type { Nursery } from '@prisma/client';
 import type { CategoryNode } from '@/lib/catalog';
 import { CartBadge } from './cart-badge';
 import { MobileMenu } from './mobile-menu';
+import { MobileFloatBar } from './mobile-float-bar';
 
 function categoryHref(basePath: string, slug: string) {
   return `${basePath}/catalog?category=${encodeURIComponent(slug)}`;
@@ -67,6 +68,8 @@ export function SiteHeader({
   categories = [],
   showBlog = false,
   showAccount = false,
+  mobileStyle = 'classic',
+  belowAnnouncement = false,
 }: {
   nursery: Nursery;
   basePath: string;
@@ -77,7 +80,18 @@ export function SiteHeader({
   showBlog?: boolean;
   /** R06-03: מודול חשבונות לקוח */
   showAccount?: boolean;
+  /** float: במובייל הסרגל יורד לתחתית בגלילה (MobileFloatBar) */
+  mobileStyle?: 'classic' | 'float';
+  /** יש הודעת סטיקי מעל — הכותרת נדבקת מתחתיה */
+  belowAnnouncement?: boolean;
 }) {
+  const float = mobileStyle === 'float';
+  // במצב float הכותרת נדבקת רק במחשב; בנייד הסרגל עובר לתחתית (מחלקות מלאות — Tailwind סורק טקסט)
+  const stickyClass = !sticky
+    ? ''
+    : float
+      ? belowAnnouncement ? 'md:sticky md:top-9' : 'md:sticky md:top-0'
+      : belowAnnouncement ? 'sticky top-9' : 'sticky top-0';
   const nav = [
     { href: basePath || '/', label: 'בית' },
     { href: `${basePath}/catalog`, label: 'קטלוג' },
@@ -88,12 +102,20 @@ export function SiteHeader({
   ];
 
   return (
+    // float: בנייד בלי backdrop-blur — הוא הופך את הכותרת ל-containing block של הסרגל ה-fixed
     <header
-      className={`${
-        sticky ? 'sticky top-0' : ''
-      } z-30 border-b border-gray-100 bg-white/90 backdrop-blur`}
+      className={`${stickyClass} z-30 border-b border-black/5 ${float ? 'bg-white md:bg-white/90 md:backdrop-blur' : 'bg-white/90 backdrop-blur'}`}
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
+      {float && (
+        <MobileFloatBar
+          basePath={basePath}
+          logoUrl={nursery.logoUrl}
+          name={nursery.name}
+          nav={nav}
+          categories={categories}
+        />
+      )}
+      <div className={`mx-auto max-w-6xl items-center justify-between gap-4 px-6 py-3 ${float ? 'hidden md:flex' : 'flex'}`}>
         <Link href={basePath || '/'} className="flex min-w-0 items-center gap-3">
           {nursery.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element

@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { requireNurseryPage } from '@/lib/nursery-scope';
-import { CouponForm, PromotionForm } from './forms';
+import { getNurseryTheme } from '@/lib/theme';
+import { getSiteLinks } from '@/lib/site-links';
+import { AnnouncementForm, CouponForm, PromotionForm } from './forms';
 import { toggleCoupon, deleteCoupon, togglePromotion, deletePromotion } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -9,17 +11,27 @@ export default async function MarketingPage() {
   const { nurseryId } = await requireNurseryPage({ all: ['promotions'] });
 
 
-  const [coupons, promotions] = await Promise.all([
+  const [coupons, promotions, nursery, links] = await Promise.all([
     prisma.coupon.findMany({ where: { nurseryId }, orderBy: { createdAt: 'desc' } }),
     prisma.promotion.findMany({ where: { nurseryId }, orderBy: { createdAt: 'desc' } }),
+    prisma.nursery.findUniqueOrThrow({ where: { id: nurseryId }, select: { themeConfig: true, primaryColor: true } }),
+    getSiteLinks(nurseryId),
   ]);
+  const announcement = getNurseryTheme(nursery).announcement;
 
   return (
     <div className="max-w-3xl space-y-10">
       <div>
         <h1 className="text-2xl font-bold">שיווק</h1>
-        <p className="text-sm text-gray-500">קופונים ופופאפים לחנות שלך</p>
+        <p className="text-sm text-gray-500">הודעת סטיקי, קופונים ופופאפים לחנות שלך</p>
       </div>
+
+      <section>
+        <h2 className="mb-3 font-bold text-gray-900">הודעת סטיקי בראש האתר</h2>
+        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+          <AnnouncementForm value={announcement} links={links} />
+        </div>
+      </section>
 
       <section>
         <h2 className="mb-3 font-bold text-gray-900">קופונים</h2>

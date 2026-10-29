@@ -173,7 +173,7 @@ function BlockView({ b, nursery, data, level }: { b: Block; nursery: Nursery; da
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
               {items.map((p) => (
-                <ProductCard key={p.id} product={p} basePath="" />
+                <ProductCard key={p.id} product={p} basePath="" categoryLabel={b.showCategory ? data.productCategories[p.id] : null} />
               ))}
             </div>
           )}
@@ -191,11 +191,60 @@ function BlockView({ b, nursery, data, level }: { b: Block; nursery: Nursery; da
               <Link
                 key={c.id}
                 href={`/catalog?category=${encodeURIComponent(c.slug)}`}
-                className="flex min-h-24 items-center justify-center rounded-2xl border border-brand-100 bg-brand-50 p-4 text-center font-medium text-brand-900 transition hover:border-brand-300 hover:bg-brand-100"
+                className="flex min-h-20 items-center justify-center rounded-2xl border border-black/5 bg-white p-4 text-center font-bold text-brand-800 shadow-sm transition hover:border-[var(--accent,#16a34a)] hover:text-[var(--accent,#16a34a)]"
               >
                 {c.name}
               </Link>
             ))}
+          </div>
+        </section>
+      );
+    }
+    case 'contentCards': {
+      const cards = data.cards[b.id] ?? [];
+      if (cards.length === 0) return null;
+      return (
+        <section className="mx-auto max-w-6xl px-6 py-12">
+          <SectionTitle title={b.title} />
+          {/* נייד: גלילה אופקית; מחשב: רשת */}
+          <div className="-mx-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-3">
+            {cards.map((c, i) => {
+              const inner = (
+                <>
+                  <div className="aspect-[16/10] overflow-hidden bg-brand-50">
+                    {c.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center text-5xl" aria-hidden>
+                        🌿
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col gap-2 p-4">
+                    <h3 className="text-lg font-bold leading-snug text-gray-900 group-hover:text-brand-700">{c.title}</h3>
+                    {c.text && <p className="line-clamp-3 text-sm leading-relaxed text-gray-600">{c.text}</p>}
+                    {c.href && (
+                      <span className="mt-auto inline-flex items-center gap-1 pt-1 text-sm font-bold text-[var(--accent,#16a34a)]">
+                        לקריאה
+                        <ArrowLeft className="h-4 w-4" />
+                      </span>
+                    )}
+                  </div>
+                </>
+              );
+              const cls = 'group flex w-[78%] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition hover:shadow-md sm:w-auto';
+              if (!c.href) return <div key={i} className={cls}>{inner}</div>;
+              return /^https:/i.test(c.href) ? (
+                <a key={i} href={c.href} target="_blank" rel="noopener noreferrer" className={cls}>
+                  {inner}
+                </a>
+              ) : (
+                <Link key={i} href={c.href} className={cls}>
+                  {inner}
+                </Link>
+              );
+            })}
           </div>
         </section>
       );

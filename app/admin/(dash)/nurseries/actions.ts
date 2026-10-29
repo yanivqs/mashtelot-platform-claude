@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireUser, hashPassword } from '@/lib/auth';
-import { parseOpeningHoursText, normalizeCarousel, HERO_LAYOUTS, type HeroLayout } from '@/lib/theme';
+import { parseOpeningHoursText, normalizeCarousel, HERO_LAYOUTS, HEADER_STYLES, type HeaderStyle, type HeroLayout } from '@/lib/theme';
 import { MODULE_KEYS } from '@/lib/modules';
 import { syncMasterCategoriesToNursery } from '@/lib/category-provision';
 import { nurseryActionScope } from '@/lib/nursery-scope';
@@ -113,6 +113,11 @@ export async function updateNursery(
   if (accentColorRaw && !HEX_RE.test(accentColorRaw)) {
     return { error: 'צבע משני חייב להיות קוד hex' };
   }
+  const backgroundColorRaw = s(formData, 'backgroundColor');
+  if (backgroundColorRaw && !HEX_RE.test(backgroundColorRaw)) {
+    return { error: 'צבע רקע חייב להיות קוד hex' };
+  }
+  const headerStyleRaw = String(formData.get('headerStyle') || 'classic') as HeaderStyle;
 
   const heroLayoutRaw = String(formData.get('heroLayout') || 'centered') as HeroLayout;
   const heroLayout = HERO_LAYOUTS.includes(heroLayoutRaw) ? heroLayoutRaw : 'centered';
@@ -131,7 +136,10 @@ export async function updateNursery(
     return { error: 'בפריסת קרוסלה יש להעלות לפחות תמונה אחת' };
   }
 
+  // שדות שהטופס הזה לא עורך (למשל הודעת הסטיקי מעמוד השיווק) — נשמרים
+  const stored = await prisma.nursery.findUnique({ where: { id }, select: { themeConfig: true } });
   const themeConfig = {
+    ...((stored?.themeConfig ?? {}) as Record<string, unknown>),
     hero: {
       layout: heroLayout,
       headline: s(formData, 'heroHeadline'),
@@ -144,8 +152,10 @@ export async function updateNursery(
     colors: {
       primary: primaryColorRaw ?? '#16a34a',
       accent: accentColorRaw ?? primaryColorRaw ?? '#16a34a',
+      background: backgroundColorRaw ?? '#ffffff',
     },
     stickyHeader: formData.get('stickyHeader') === 'on',
+    headerStyle: HEADER_STYLES.includes(headerStyleRaw) ? headerStyleRaw : 'classic',
   };
 
   const openingHoursText = String(formData.get('openingHoursText') || '');

@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { getNurseryByTenant, getSuspendedNursery } from '@/lib/tenant';
 import { getActivePromotion } from '@/lib/marketing';
 import { getNurseryTheme } from '@/lib/theme';
+import { themeStyleVars } from '@/lib/theme-vars';
+import { AnnouncementBar } from '@/components/storefront/announcement-bar';
 import { isModuleEnabled } from '@/lib/module-access';
 import { getSalesMode } from '@/lib/sales';
 import { getNavPages, hasPublicBlog } from '@/lib/pages';
@@ -102,20 +104,19 @@ export default async function TenantLayout(props: LayoutProps) {
     <CartProvider tenant={params.tenant} salesMode={salesMode}>
       <div
         dir="rtl"
-        className="flex min-h-screen flex-col bg-white"
-        style={
-          {
-            '--brand': theme.colors.primary,
-            '--accent': theme.colors.accent,
-          } as React.CSSProperties
-        }
+        data-store-root
+        className="flex min-h-screen flex-col bg-surface"
+        style={themeStyleVars(theme) as React.CSSProperties}
       >
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <AnnouncementBar announcement={theme.announcement} basePath="" />
         <SiteHeader
           nursery={nursery}
+          mobileStyle={theme.headerStyle}
+          belowAnnouncement={theme.announcement.enabled}
           basePath=""
           sticky={theme.stickyHeader}
           navPages={navPages}
@@ -125,7 +126,12 @@ export default async function TenantLayout(props: LayoutProps) {
         />
         <main className="flex-1">{children}</main>
         <SiteFooter nursery={nursery} channels={channels} />
-        <BottomNav basePath="" />
+        {theme.headerStyle === 'float' ? (
+          // מקום לסרגל הצף כדי שלא יסתיר את תחתית הדף
+          <div className="h-16 md:hidden" aria-hidden />
+        ) : (
+          <BottomNav basePath="" />
+        )}
         {promotion?.popupText && (
           <PromoPopup id={promotion.id} title={promotion.title} text={promotion.popupText} />
         )}

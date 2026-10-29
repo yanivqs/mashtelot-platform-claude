@@ -64,4 +64,23 @@ describe('page blocks (R03)', () => {
     expect(pickLiveVersion(versions, new Date('2030-03-01T00:00:00Z'))?.version).toBe(3);
     expect(pickLiveVersion(versions, new Date('2029-01-01T00:00:00Z'))).toBeNull();
   });
+
+  it('content cards: manual cards need a title and safe links; blog source keeps no cards', () => {
+    expect(parseBlocks([{ ...newBlock('contentCards'), source: 'manual', cards: [] }]).ok).toBe(false);
+    expect(parseBlocks([{ ...newBlock('contentCards'), source: 'manual', cards: [{ title: '', text: 'x' }] }]).ok).toBe(false);
+    expect(parseBlocks([{ ...newBlock('contentCards'), source: 'manual', cards: [{ title: 'מדריך', href: 'javascript:alert(1)' }] }]).ok).toBe(false);
+    const r = parseBlocks([{ ...newBlock('contentCards'), source: 'manual', cards: [{ title: 'מדריך השקיה', text: 'כמה פעמים להשקות', href: '/blog/watering', imageUrl: 'https://img.example/a.jpg', onclick: 'x' }] }]);
+    expect(r.ok && r.value[0]!.type === 'contentCards' && r.value[0]!.cards).toEqual([
+      { title: 'מדריך השקיה', text: 'כמה פעמים להשקות', href: '/blog/watering', imageUrl: 'https://img.example/a.jpg' },
+    ]);
+    const blog = parseBlocks([{ ...newBlock('contentCards'), source: 'blog', limit: 99, cards: [{ title: 'נזרק' }] }]);
+    expect(blog.ok && blog.value[0]!.type === 'contentCards' && blog.value[0]).toMatchObject({ cards: [], limit: 3 });
+  });
+
+  it('mixed product source shows the category by default', () => {
+    const r = parseBlocks([{ ...newBlock('products'), source: 'mixed', showCategory: undefined }]);
+    expect(r.ok && r.value[0]).toMatchObject({ source: 'mixed', showCategory: true });
+    const plain = parseBlocks([newBlock('products')]);
+    expect(plain.ok && plain.value[0]).toMatchObject({ showCategory: false });
+  });
 });

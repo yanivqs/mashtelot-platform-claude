@@ -34,6 +34,8 @@ export interface RowProduct {
   seo: SeoScore;
   /** שם האפשרות לבחירת וריאנט (למשל "גודל עציץ") */
   optionLabel: string | null;
+  /** שם הציר השני (למשל "צבע") */
+  option2Label: string | null;
   /** כל הווריאנטים (כולל מושבתים), ברירת המחדל ראשונה */
   variants: EditorVariant[];
 }
@@ -191,8 +193,11 @@ export function ProductRow({
             </label>
             {multi ? (
               <label className="text-sm">
-                <span className="mb-1 block font-medium text-gray-700">שם האפשרות בחנות</span>
-                <input name="optionLabel" defaultValue={product.optionLabel ?? ''} placeholder="למשל: גודל עציץ" className={field} />
+                <span className="mb-1 block font-medium text-gray-700">שמות האפשרויות בחנות</span>
+                <span className="flex gap-2">
+                  <input name="optionLabel" aria-label="שם הציר הראשון" defaultValue={product.optionLabel ?? ''} placeholder="ציר 1: גודל" className={field} />
+                  <input name="option2Label" aria-label="שם הציר השני" defaultValue={product.option2Label ?? ''} placeholder="ציר 2: צבע" className={field} />
+                </span>
                 <span className="mt-1 block text-xs text-gray-500">המלאי מנוהל לכל וריאנט בנפרד (למטה).</span>
               </label>
             ) : (
@@ -263,7 +268,13 @@ export function ProductRow({
           </form>
 
           <div className="mt-4 rounded-lg border border-gray-200 bg-white p-3">
-            <VariantsEditor productId={product.id} basePrice={product.price} variants={product.variants} />
+            <VariantsEditor
+              productId={product.id}
+              basePrice={product.price}
+              variants={product.variants}
+              axis1Label={product.optionLabel?.trim() || 'גודל'}
+              axis2Label={product.option2Label?.trim() || 'צבע'}
+            />
           </div>
 
           {product.plant && (

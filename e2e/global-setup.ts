@@ -29,6 +29,9 @@ export const E2E_SUPER6 = { email: 'super6@e2e.invalid', password: 'e2e-super6-p
 export const E2E_OWNER8 = { email: 'owner8@e2e.invalid', password: 'e2e-owner8-pass-123' };
 /** R03: בעל משתלה לבדיקת בונה העמודים */
 export const E2E_OWNER9 = { email: 'owner9@e2e.invalid', password: 'e2e-owner9-pass-123' };
+/** משתלת "סרגל צף": הודעת סטיקי, צבע רקע, וריאנטים גודל × צבע (חנות נפרדת — לא משנה את e2eshop) */
+export const E2E_FLOAT_OWNER = { email: 'float-owner@e2e.invalid', password: 'e2e-float-pass-123' };
+export const FLOAT_SHOP = 'http://e2efloat.localhost:3100';
 /** תבנית מפורסמת שנוצרת כאן לבדיקת המוצרים הקבועים (PT-04) */
 export const E2E_SAVED_TEMPLATE = 'תוויות קבועות E2E';
 export const E2E_PREFLIGHT_TEMPLATE = 'שלט ייצור E2E';
@@ -53,13 +56,19 @@ export default async function globalSetup() {
       await db.user.deleteMany({ where: { nurseryId: oldLife.id } });
       await db.nursery.delete({ where: { id: oldLife.id } });
     }
+    const oldFloat = await db.nursery.findUnique({ where: { subdomain: 'e2efloat' } });
+    if (oldFloat) {
+      await db.order.deleteMany({ where: { nurseryId: oldFloat.id } });
+      await db.user.deleteMany({ where: { nurseryId: oldFloat.id } });
+      await db.nursery.delete({ where: { id: oldFloat.id } });
+    }
     const old = await db.nursery.findUnique({ where: { subdomain: 'e2eshop' } });
     if (old) {
       await db.order.deleteMany({ where: { nurseryId: old.id } });
       await db.user.deleteMany({ where: { nurseryId: old.id } });
       await db.nursery.delete({ where: { id: old.id } });
     }
-    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, E2E_OWNER7.email, E2E_LIFE_OWNER.email, E2E_SUPER6.email, E2E_OWNER8.email, E2E_OWNER9.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
+    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, E2E_OWNER7.email, E2E_LIFE_OWNER.email, E2E_SUPER6.email, E2E_OWNER8.email, E2E_OWNER9.email, E2E_FLOAT_OWNER.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
     // המוצרים נמחקו עם המשתלה; הצמח המרכזי (והגרסאות שלו) נמחק כאן
     await db.plant.deleteMany({ where: { hebrewName: E2E_PLANT } });
     // תבנית הדפוס שבדיקת PT יוצרת (ההזמנות שלה נמחקו עם המשתלה)
@@ -169,6 +178,59 @@ export default async function globalSetup() {
     await db.user.create({
       data: { email: E2E_OWNER9.email, role: 'NURSERY_OWNER', nurseryId: n.id, passwordHash: await bcrypt.hash(E2E_OWNER9.password, 4) },
     });
+    const fl = await db.nursery.create({
+      data: {
+        name: 'משתלת הסרגל הצף',
+        subdomain: 'e2efloat',
+        ownerEmail: E2E_FLOAT_OWNER.email,
+        themeConfig: {
+          colors: { primary: '#1F3D2B', accent: '#E07B39', background: '#F3EAD8' },
+          headerStyle: 'float',
+          announcement: { enabled: true, text: 'פרחי העונה הגיעו', linkText: 'לפרחים', href: '/catalog?category=e2e-flowers', tone: 'brand' },
+        },
+      },
+    });
+    await db.nurseryModule.createMany({
+      data: ['plant_catalog', 'supplies', 'sales', 'orders', 'promotions', 'page_builder'].map((moduleKey) => ({
+        nurseryId: fl.id,
+        moduleKey,
+        isEnabled: true,
+        ...(moduleKey === 'sales' ? { config: { mode: 'ONLINE' } } : {}),
+      })),
+    });
+    await db.nurseryPaymentMethod.create({ data: { nurseryId: fl.id, method: 'PAY_ON_PICKUP' } });
+    const flowers = await db.nurseryCategory.create({ data: { nurseryId: fl.id, name: 'פרחים', slug: 'e2e-flowers', sortOrder: 1 } });
+    const roses = await db.nurseryCategory.create({ data: { nurseryId: fl.id, name: 'ורדים', slug: 'e2e-roses', parentId: flowers.id } });
+    const garden = await db.nurseryCategory.create({ data: { nurseryId: fl.id, name: 'מוצרי גינון', slug: 'e2e-garden', sortOrder: 2 } });
+    const rose = await db.nurseryProduct.create({
+      data: { nurseryId: fl.id, customTitle: 'ורד אנגלי', price: '79.00', categories: { create: [{ nurseryCategoryId: roses.id }] } },
+    });
+    const pot = await db.nurseryProduct.create({
+      data: {
+        nurseryId: fl.id,
+        customTitle: 'עציץ מעוצב',
+        price: '39.00',
+        optionLabel: 'גודל',
+        option2Label: 'צבע',
+        categories: { create: [{ nurseryCategoryId: garden.id }] },
+      },
+    });
+    await db.productVariant.updateMany({ where: { nurseryProductId: rose.id, isDefault: true }, data: { stockQuantity: 10 } });
+    // עציץ: קטן × (כתום, בז'), גדול × כתום בלבד (גדול/בז' לא קיים)
+    await db.productVariant.updateMany({
+      where: { nurseryProductId: pot.id, isDefault: true },
+      data: { name: 'קטן / כתום', option1: 'קטן', option2: 'כתום', colorHex: '#E07B39', stockQuantity: 5 },
+    });
+    await db.productVariant.create({
+      data: { nurseryId: fl.id, nurseryProductId: pot.id, name: "קטן / בז'", option1: 'קטן', option2: "בז'", colorHex: '#E8DCC4', stockQuantity: 5, sortOrder: 1 },
+    });
+    await db.productVariant.create({
+      data: { nurseryId: fl.id, nurseryProductId: pot.id, name: 'גדול / כתום', option1: 'גדול', option2: 'כתום', colorHex: '#E07B39', price: '89.00', stockQuantity: 3, sortOrder: 2 },
+    });
+    await db.user.create({
+      data: { email: E2E_FLOAT_OWNER.email, role: 'NURSERY_OWNER', nurseryId: fl.id, passwordHash: await bcrypt.hash(E2E_FLOAT_OWNER.password, 4) },
+    });
+
     const life = await db.nursery.create({ data: { name: 'משתלת מחזור חיים', subdomain: 'e2elife', ownerEmail: E2E_LIFE_OWNER.email, phoneNumber: '03-5551234', city: 'חולון' } });
     await db.user.create({
       data: { email: E2E_LIFE_OWNER.email, role: 'NURSERY_OWNER', nurseryId: life.id, passwordHash: await bcrypt.hash(E2E_LIFE_OWNER.password, 4) },

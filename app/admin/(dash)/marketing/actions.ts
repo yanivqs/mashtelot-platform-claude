@@ -5,6 +5,8 @@ import { auditAsCurrentUser } from '@/lib/audit-actor';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
 import { assertOwnedBy } from '@/lib/ownership';
+import { isSafeLink, normalizeAnnouncement } from '@/lib/theme';
+import type { Prisma } from '@prisma/client';
 
 /** הקשר המשתלה של המשתמש המחובר בלבד + אכיפת המודול (C-P1-01). */
 async function resolveNurseryId(): Promise<string> {
@@ -135,4 +137,33 @@ export async function deletePromotion(formData: FormData): Promise<void> {
   const gonePromo = await prisma.promotion.delete({ where: { id } });
   await auditAsCurrentUser({ nurseryId: gonePromo.nurseryId, action: 'promotion.deleted', entityType: 'Promotion', entityId: id });
   revalidatePath('/admin/marketing');
+}
+
+/**
+ * הודעת סטיקי בראש החנות (נשמרת ב-themeConfig.announcement; שאר העיצוב לא משתנה).
+ * קישור — רק לנתיב באתר או https.
+ */
+export async function saveAnnouncement(_prev: MarketingState, formData: FormData): Promise<MarketingState> {
+  const nurseryId = await resolveNurseryId();
+  const text = String(formData.get('text') || '').trim();
+  const href = String(formData.get('href') || '').trim();
+  const enabled = formData.get('enabled') === 'on';
+  if (enabled && !text) return { error: 'יש להזין טקסט להודעה' };
+  if (text.length > 140) return { error: 'הטקסט ארוך מדי (עד 140 תווים)' };
+  if (href && !isSafeLink(href)) return { error: 'קישור לא תקין — נתיב באתר (מתחיל ב-/) או כתובת https' };
+
+  const announcement = normalizeAnnouncement({
+    enabled,
+    text,
+    href,
+    linkText: String(formData.get('linkText') || ''),
+    tone: formData.get('tone'),
+  });
+  const nursery = await prisma.nursery.findUniqueOrThrow({ where: { id: nurseryId }, select: { themeConfig: true, subdomain: true } });
+  const themeConfig = { ...((nursery.themeConfig ?? {}) as Record<string, unknown>), announcement };
+  await prisma.nursery.update({ where: { id: nurseryId }, data: { themeConfig: themeConfig as unknown as Prisma.InputJsonValue } });
+  await auditAsCurrentUser({ nurseryId, action: 'announcement.updated', entityType: 'Nursery', entityId: nurseryId, metadata: { enabled: announcement.enabled, text: announcement.text, href: announcement.href } });
+  revalidatePath('/admin/marketing');
+  revalidatePath(`/${nursery.subdomain}`, 'layout');
+  return { ok: true };
 }

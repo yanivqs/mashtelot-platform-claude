@@ -23,6 +23,8 @@ export interface NurseryFormValues {
   mapLink: string | null;
   primaryColor: string | null;
   accentColor: string | null;
+  backgroundColor: string;
+  headerStyle: string;
   openingHoursText: string;
   hero: {
     layout: string;
@@ -180,6 +182,8 @@ export function NurseryProfileForm({
           <input type="hidden" name="heroCtaHref" value={nursery.hero.ctaHref ?? ''} />
           <input type="hidden" name="primaryColor" value={nursery.primaryColor ?? ''} />
           <input type="hidden" name="accentColor" value={nursery.accentColor ?? ''} />
+          <input type="hidden" name="backgroundColor" value={nursery.backgroundColor} />
+          <input type="hidden" name="headerStyle" value={nursery.headerStyle} />
           {nursery.stickyHeader && <input type="hidden" name="stickyHeader" value="on" />}
           {carouselHidden}
         </>
@@ -207,6 +211,13 @@ export function NurseryProfileForm({
           />
           <span className="font-medium text-gray-700">כותרת עליונה נדבקת (sticky)</span>
         </label>
+        <label className="text-sm sm:col-span-2">
+          <span className="mb-1 block font-medium text-gray-700">סגנון הכותרת בנייד</span>
+          <select name="headerStyle" defaultValue={nursery.headerStyle} className={field}>
+            <option value="classic">קלאסי — סרגל עליון + ניווט תחתון</option>
+            <option value="float">צף — לוגו, תפריט וחיפוש יורדים לתחתית המסך בגלילה</option>
+          </select>
+        </label>
         <Text name="heroHeadline" label="כותרת ראשית" defaultValue={nursery.hero.headline} full />
         <label className="text-sm sm:col-span-2">
           <span className="mb-1 block font-medium text-gray-700">כותרת משנה</span>
@@ -229,6 +240,7 @@ export function NurseryProfileForm({
         </div>
         <Text name="primaryColor" label="צבע ראשי (hex)" defaultValue={nursery.primaryColor} dir="ltr" placeholder="#16a34a" />
         <Text name="accentColor" label="צבע משני (hex)" defaultValue={nursery.accentColor} dir="ltr" placeholder="#16a34a" />
+        <Text name="backgroundColor" label="צבע רקע החנות (hex)" defaultValue={nursery.backgroundColor} dir="ltr" placeholder="#ffffff" />
         {showCarousel ? <CarouselEditor carousel={nursery.carousel} /> : carouselHidden}
       </Section>
       )}

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeVariants,
+  composeVariantName,
+  optionMatrix,
   effectiveCompareAt,
   effectivePrice,
   hasChoice,
@@ -87,5 +89,53 @@ describe('validateVariantInput', () => {
   it('the only default variant may be unnamed but not deactivated', () => {
     expect(validateVariantInput({ ...base, name: '' }, { isDefault: true, hasSiblings: false })).toBeNull();
     expect(validateVariantInput({ ...base, isActive: false }, { isDefault: true, hasSiblings: false })).not.toBeNull();
+  });
+});
+
+describe('size × color options', () => {
+  type O = { id: string; name: string; option1?: string | null; option2?: string | null; colorHex?: string | null };
+  const o = (id: string, option1: string | null, option2: string | null, colorHex: string | null = null): O => ({
+    id,
+    name: composeVariantName(option1, option2),
+    option1,
+    option2,
+    colorHex,
+  });
+
+  it('composes the display name from both axes', () => {
+    expect(composeVariantName('גדול', 'כתום')).toBe('גדול / כתום');
+    expect(composeVariantName('גדול', ' ')).toBe('גדול');
+    expect(composeVariantName(null, null)).toBe('');
+  });
+
+  it('builds the two axes in order and finds a combination', () => {
+    const m = optionMatrix([o('1', 'קטן', 'כתום', '#e07b39'), o('2', 'קטן', 'בז׳', '#f3ead8'), o('3', 'גדול', 'כתום', '#e07b39')]);
+    expect(m.axis1.map((x) => x.value)).toEqual(['קטן', 'גדול']);
+    expect(m.axis2).toEqual([
+      { value: 'כתום', colorHex: '#e07b39' },
+      { value: 'בז׳', colorHex: '#f3ead8' },
+    ]);
+    expect(m.find('גדול', 'כתום')?.id).toBe('3');
+    expect(m.find('גדול', 'בז׳')).toBeUndefined();
+  });
+
+  it('single axis: legacy variants use the name; swatches go on the only axis', () => {
+    const legacy = optionMatrix([{ id: 'a', name: 'עציץ 4 ליטר' }, { id: 'b', name: 'עציץ 10 ליטר' }]);
+    expect(legacy.axis1.map((x) => x.value)).toEqual(['עציץ 4 ליטר', 'עציץ 10 ליטר']);
+    expect(legacy.axis2).toEqual([]);
+    expect(legacy.find('עציץ 10 ליטר', '')?.id).toBe('b');
+    const colors = optionMatrix([o('r', 'אדום', null, '#cc0000'), o('w', 'לבן', null, 'javascript:1')]);
+    expect(colors.axis1).toEqual([
+      { value: 'אדום', colorHex: '#cc0000' },
+      { value: 'לבן', colorHex: null },
+    ]);
+  });
+
+  it('validates the second axis and the swatch color', () => {
+    const base: VariantInput = { name: 'גדול', sku: null, barcode: null, price: null, compareAtPrice: null, stockQuantity: 0, imageUrls: [], isActive: true };
+    const ok = { isDefault: false, hasSiblings: true };
+    expect(validateVariantInput({ ...base, option2: 'כתום', colorHex: '#E07B39' }, ok)).toBeNull();
+    expect(validateVariantInput({ ...base, colorHex: 'red' }, ok)).not.toBeNull();
+    expect(validateVariantInput({ ...base, name: '', option2: 'כתום' }, ok)).not.toBeNull();
   });
 });

@@ -9,6 +9,7 @@ import {
   BLOCK_LABELS,
   BLOCK_TYPES,
   MAX_BLOCKS,
+  MAX_CARDS,
   MAX_FAQ,
   MAX_SLIDES,
   newBlock,
@@ -208,8 +209,16 @@ function BlockFields({
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-gray-700">אילו מוצרים</span>
-              <select value={b.source} onChange={(e) => set({ source: e.target.value as typeof b.source } as Partial<typeof b>)} className={field}>
+              <select
+                value={b.source}
+                onChange={(e) => {
+                  const source = e.target.value as typeof b.source;
+                  set({ source, ...(source === 'mixed' ? { showCategory: true } : {}) } as Partial<typeof b>);
+                }}
+                className={field}
+              >
                 <option value="newest">החדשים ביותר</option>
+                <option value="mixed">מגוון מקטגוריות שונות</option>
                 <option value="sale">במבצע</option>
                 <option value="category">מקטגוריה</option>
                 <option value="manual">בחירה ידנית</option>
@@ -232,6 +241,69 @@ function BlockFields({
             </select>
           )}
           {b.source === 'manual' && <ProductPicker target={target} b={b} set={set as Patch<typeof b>} titles={productTitles} />}
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" checked={b.showCategory} onChange={(e) => set({ showCategory: e.target.checked } as Partial<typeof b>)} />
+            להציג את שם הקטגוריה בכרטיס המוצר
+          </label>
+        </div>
+      );
+    case 'contentCards':
+      return (
+        <div className="space-y-3">
+          <Text label="כותרת" value={b.title} onChange={(v) => set({ title: v } as Partial<typeof b>)} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-gray-700">אילו דפים</span>
+              <select value={b.source} onChange={(e) => set({ source: e.target.value as 'manual' | 'blog' } as Partial<typeof b>)} className={field}>
+                <option value="blog">הפוסטים האחרונים בבלוג (אוטומטי)</option>
+                <option value="manual">כרטיסים ידניים — קישור לכל דף באתר</option>
+              </select>
+            </label>
+            {b.source === 'blog' && (
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-gray-700">כמה להציג</span>
+                <input type="number" min={1} max={MAX_CARDS} value={b.limit} onChange={(e) => set({ limit: Number(e.target.value) || 1 } as Partial<typeof b>)} className={field} />
+              </label>
+            )}
+          </div>
+          {b.source === 'blog' && <p className="text-xs text-gray-500">תמונת השער, הכותרת והתקציר של כל פוסט (דורש מודול בלוג פעיל).</p>}
+          {b.source === 'manual' && (
+            <>
+              {b.cards.map((c, i) => {
+                const upd = (patch: Partial<typeof c>) => set({ cards: b.cards.map((x, j) => (j === i ? { ...x, ...patch } : x)) } as Partial<typeof b>);
+                return (
+                  <div key={i} className="space-y-2 rounded-lg bg-gray-50 p-3">
+                    <ImageUpload key={`${b.id}-card-${i}`} folder="misc" defaultValue={c.imageUrl} onChange={(url) => upd({ imageUrl: url })} />
+                    <Text label={`כותרת כרטיס ${i + 1} *`} value={c.title} onChange={(v) => upd({ title: v })} max={120} />
+                    <label className="block text-sm">
+                      <span className="mb-1 block font-medium text-gray-700">תיאור</span>
+                      <textarea rows={2} maxLength={400} value={c.text} onChange={(e) => upd({ text: e.target.value })} className={field} />
+                    </label>
+                    <Text label="קישור (/נתיב-בעמוד או https://…)" value={c.href} onChange={(v) => upd({ href: v })} max={500} dir="ltr" />
+                    <div className="flex gap-3 text-xs">
+                      {i > 0 && (
+                        <button type="button" onClick={() => set({ cards: swap(b.cards, i, i - 1) } as Partial<typeof b>)} className="text-gray-600 hover:underline">
+                          הזזה למעלה
+                        </button>
+                      )}
+                      <button type="button" onClick={() => set({ cards: b.cards.filter((_, j) => j !== i) } as Partial<typeof b>)} className="text-rose-700 hover:underline">
+                        הסרת הכרטיס
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {b.cards.length < MAX_CARDS && (
+                <button
+                  type="button"
+                  onClick={() => set({ cards: [...b.cards, { imageUrl: '', title: '', text: '', href: '' }] } as Partial<typeof b>)}
+                  className="text-sm font-medium text-brand-700 hover:underline"
+                >
+                  + הוספת כרטיס
+                </button>
+              )}
+            </>
+          )}
         </div>
       );
     case 'categories':

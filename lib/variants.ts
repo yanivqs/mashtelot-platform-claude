@@ -12,6 +12,9 @@ const num = (v: Num): number | null => (v === null || v === undefined || v === '
 export interface VariantLike {
   id: string;
   name: string;
+  option1?: string | null;
+  option2?: string | null;
+  colorHex?: string | null;
   price: Num;
   compareAtPrice: Num;
   stockQuantity: number;
@@ -89,11 +92,56 @@ export function variantImages(v: Pick<VariantLike, 'imageUrls'> | null | undefin
   return out;
 }
 
+/** שם התצוגה של וריאנט משני הצירים: "גדול / כתום" (ציר ריק מושמט). */
+export function composeVariantName(option1: string | null | undefined, option2: string | null | undefined): string {
+  return [option1, option2].map((s) => s?.trim() ?? '').filter(Boolean).join(' / ');
+}
+
+export interface OptionValue {
+  value: string;
+  /** דוגמית צבע — רק בציר הצבע */
+  colorHex: string | null;
+}
+
+export interface OptionMatrix<V> {
+  /** ערכי הציר הראשון, לפי סדר הופעה */
+  axis1: OptionValue[];
+  /** ערכי הציר השני (ריק = ציר אחד) */
+  axis2: OptionValue[];
+  /** הווריאנט לשילוב (ציר שני ריק = '') */
+  find(a1: string, a2: string): V | undefined;
+}
+
+const HEX_RE = /^#[0-9a-f]{6}$/i;
+
+/**
+ * מטריצת הבחירה בדף המוצר. ערך ציר ראשון: option1, ואם אין — השם (וריאנטים ישנים).
+ * דוגמית הצבע שייכת לציר האחרון: לציר השני כשיש, אחרת לציר הראשון.
+ */
+export function optionMatrix<V extends Pick<VariantLike, 'name' | 'option1' | 'option2' | 'colorHex'>>(variants: V[]): OptionMatrix<V> {
+  const a1 = (v: V) => (v.option1?.trim() || v.name.trim());
+  const a2 = (v: V) => v.option2?.trim() ?? '';
+  const twoAxes = variants.some((v) => a2(v));
+  const hex = (v: V) => (v.colorHex && HEX_RE.test(v.colorHex) ? v.colorHex : null);
+  const axis1: OptionValue[] = [];
+  const axis2: OptionValue[] = [];
+  for (const v of variants) {
+    if (!axis1.some((o) => o.value === a1(v))) axis1.push({ value: a1(v), colorHex: twoAxes ? null : hex(v) });
+    if (twoAxes && a2(v) && !axis2.some((o) => o.value === a2(v))) axis2.push({ value: a2(v), colorHex: hex(v) });
+  }
+  return { axis1, axis2, find: (x, y) => variants.find((v) => a1(v) === x && a2(v) === y) };
+}
+
 const SKU_RE = /^[A-Za-z0-9._\-/]{1,64}$/;
 const BARCODE_RE = /^[0-9A-Za-z-]{1,64}$/;
 
 export interface VariantInput {
+  /** ערך הציר הראשון (למשל "גדול") */
   name: string;
+  /** ערך הציר השני (למשל "כתום") */
+  option2?: string | null;
+  /** דוגמית צבע #RRGGBB */
+  colorHex?: string | null;
   sku: string | null;
   barcode: string | null;
   price: number | null;
@@ -106,6 +154,9 @@ export interface VariantInput {
 /** ולידציה לקלט וריאנט מהניהול. מחזיר הודעת שגיאה או null. */
 export function validateVariantInput(v: VariantInput, opts: { isDefault: boolean; hasSiblings: boolean }): string | null {
   if (v.name.length > 80) return 'שם הווריאנט ארוך מדי (עד 80 תווים)';
+  if ((v.option2?.length ?? 0) > 40) return 'ערך הציר השני ארוך מדי (עד 40 תווים)';
+  if (v.option2?.trim() && !v.name.trim()) return 'כשיש ערך בציר השני (צבע), צריך גם ערך בציר הראשון (גודל)';
+  if (v.colorHex && !HEX_RE.test(v.colorHex)) return 'צבע הדוגמית לא תקין';
   if (!opts.isDefault && !v.name.trim()) return 'יש לתת שם לווריאנט (למשל "עציץ 4 ליטר")';
   if (opts.isDefault && opts.hasSiblings && !v.name.trim()) return 'כשיש כמה וריאנטים, לכל אחד צריך שם — גם לברירת המחדל';
   if (v.sku && !SKU_RE.test(v.sku)) return 'SKU: אותיות באנגלית, ספרות ו- . _ - / בלבד';

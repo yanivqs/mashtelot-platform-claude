@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { interleave } from '@/lib/interleave';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getSynonymIndex } from '@/lib/synonyms';
@@ -242,12 +243,57 @@ export async function getProductById(nurseryId: string, id: string) {
   return p ? localizeProduct(p) : null;
 }
 
-/** R03-06: מוצרים לבלוק בעמוד — ידני (בסדר שנבחר), חדשים, במבצע או לפי קטגוריה (כולל תתי־קטגוריות). */
+/** שם הקטגוריה לתצוגה בכרטיס (הקטגוריה הספציפית ביותר של המוצר). רק קטגוריות של המשתלה. */
+export async function getProductCategoryLabels(nurseryId: string, productIds: string[]): Promise<Record<string, string>> {
+  if (productIds.length === 0) return {};
+  const [rows, all] = await Promise.all([
+    prisma.nurseryProductCategory.findMany({
+      where: { nurseryProductId: { in: productIds }, nurseryCategory: { nurseryId } },
+      select: { nurseryProductId: true, nurseryCategoryId: true },
+    }),
+    getRawCategories(nurseryId),
+  ]);
+  const byId = new Map(all.map((c) => [c.id, c]));
+  const depth = (id: string) => {
+    let d = 0;
+    for (let c = byId.get(id); c?.parentId && d < 10; c = byId.get(c.parentId)) d++;
+    return d;
+  };
+  const out: Record<string, { name: string; depth: number }> = {};
+  for (const r of rows) {
+    const c = byId.get(r.nurseryCategoryId);
+    if (!c) continue;
+    const d = depth(c.id);
+    if (!out[r.nurseryProductId] || d > out[r.nurseryProductId]!.depth) out[r.nurseryProductId] = { name: c.name, depth: d };
+  }
+  return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, v.name]));
+}
+
+/**
+ * R03-06: מוצרים לבלוק בעמוד — ידני (בסדר שנבחר), חדשים, במבצע, לפי קטגוריה (כולל תתי־קטגוריות)
+ * או מגוון (mixed): מכל קטגוריה ראשית לסירוגין, כך שהבלוק מציג מוצרים מקטגוריות שונות.
+ */
 export async function getBlockProducts(
   nurseryId: string,
-  src: { source: 'manual' | 'newest' | 'sale' | 'category'; productIds: string[]; categoryId: string; limit: number },
+  src: { source: 'manual' | 'newest' | 'sale' | 'category' | 'mixed'; productIds: string[]; categoryId: string; limit: number },
 ): Promise<CatalogProduct[]> {
   const base = { nurseryId, isActive: true } satisfies Prisma.NurseryProductWhereInput;
+  if (src.source === 'mixed') {
+    const raw = await getRawCategories(nurseryId);
+    const roots = raw.filter((c) => !c.parentId).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'he'));
+    if (roots.length === 0) return getFeaturedProducts(nurseryId, src.limit);
+    const lists = await Promise.all(
+      roots.map((r) =>
+        prisma.nurseryProduct.findMany({
+          where: { ...base, categories: { some: { nurseryCategoryId: { in: categoryAndDescendantIds(raw, r.id) } } } },
+          include: withRefs,
+          orderBy: { createdAt: 'desc' },
+          take: src.limit,
+        }),
+      ),
+    );
+    return interleave(lists, src.limit).map(localizeProduct);
+  }
   if (src.source === 'manual') {
     if (src.productIds.length === 0) return [];
     const rows = await prisma.nurseryProduct.findMany({ where: { ...base, id: { in: src.productIds } }, include: withRefs });

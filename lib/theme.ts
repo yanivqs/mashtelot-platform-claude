@@ -30,11 +30,28 @@ export interface HeroConfig {
   ctaHref: string | null;
 }
 
+/** סגנון הכותרת: classic — סרגל עליון + ניווט תחתון; float — במובייל הסרגל (☰ לוגו 🔍) יורד לתחתית בגלילה. */
+export type HeaderStyle = 'classic' | 'float';
+export const HEADER_STYLES: HeaderStyle[] = ['classic', 'float'];
+
+/** הודעת סטיקי בראש החנות, עם קישור לדף באתר. */
+export interface AnnouncementConfig {
+  enabled: boolean;
+  text: string | null;
+  linkText: string | null;
+  /** נתיב באתר (/catalog?category=...) או https */
+  href: string | null;
+  tone: 'brand' | 'accent';
+}
+
 export interface ThemeConfig {
   hero: HeroConfig;
   carousel: CarouselConfig;
-  colors: { primary: string; accent: string };
+  /** background — רקע החנות (למשל בז'); ברירת מחדל לבן */
+  colors: { primary: string; accent: string; background: string };
   stickyHeader: boolean;
+  headerStyle: HeaderStyle;
+  announcement: AnnouncementConfig;
 }
 
 export interface OpeningHoursRow {
@@ -71,6 +88,7 @@ export function getNurseryTheme(
       : DEFAULT_PRIMARY;
 
   const accent = isHexColor(rawColors.accent) ? rawColors.accent.trim() : primary;
+  const background = isHexColor(rawColors.background) ? rawColors.background.trim() : '#ffffff';
 
   return {
     hero: {
@@ -82,8 +100,29 @@ export function getNurseryTheme(
       ctaHref: str(rawHero.ctaHref),
     },
     carousel: normalizeCarousel(raw.carousel),
-    colors: { primary, accent },
+    colors: { primary, accent, background },
     stickyHeader: raw.stickyHeader !== false, // ברירת מחדל: sticky פעיל
+    headerStyle: HEADER_STYLES.includes(raw.headerStyle as HeaderStyle) ? (raw.headerStyle as HeaderStyle) : 'classic',
+    announcement: normalizeAnnouncement(raw.announcement),
+  };
+}
+
+/** קישור מותר בהודעה: נתיב באתר (לא //) או https. */
+export function isSafeLink(href: string): boolean {
+  return /^\/(?!\/)[^\s"'<>]*$/.test(href) || /^https:\/\/[^\s"'<>]+$/i.test(href);
+}
+
+/** נירמול הודעת הסטיקי (גם לקלט טופס וגם לקריאה מה-DB). הודעה בלי טקסט — כבויה. */
+export function normalizeAnnouncement(json: unknown): AnnouncementConfig {
+  const raw = (json ?? {}) as Record<string, unknown>;
+  const text = str(raw.text)?.slice(0, 140) ?? null;
+  const href = str(raw.href);
+  return {
+    enabled: raw.enabled === true && Boolean(text),
+    text,
+    linkText: str(raw.linkText)?.slice(0, 40) ?? null,
+    href: href && isSafeLink(href) ? href.slice(0, 300) : null,
+    tone: raw.tone === 'accent' ? 'accent' : 'brand',
   };
 }
 

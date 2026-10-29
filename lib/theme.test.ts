@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getNurseryTheme, normalizeCarousel, MAX_CAROUSEL_SLIDES } from './theme';
+import { getNurseryTheme, normalizeAnnouncement, normalizeCarousel, MAX_CAROUSEL_SLIDES } from './theme';
 
 describe('carousel config', () => {
   it('keeps only slides with http(s) images and clamps the interval', () => {
@@ -31,5 +31,27 @@ describe('carousel config', () => {
     });
     expect(theme.hero.layout).toBe('carousel');
     expect(theme.carousel.slides).toHaveLength(1);
+  });
+});
+
+describe('announcement bar and header style', () => {
+  it('normalizes the announcement and rejects unsafe links', () => {
+    expect(normalizeAnnouncement({ enabled: true, text: ' משלוח חינם ', href: '/catalog?category=x', tone: 'accent' })).toEqual({
+      enabled: true,
+      text: 'משלוח חינם',
+      linkText: null,
+      href: '/catalog?category=x',
+      tone: 'accent',
+    });
+    expect(normalizeAnnouncement({ enabled: true, text: 'x', href: 'javascript:alert(1)' }).href).toBeNull();
+    expect(normalizeAnnouncement({ enabled: true, text: 'x', href: '//evil.example' }).href).toBeNull();
+    // בלי טקסט — כבויה
+    expect(normalizeAnnouncement({ enabled: true, text: '' }).enabled).toBe(false);
+    expect(normalizeAnnouncement(null)).toMatchObject({ enabled: false, tone: 'brand' });
+  });
+
+  it('header style defaults to classic', () => {
+    expect(getNurseryTheme({ primaryColor: null, themeConfig: { headerStyle: 'float' } }).headerStyle).toBe('float');
+    expect(getNurseryTheme({ primaryColor: null, themeConfig: { headerStyle: 'weird' } }).headerStyle).toBe('classic');
   });
 });

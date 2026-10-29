@@ -91,6 +91,9 @@ export async function updateProduct(
         ...(formData.has('optionLabel')
           ? { optionLabel: String(formData.get('optionLabel') || '').trim().slice(0, 40) || null }
           : {}),
+        ...(formData.has('option2Label')
+          ? { option2Label: String(formData.get('option2Label') || '').trim().slice(0, 40) || null }
+          : {}),
       },
     });
 

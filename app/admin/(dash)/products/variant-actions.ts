@@ -23,6 +23,9 @@ function optionalNumber(v: FormDataEntryValue | null): number | null {
 function readInput(formData: FormData): VariantInput {
   return {
     name: String(formData.get('name') || ''),
+    option2: String(formData.get('option2') || '').trim() || null,
+    // שדה color ריק כשלא סומן "דוגמית צבע"
+    colorHex: formData.get('useColor') === 'on' ? String(formData.get('colorHex') || '') || null : null,
     sku: String(formData.get('sku') || '').trim() || null,
     barcode: String(formData.get('barcode') || '').trim() || null,
     price: optionalNumber(formData.get('price')),
@@ -33,7 +36,7 @@ function readInput(formData: FormData): VariantInput {
   };
 }
 
-const KEEP = ['name', 'sku', 'barcode', 'price', 'compareAtPrice', 'stockQuantity'] as const;
+const KEEP = ['name', 'option2', 'sku', 'barcode', 'price', 'compareAtPrice', 'stockQuantity'] as const;
 
 export async function saveVariantAction(_prev: VariantFormState, formData: FormData): Promise<VariantFormState> {
   const { user, nurseryId } = await requireNurseryAction({ any: ['plant_catalog', 'supplies'] });

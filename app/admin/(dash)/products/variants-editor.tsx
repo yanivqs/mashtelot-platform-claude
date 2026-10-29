@@ -9,7 +9,10 @@ import { deleteVariantAction, saveVariantAction, type VariantFormState } from '.
 
 export interface EditorVariant {
   id: string;
+  /** ערך הציר הראשון */
   name: string;
+  option2: string | null;
+  colorHex: string | null;
   sku: string | null;
   barcode: string | null;
   price: string | null;
@@ -75,15 +78,34 @@ function VariantImages({ initialUrls }: { initialUrls: string[] }) {
   );
 }
 
+interface AxisLabels {
+  axis1Label: string;
+  axis2Label: string;
+}
+
+/** דוגמית צבע אופציונלית לווריאנט (מוצגת כעיגול בבורר בחנות). */
+function ColorSwatchField({ initial }: { initial: string | null }) {
+  const [on, setOn] = useState(Boolean(initial));
+  return (
+    <label className="flex items-center gap-1.5 text-xs">
+      <input name="useColor" type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} className="h-4 w-4" />
+      דוגמית צבע
+      {on && <input name="colorHex" type="color" aria-label="צבע הדוגמית" defaultValue={initial ?? '#e07b39'} className="h-7 w-10 cursor-pointer rounded border border-gray-200" />}
+    </label>
+  );
+}
+
 function VariantForm({
   productId,
   basePrice,
   variant,
+  axis1Label,
+  axis2Label,
 }: {
   productId: string;
   basePrice: string;
   variant: EditorVariant | null;
-}) {
+} & AxisLabels) {
   const [state, action] = useActionState(saveVariantAction, initial);
   const [delState, delAction] = useActionState(deleteVariantAction, initial);
   // React 19 מאפס את הטופס אחרי שמירה; בשגיאה ערכי ברירת המחדל הם מה שהוקלד (UX-01)
@@ -96,9 +118,18 @@ function VariantForm({
         <input type="hidden" name="productId" value={productId} />
         <input type="hidden" name="variantId" value={variant?.id ?? ''} />
         <label className="text-xs">
-          <span className="mb-0.5 block font-medium text-gray-700">שם {variant?.isDefault && '(ברירת מחדל)'}</span>
+          <span className="mb-0.5 block font-medium text-gray-700">
+            {axis1Label} {variant?.isDefault && '(ברירת מחדל)'}
+          </span>
           <input name="name" defaultValue={v('name', variant?.name ?? '')} placeholder="למשל: עציץ 4 ליטר" className={field} />
         </label>
+        <label className="text-xs">
+          <span className="mb-0.5 block font-medium text-gray-700">{axis2Label} (לא חובה)</span>
+          <input name="option2" defaultValue={v('option2', variant?.option2 ?? '')} placeholder="למשל: כתום" className={field} />
+        </label>
+        <div className="flex items-end pb-1.5 text-xs">
+          <ColorSwatchField initial={variant?.colorHex ?? null} />
+        </div>
         <label className="text-xs">
           <span className="mb-0.5 block font-medium text-gray-700">מחיר (₪)</span>
           <input
@@ -158,11 +189,14 @@ export function VariantsEditor({
   productId,
   basePrice,
   variants,
+  axis1Label,
+  axis2Label,
 }: {
   productId: string;
   basePrice: string;
   variants: EditorVariant[];
-}) {
+} & AxisLabels) {
+  const labels = { axis1Label, axis2Label };
   const [adding, setAdding] = useState(false);
   return (
     <section className="space-y-2 sm:col-span-2">
@@ -176,17 +210,17 @@ export function VariantsEditor({
       </div>
       {variants.length <= 1 && !adding && (
         <p className="text-xs text-gray-500">
-          למוצר יש אפשרות אחת. הוסיפו וריאנט כדי להציע ללקוחות בחירה (למשל עציץ 1 ליטר / 4 ליטר), עם מחיר, מלאי ותמונות לכל אחד.
+          למוצר יש אפשרות אחת. הוסיפו וריאנט כדי להציע ללקוחות בחירה — לפי {axis1Label} ולפי {axis2Label} (למשל קטן/גדול × כתום/בז'), עם מחיר, מלאי ותמונות לכל שילוב.
         </p>
       )}
-      {variants.length > 1 && variants.map((v) => <VariantForm key={v.id} productId={productId} basePrice={basePrice} variant={v} />)}
+      {variants.length > 1 && variants.map((v) => <VariantForm key={v.id} productId={productId} basePrice={basePrice} variant={v} {...labels} />)}
       {variants.length <= 1 && adding && variants[0] && (
         <>
           <p className="text-xs text-gray-500">תנו שם גם לאפשרות הקיימת:</p>
-          <VariantForm productId={productId} basePrice={basePrice} variant={variants[0]} />
+          <VariantForm productId={productId} basePrice={basePrice} variant={variants[0]} {...labels} />
         </>
       )}
-      {adding && <VariantForm productId={productId} basePrice={basePrice} variant={null} />}
+      {adding && <VariantForm productId={productId} basePrice={basePrice} variant={null} {...labels} />}
     </section>
   );
 }

@@ -62,6 +62,9 @@ export default async function ProductPage(props: ProductPageProps) {
     return {
       id: v.id,
       name: v.name,
+      option1: v.option1,
+      option2: v.option2,
+      colorHex: v.colorHex,
       price,
       compareAt: compareAt !== null && compareAt > price ? compareAt : null,
       available: availableQuantity(v),
@@ -95,7 +98,8 @@ export default async function ProductPage(props: ProductPageProps) {
           productId={product.id}
           title={title}
           slug={productSlug(product.id, title)}
-          optionLabel={product.optionLabel?.trim() || 'אפשרות'}
+          optionLabel={product.optionLabel?.trim() || (purchaseVariants.some((v) => v.option2) ? 'גודל' : 'אפשרות')}
+          option2Label={product.option2Label?.trim() || 'צבע'}
           variants={purchaseVariants}
           header={
             <>

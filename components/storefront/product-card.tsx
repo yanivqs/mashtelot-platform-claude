@@ -4,14 +4,17 @@ import { resolveProductContent } from '@/lib/seo';
 import type { CatalogProduct } from '@/lib/catalog';
 import { AddToCartButton } from '@/components/cart/add-to-cart-button';
 import { PlantFactsInline } from '@/components/storefront/plant-key-facts';
-import { activeVariants, priceSummary } from '@/lib/variants';
+import { activeVariants, optionMatrix, priceSummary } from '@/lib/variants';
 
 export function ProductCard({
   product,
   basePath,
+  categoryLabel,
 }: {
   product: CatalogProduct;
   basePath: string;
+  /** שם הקטגוריה להצגה בכרטיס (בלוק "מגוון") — במקום סוג הצמח / המותג */
+  categoryLabel?: string | null;
 }) {
   const { title, image } = resolveProductContent(product);
   const slug = productSlug(product.id, title);
@@ -24,7 +27,14 @@ export function ProductCard({
   const onSale = compareAt !== null;
   const outOfStock = !summary.inStock;
   const choice = variants.length > 1;
-  const kicker = product.plant?.plantType || product.supply?.brand || null;
+  const kicker = categoryLabel || product.plant?.plantType || product.supply?.brand || null;
+  // ציר צבע: דוגמיות קטנות בכרטיס; שני צירים — "לבחירת גודל וצבע"
+  const matrix = choice ? optionMatrix(variants) : null;
+  const twoAxes = Boolean(matrix?.axis2.length);
+  const swatches = (twoAxes ? matrix!.axis2 : (matrix?.axis1 ?? [])).filter((o) => o.colorHex);
+  const chooseLabel = twoAxes
+    ? `לבחירת ${product.optionLabel?.trim() || 'גודל'} ו${product.option2Label?.trim() || 'צבע'}`
+    : `לבחירת ${product.optionLabel?.trim() || 'אפשרות'}`;
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
@@ -55,11 +65,18 @@ export function ProductCard({
       </Link>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
-        {kicker && (
-          <span className="text-xs font-semibold uppercase tracking-wide text-brand-700">
-            {kicker}
-          </span>
-        )}
+        {kicker &&
+          (categoryLabel ? (
+            <span
+              className="w-fit rounded-full px-2 py-0.5 text-[11px] font-bold text-[var(--accent,#16a34a)]"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--accent, #16a34a) 12%, transparent)' }}
+              data-testid="card-category"
+            >
+              {kicker}
+            </span>
+          ) : (
+            <span className="text-xs font-semibold uppercase tracking-wide text-brand-700">{kicker}</span>
+          ))}
 
         <Link href={href}>
           <h3 className="line-clamp-2 text-base font-bold leading-snug text-gray-900 transition group-hover:text-brand-700">
@@ -71,6 +88,14 @@ export function ProductCard({
         )}
 
         <PlantFactsInline plant={product.plant} limit={3} />
+
+        {swatches.length > 0 && (
+          <div className="flex items-center gap-1" aria-label={`צבעים: ${swatches.map((o) => o.value).join(', ')}`}>
+            {swatches.slice(0, 6).map((o) => (
+              <span key={o.value} title={o.value} className="h-3.5 w-3.5 rounded-full border border-black/10" style={{ backgroundColor: o.colorHex! }} />
+            ))}
+          </div>
+        )}
 
         <div className="mt-auto pt-2">
           <div className="mb-3 flex items-baseline gap-2">
@@ -86,7 +111,7 @@ export function ProductCard({
               href={href}
               className="inline-flex w-full items-center justify-center rounded-lg border border-[var(--brand,#16a34a)] px-4 py-2.5 text-sm font-medium text-[var(--brand,#16a34a)] transition hover:bg-brand-50"
             >
-              {outOfStock ? 'אזל מהמלאי' : `לבחירת ${product.optionLabel?.trim() || 'אפשרות'}`}
+              {outOfStock ? 'אזל מהמלאי' : chooseLabel}
             </Link>
           ) : (
             <AddToCartButton

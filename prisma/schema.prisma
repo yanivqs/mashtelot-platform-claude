@@ -345,6 +345,8 @@ model NurseryProduct {
   seoMetaDescription String?                  @map("seo_meta_description")
   /// שם האפשרות בבחירת וריאנט (למשל "גודל עציץ"); ריק = "אפשרות"
   optionLabel        String?                  @map("option_label")
+  /// שם הציר השני בבחירת וריאנט (למשל "צבע"); ריק = אין ציר שני
+  option2Label       String?                  @map("option2_label")
   /// §6: גרסת הפריט המרכזי שאושרה למוצר — החנות מציגה אותה (לא את הקטלוג החי)
   catalogRevisionId  String?                  @map("catalog_revision_id")
   /// §6.02: שדות שנשמרו מקומית ואינם מוצעים לסנכרון — { שדה: ערך }
@@ -993,6 +995,12 @@ model ProductVariant {
   nurseryProductId String          @map("nursery_product_id")
   /// ריק בווריאנט ברירת מחדל של מוצר פשוט
   name             String          @default("")
+  /// ערך הציר הראשון (למשל "גדול") — name מחושב מ-option1 / option2
+  option1          String?
+  /// ערך הציר השני (למשל "כתום")
+  option2          String?
+  /// דוגמית צבע לציר הצבע (#RRGGBB)
+  colorHex         String?         @map("color_hex")
   sku              String?
   /// טקסט — שומר אפסים מובילים (§7.02)
   barcode          String?

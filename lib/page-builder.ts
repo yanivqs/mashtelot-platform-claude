@@ -2,7 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { prisma } from '@/lib/prisma';
 import { isModuleEnabled } from '@/lib/module-access';
-import { getBlockProducts, getCategoryNav, type CatalogProduct, type CategoryNode } from '@/lib/catalog';
+import { getBlockProducts, getCategoryNav, getProductCategoryLabels, type CatalogProduct, type CategoryNode } from '@/lib/catalog';
 import { liveBlocks } from '@/lib/page-builder-admin';
 import type { Block } from '@/lib/page-blocks';
 
@@ -15,9 +15,20 @@ export const getLiveLayout = cache(async (nurseryId: string, key: string): Promi
   return liveBlocks(prisma, nurseryId, key);
 });
 
+export interface ContentCardData {
+  imageUrl: string;
+  title: string;
+  text: string;
+  href: string;
+}
+
 export interface BlockData {
   products: Record<string, CatalogProduct[]>;
   categories: Record<string, CategoryNode[]>;
+  /** שם קטגוריה לכל מוצר — לבלוקים עם showCategory */
+  productCategories: Record<string, string>;
+  /** כרטיסי תוכן לכל בלוק contentCards (ידני, או הפוסטים האחרונים בבלוג) */
+  cards: Record<string, ContentCardData[]>;
 }
 
 function flatten(nodes: CategoryNode[]): CategoryNode[] {
@@ -26,11 +37,12 @@ function flatten(nodes: CategoryNode[]): CategoryNode[] {
 
 /** טוען את המוצרים והקטגוריות שהבלוקים צריכים (לפי מזהה בלוק). רק נתוני המשתלה הזו. */
 export async function loadBlockData(nurseryId: string, blocks: Block[]): Promise<BlockData> {
-  const data: BlockData = { products: {}, categories: {} };
+  const data: BlockData = { products: {}, categories: {}, productCategories: {}, cards: {} };
   const nav = blocks.some((b) => b.type === 'categories') ? await getCategoryNav(nurseryId) : [];
   await Promise.all(
     blocks.map(async (b) => {
       if (b.type === 'products') data.products[b.id] = await getBlockProducts(nurseryId, b);
+      if (b.type === 'contentCards') data.cards[b.id] = b.source === 'manual' ? b.cards : await latestPosts(nurseryId, b.limit);
       if (b.type === 'categories') {
         // ריק = הקטגוריות הראשיות; אחרת — הנבחרות בסדר שנבחר (רק כאלה שיש בהן מוצרים פעילים)
         const all = new Map(flatten(nav).map((c) => [c.id, c]));
@@ -38,6 +50,20 @@ export async function loadBlockData(nurseryId: string, blocks: Block[]): Promise
       }
     }),
   );
+  const labelled = blocks.flatMap((b) => (b.type === 'products' && b.showCategory ? (data.products[b.id] ?? []).map((p) => p.id) : []));
+  data.productCategories = await getProductCategoryLabels(nurseryId, labelled);
   return data;
+}
+
+/** הפוסטים האחרונים שפורסמו בבלוג — רק כשמודול הבלוג פעיל. */
+async function latestPosts(nurseryId: string, limit: number): Promise<ContentCardData[]> {
+  if (!(await isModuleEnabled(nurseryId, 'blog'))) return [];
+  const posts = await prisma.blogPost.findMany({
+    where: { nurseryId, isPublished: true },
+    orderBy: { publishedAt: 'desc' },
+    take: limit,
+    select: { slug: true, title: true, excerpt: true, coverImageUrl: true },
+  });
+  return posts.map((p) => ({ imageUrl: p.coverImageUrl ?? '', title: p.title, text: p.excerpt ?? '', href: `/blog/${p.slug}` }));
 }
 

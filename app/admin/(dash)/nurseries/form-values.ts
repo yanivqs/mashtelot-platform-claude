@@ -20,6 +20,8 @@ export function nurseryToFormValues(n: Nursery): NurseryFormValues {
     mapLink: n.mapLink,
     primaryColor: n.primaryColor,
     accentColor: theme.colors.accent,
+    backgroundColor: theme.colors.background,
+    headerStyle: theme.headerStyle,
     openingHoursText: openingHoursToText(n.openingHours),
     hero: theme.hero,
     stickyHeader: theme.stickyHeader,

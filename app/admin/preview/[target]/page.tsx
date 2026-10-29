@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireNurseryPage } from '@/lib/nursery-scope';
 import { prisma } from '@/lib/prisma';
 import { getNurseryTheme } from '@/lib/theme';
+import { themeStyleVars } from '@/lib/theme-vars';
 import { getSalesMode } from '@/lib/sales';
 import { loadBlockData } from '@/lib/page-builder';
 import { editorState } from '@/lib/page-builder-admin';
@@ -32,7 +33,7 @@ export default async function DraftPreview(props: { params: Promise<{ target: st
 
   return (
     <CartProvider tenant={nursery.subdomain} salesMode={await getSalesMode(nurseryId)}>
-      <div style={{ '--brand': theme.colors.primary, '--accent': theme.colors.accent } as React.CSSProperties} className="min-h-screen bg-white">
+      <div data-store-root style={themeStyleVars(theme) as React.CSSProperties} className="min-h-screen bg-surface">
         <div className="bg-amber-100 px-4 py-1.5 text-center text-xs text-amber-900">תצוגה מקדימה של הטיוטה — לא מפורסם</div>
         {draft.length === 0 ? (
           <p className="p-10 text-center text-gray-500">הוסיפו בלוק כדי לראות כאן את הדף.</p>
