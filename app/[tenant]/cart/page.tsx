@@ -53,7 +53,8 @@ export default function CartPage() {
 
       <ul className="divide-y divide-gray-100 rounded-xl border border-gray-100">
         {items.map((item) => (
-          <li key={cartKey(item)} className="flex items-center gap-4 p-4">
+          // נייד: תמונה + שם בשורה אחת, כמות/מחיר/הסרה בשורה שנייה (שם ארוך עם וריאנט לא נמחץ)
+          <li key={cartKey(item)} className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-50 text-2xl">
               {item.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -66,13 +67,14 @@ export default function CartPage() {
             <div className="min-w-0 flex-1">
               <Link
                 href={`/product/${item.slug}`}
-                className="block truncate font-medium text-gray-900 hover:text-brand-700"
+                className="line-clamp-2 font-medium text-gray-900 hover:text-brand-700"
               >
                 {item.title}
               </Link>
               <p className="text-sm text-gray-500">{formatPrice(item.price)} ליחידה</p>
             </div>
 
+            <div className="flex w-full items-center justify-between gap-4 sm:w-auto">
             <div className="flex items-center rounded-lg border border-gray-200">
               <button
                 aria-label="הפחת"
@@ -102,6 +104,7 @@ export default function CartPage() {
             >
               <Trash2 className="h-4 w-4" />
             </button>
+            </div>
           </li>
         ))}
       </ul>
