@@ -3,7 +3,8 @@ import { requireNurseryPage } from '@/lib/nursery-scope';
 import { prisma } from '@/lib/prisma';
 import { resolveProductContent } from '@/lib/seo';
 import { scoreProductSeo } from '@/lib/seo-score';
-import { flattenCategoryTree } from '@/lib/category-tree';
+import { categoryAndDescendantIds, flattenCategoryTree } from '@/lib/category-tree';
+import { parseInventorySort, sortInventory, type InventorySortKey } from '@/lib/inventory-sort';
 import { firstLetter, parseLetter } from '@/lib/alphabet';
 import { lettersOf } from '@/lib/letter-filter';
 import { catalogRevisionInclude, localizeProduct } from '@/lib/catalog-localize';
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminProductsPage(
   props: {
-    searchParams: Promise<{ q?: string; letter?: string }>;
+    searchParams: Promise<{ q?: string; letter?: string; category?: string; sort?: string; dir?: string }>;
   }
 ) {
   const searchParams = await props.searchParams;
@@ -82,22 +83,44 @@ export default async function AdminProductsPage(
 
   const needsSeo = rows.filter((r) => r.seo.level !== 'good').length;
 
-  // סינון לפי אות / חיפוש (בזיכרון — מלאי של משתלה בודדת)
+  // סינון לפי אות / חיפוש / קטגוריה ומיון (בזיכרון — מלאי של משתלה בודדת)
   const q = searchParams.q?.trim().toLowerCase() || '';
   const letter = parseLetter(searchParams.letter);
   const letters = lettersOf(rows.map((r) => r.title));
-  const visibleRows = rows.filter(
-    (r) =>
-      (!letter || firstLetter(r.title) === letter) &&
-      (!q || `${r.title} ${r.latinName ?? ''}`.toLowerCase().includes(q)),
+  // קטגוריה כוללת את תתי-הקטגוריות שלה; "none" — מוצרים בלי קטגוריה
+  const category =
+    searchParams.category === 'none' || nurseryCategories.some((c) => c.id === searchParams.category) ? searchParams.category! : '';
+  const inCategory = category && category !== 'none' ? new Set(categoryAndDescendantIds(nurseryCategories, category)) : null;
+  const { key: sortKey, dir } = parseInventorySort(searchParams.sort, searchParams.dir);
+  const visibleRows = sortInventory(
+    rows.filter(
+      (r) =>
+        (!letter || firstLetter(r.title) === letter) &&
+        (!q || `${r.title} ${r.latinName ?? ''}`.toLowerCase().includes(q)) &&
+        (category !== 'none' || r.categoryIds.length === 0) &&
+        (!inCategory || r.categoryIds.some((id) => inCategory.has(id))),
+    ),
+    sortKey,
+    dir,
   );
-  const letterHref = (l: string | null) => {
+  const hrefWith = (patch: Record<string, string | null>) => {
+    const cur: Record<string, string | null> = { q: q || null, letter, category: category || null, sort: sortKey, dir: sortKey ? dir : null, ...patch };
     const sp = new URLSearchParams();
-    if (q) sp.set('q', q);
-    if (l) sp.set('letter', l);
+    for (const [k, v] of Object.entries(cur)) if (v) sp.set(k, v);
     const s = sp.toString();
     return s ? `/admin/products?${s}` : '/admin/products';
   };
+  const letterHref = (l: string | null) => hrefWith({ letter: l });
+  // לחיצה על כותרת: עולה → יורד → ללא מיון
+  const sortHref = (k: InventorySortKey) =>
+    sortKey !== k ? hrefWith({ sort: k, dir: 'asc' }) : dir === 'asc' ? hrefWith({ sort: k, dir: 'desc' }) : hrefWith({ sort: null, dir: null });
+  const sortMark = (k: InventorySortKey) => (sortKey === k ? (dir === 'asc' ? ' ↑' : ' ↓') : '');
+  const sortCols: Array<{ key: InventorySortKey; label: string; width: string }> = [
+    { key: 'price', label: 'מחיר', width: 'sm:w-24' },
+    { key: 'stock', label: 'כמות', width: 'sm:w-20' },
+    { key: 'status', label: 'סטטוס', width: 'sm:w-16' },
+    { key: 'seo', label: 'SEO', width: 'sm:w-12' },
+  ];
 
   return (
     <div>
@@ -155,26 +178,64 @@ export default async function AdminProductsPage(
       ) : (
         <>
           <div className="mb-4 space-y-3">
-            <form method="get" className="flex max-w-lg gap-3">
+            <form method="get" className="flex max-w-2xl flex-wrap gap-3">
               {letter && <input type="hidden" name="letter" value={letter} />}
+              {sortKey && <input type="hidden" name="sort" value={sortKey} />}
+              {sortKey && <input type="hidden" name="dir" value={dir} />}
               <input
                 name="q"
                 defaultValue={searchParams.q ?? ''}
                 placeholder="חיפוש במלאי..."
-                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                className="min-w-40 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
               />
+              {categoryOptions.length > 0 && (
+                <select
+                  name="category"
+                  defaultValue={category}
+                  aria-label="סינון לפי קטגוריה"
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
+                >
+                  <option value="">כל הקטגוריות</option>
+                  {categoryOptions.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {'  '.repeat(c.depth)}
+                      {c.depth > 0 ? '└ ' : ''}
+                      {c.name}
+                    </option>
+                  ))}
+                  <option value="none">ללא קטגוריה</option>
+                </select>
+              )}
               <button className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white">
                 חיפוש
               </button>
             </form>
             <AlphabetBar available={letters} active={letter} hrefFor={letterHref} />
-            {(letter || q) && (
+            {(letter || q || category) && (
               <p className="text-xs text-gray-500">
-                מוצגים {visibleRows.length} מתוך {rows.length}
+                מוצגים {visibleRows.length} מתוך {rows.length} ·{' '}
+                <Link href="/admin/products" className="text-brand-700 hover:underline">
+                  ניקוי סינון
+                </Link>
               </p>
             )}
           </div>
           <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+            <div className="flex items-center gap-4 border-b border-gray-100 bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500" data-testid="inventory-sort">
+              <span className="flex-1 sm:pr-[3.75rem]">מוצר</span>
+              {sortCols.map((c) => (
+                <Link
+                  key={c.key}
+                  href={sortHref(c.key)}
+                  aria-label={`מיון לפי ${c.label}`}
+                  className={`${c.width} hover:text-gray-900 ${sortKey === c.key ? 'text-brand-700' : ''}`}
+                >
+                  {c.label}
+                  {sortMark(c.key)}
+                </Link>
+              ))}
+              <span className="hidden w-8 sm:block" />
+            </div>
             {visibleRows.length === 0 && (
               <p className="p-8 text-center text-sm text-gray-500">לא נמצאו מוצרים.</p>
             )}

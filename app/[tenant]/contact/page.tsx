@@ -6,6 +6,8 @@ import { normalizeOpeningHours } from '@/lib/theme';
 import { isModuleEnabled } from '@/lib/module-access';
 import { getEnabledChannels } from '@/lib/channel-access';
 import { SocialLinks } from '@/components/storefront/social-links';
+import { WazeIcon } from '@/components/waze-icon';
+import { wazeUrl } from '@/lib/waze';
 
 export const revalidate = 300;
 
@@ -68,6 +70,16 @@ export default async function ContactPage(props: { params: Promise<{ tenant: str
               <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
               <span>
                 {address}
+                {' · '}
+                <a
+                  href={wazeUrl(address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 align-middle text-sky-700 hover:underline"
+                >
+                  <WazeIcon className="h-4 w-4" />
+                  ניווט ב-Waze
+                </a>
                 {nursery.mapLink && !embed && (
                   <>
                     {' · '}

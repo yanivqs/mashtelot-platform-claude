@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getNurseryTheme, normalizeAnnouncement, normalizeCarousel, MAX_CAROUSEL_SLIDES } from './theme';
+import { getNurseryTheme, normalizeAnnouncement, normalizeCarousel, normalizeOpeningHours, openingHoursToText, parseOpeningHoursText, MAX_CAROUSEL_SLIDES } from './theme';
 
 describe('carousel config', () => {
   it('keeps only slides with http(s) images and clamps the interval', () => {
@@ -53,5 +53,31 @@ describe('announcement bar and header style', () => {
   it('header style defaults to classic', () => {
     expect(getNurseryTheme({ primaryColor: null, themeConfig: { headerStyle: 'float' } }).headerStyle).toBe('float');
     expect(getNurseryTheme({ primaryColor: null, themeConfig: { headerStyle: 'weird' } }).headerStyle).toBe('classic');
+  });
+});
+
+describe('opening hours', () => {
+  it('keeps the colon inside a time and splits on the label separator', () => {
+    expect(parseOpeningHoursText('ראשון - חמישי | 09:00-17:00\nשישי: 08:00-13:00\nשבת: סגור')).toEqual([
+      { label: 'ראשון - חמישי', value: '09:00-17:00' },
+      { label: 'שישי', value: '08:00-13:00' },
+      { label: 'שבת', value: 'סגור' },
+    ]);
+  });
+
+  it('repairs rows saved by the old parser', () => {
+    expect(normalizeOpeningHours([{ label: 'ראשון - חמישי | 09', value: '00-17:00' }, { label: 'שבת', value: 'סגור' }])).toEqual([
+      { label: 'ראשון - חמישי', value: '09:00-17:00' },
+      { label: 'שבת', value: 'סגור' },
+    ]);
+  });
+
+  it('round-trips through the edit text', () => {
+    const rows = [{ label: 'ראשון - חמישי', value: '09:00-17:00' }];
+    expect(parseOpeningHoursText(openingHoursToText(rows))).toEqual(rows);
+  });
+
+  it('accepts the floatTop header style', () => {
+    expect(getNurseryTheme({ primaryColor: null, themeConfig: { headerStyle: 'floatTop' } }).headerStyle).toBe('floatTop');
   });
 });

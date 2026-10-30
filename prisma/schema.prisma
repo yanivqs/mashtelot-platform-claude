@@ -115,6 +115,7 @@ enum ChannelProvider {
   LINKEDIN
   PINTEREST
   GOOGLE_BUSINESS
+  WOLT
 }
 
 model NurseryChannel {
@@ -444,6 +445,8 @@ model Order {
   paymentReference     String?         @map("payment_reference")
   shippingZoneId       String?         @map("shipping_zone_id")
   shippingCost         Decimal?        @map("shipping_cost") @db.Decimal(10, 2)
+  /// הערה פנימית של המשתלה (לא נשלחת ללקוח)
+  adminNote            String?         @map("admin_note")
   createdAt            DateTime        @default(now()) @map("created_at")
   updatedAt            DateTime        @updatedAt @map("updated_at")
   items                OrderItem[]

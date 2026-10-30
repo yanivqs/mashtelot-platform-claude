@@ -7,6 +7,10 @@ import { ImageUpload } from '@/components/admin/image-upload';
 import type { CarouselConfig } from '@/lib/theme';
 import { updateNursery, type NurseryFormState } from './actions';
 import { CarouselEditor } from './carousel-editor';
+import { OpeningHoursEditor } from './opening-hours-editor';
+import { WazeIcon } from '@/components/waze-icon';
+import { wazeUrl } from '@/lib/waze';
+import type { OpeningHoursRow } from '@/lib/theme';
 
 export interface NurseryFormValues {
   id: string;
@@ -25,7 +29,7 @@ export interface NurseryFormValues {
   accentColor: string | null;
   backgroundColor: string;
   headerStyle: string;
-  openingHoursText: string;
+  openingHours: OpeningHoursRow[];
   hero: {
     layout: string;
     headline: string | null;
@@ -150,6 +154,22 @@ export function NurseryProfileForm({
         <Text name="contactEmail" label="אימייל ליצירת קשר" defaultValue={nursery.contactEmail} dir="ltr" />
         <Text name="addressLine" label="כתובת" defaultValue={nursery.addressLine} />
         <Text name="city" label="עיר / יישוב" defaultValue={nursery.city} />
+        <div className="sm:col-span-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              const form = e.currentTarget.form;
+              const get = (n: string) => String((form?.elements.namedItem(n) as HTMLInputElement | null)?.value ?? '').trim();
+              const address = [get('addressLine'), get('city')].filter(Boolean).join(', ');
+              if (address) window.open(wazeUrl(address), '_blank', 'noopener');
+            }}
+            className="inline-flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-medium text-sky-800 hover:bg-sky-100"
+          >
+            <WazeIcon />
+            בדיקת הכתובת ב-Waze
+          </button>
+          <span className="mr-2 text-xs text-gray-500">בחנות יוצג אייקון Waze ליד הכתובת, שפותח ניווט אליה.</span>
+        </div>
         <Text
           name="mapLink"
           label="קישור למפה (Google Maps)"
@@ -158,18 +178,7 @@ export function NurseryProfileForm({
           full
           placeholder="https://maps.google.com/... או קישור embed"
         />
-        <label className="text-sm sm:col-span-2">
-          <span className="mb-1 block font-medium text-gray-700">
-            שעות פעילות (שורה לכל יום: "תווית: ערך")
-          </span>
-          <textarea
-            name="openingHoursText"
-            rows={4}
-            defaultValue={nursery.openingHoursText}
-            placeholder={'ראשון-חמישי: 08:00-17:00\nשישי: 08:00-13:00\nשבת: סגור'}
-            className={field}
-          />
-        </label>
+        <OpeningHoursEditor initial={nursery.openingHours} />
       </Section>
 
       {!showDesign && (
@@ -216,6 +225,7 @@ export function NurseryProfileForm({
           <select name="headerStyle" defaultValue={nursery.headerStyle} className={field}>
             <option value="classic">קלאסי — סרגל עליון + ניווט תחתון</option>
             <option value="float">צף — לוגו, תפריט וחיפוש יורדים לתחתית המסך בגלילה</option>
+            <option value="floatTop">צף — לוגו, תפריט וחיפוש מוצגים בחלק העליון</option>
           </select>
         </label>
         <Text name="heroHeadline" label="כותרת ראשית" defaultValue={nursery.hero.headline} full />

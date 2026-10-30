@@ -5,7 +5,9 @@ import { ArrowRight, ArrowUp, ArrowDown, X } from 'lucide-react';
 import { requireNurseryPage } from '@/lib/nursery-scope';
 import { prisma } from '@/lib/prisma';
 import { resolveProductContent } from '@/lib/seo';
-import { moveProductInCategory, removeProductFromCategory, addProductToCategory } from './actions';
+import { moveProductInCategory, removeProductFromCategory } from './actions';
+import { AddProductsList } from './add-products';
+import { EditCategoryForm } from '../forms';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +59,8 @@ export default async function CategoryManagerPage(props: { params: Promise<{ id:
           {assignments.length} מוצרים · הסדר כאן הוא הסדר שבו המוצרים מוצגים בחנות כשמסננים לפי קטגוריה.
         </p>
       </div>
+
+      <EditCategoryForm key={`${category.name}|${category.slug}`} id={category.id} name={category.name} slug={category.slug} />
 
       <section>
         <h2 className="mb-2 text-sm font-bold text-gray-900">מוצרים בקטגוריה (לפי הסדר)</h2>
@@ -116,21 +120,10 @@ export default async function CategoryManagerPage(props: { params: Promise<{ id:
       {available.length > 0 && (
         <section>
           <h2 className="mb-2 text-sm font-bold text-gray-900">הוספת מוצר לקטגוריה</h2>
-          <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
-            {available.map((p) => {
-              const { title } = resolveProductContent(p);
-              return (
-                <form key={p.id} action={addProductToCategory} className="flex items-center justify-between gap-3 border-b border-gray-50 px-4 py-2 last:border-0">
-                  <input type="hidden" name="categoryId" value={category.id} />
-                  <input type="hidden" name="productId" value={p.id} />
-                  <span className="truncate text-sm text-gray-800">{title}</span>
-                  <button className="shrink-0 rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700">
-                    הוספה
-                  </button>
-                </form>
-              );
-            })}
-          </div>
+          <AddProductsList
+            categoryId={category.id}
+            products={available.map((p) => ({ id: p.id, title: resolveProductContent(p).title, kind: p.plantId ? 'צמח' : p.supplyId ? 'ציוד' : 'מוצר' }))}
+          />
         </section>
       )}
     </div>

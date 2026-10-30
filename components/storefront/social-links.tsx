@@ -58,6 +58,14 @@ const GoogleBusiness = ({ className }: IconProps) => (
   </svg>
 );
 
+const Wolt = ({ className }: IconProps) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden>
+    <circle cx="12" cy="12" r="10" fill="currentColor" />
+    <path d="M6.2 9l1.9 6.2L10 10.6l1.9 4.6L13.8 9" fill="none" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="16.6" cy="12.8" r="1.9" fill="none" stroke="#fff" strokeWidth="1.6" />
+  </svg>
+);
+
 const ICONS: Record<ChannelProvider, (p: IconProps) => React.JSX.Element> = {
   WHATSAPP: WhatsApp,
   FACEBOOK: Facebook,
@@ -68,6 +76,7 @@ const ICONS: Record<ChannelProvider, (p: IconProps) => React.JSX.Element> = {
   LINKEDIN: LinkedIn,
   PINTEREST: Pinterest,
   GOOGLE_BUSINESS: GoogleBusiness,
+  WOLT: Wolt,
 };
 
 /** בונה URL ניתן-ללחיצה מערוץ. וואטסאפ נשמר כמספר טלפון גולמי, לא URL. */

@@ -494,3 +494,31 @@ export async function setOnHandStock(
     return { ok: true as const, delta };
   });
 }
+
+/**
+ * מחיקת הזמנה לצמיתות (ניהול). הזמנה שעדיין ניתן לבטל — מבוטלת קודם (שחרור מלאי, קופון ונקודות);
+ * בכל מקרה נקודות שנצברו מבוטלות ונקודות שמומשו מוחזרות ללקוח לפני המחיקה (פעם אחת לכל סוג).
+ * שורות יומן המלאי והנקודות נשארות (order_id מתאפס) — ההיסטוריה החשבונאית נשמרת.
+ */
+export async function deleteOrder(
+  db: PrismaClient,
+  args: { nurseryId: string; orderId: string; actorEmail?: string | null },
+): Promise<{ ok: true; snapshot: { customerName: string; totalAmount: string; status: OrderStatus; createdAt: string } } | { ok: false; error: string }> {
+  const order = await db.order.findFirst({ where: { id: args.orderId, nurseryId: args.nurseryId }, select: { status: true } });
+  if (!order) return { ok: false, error: 'ההזמנה לא נמצאה' };
+  if (order.status !== 'CANCELLED' && canTransition(order.status, 'CANCELLED')) {
+    const res = await transitionOrder(db, { nurseryId: args.nurseryId, orderId: args.orderId, to: 'CANCELLED', actorEmail: args.actorEmail });
+    if (!res.ok) return res;
+  }
+  return db.$transaction(async (tx) => {
+    const o = await tx.order.findFirst({ where: { id: args.orderId, nurseryId: args.nurseryId }, include: { items: true } });
+    if (!o) return { ok: false as const, error: 'ההזמנה לא נמצאה' };
+    if (o.stockState === 'RESERVED') await releaseLines(tx, o.nurseryId, o.id, o.items, 'RELEASE_CANCELLED', args.actorEmail);
+    await loyaltyOnTransition(tx, o, 'CANCELLED', args.actorEmail);
+    await tx.order.delete({ where: { id: o.id } });
+    return {
+      ok: true as const,
+      snapshot: { customerName: o.customerName, totalAmount: o.totalAmount.toString(), status: o.status, createdAt: o.createdAt.toISOString() },
+    };
+  });
+}

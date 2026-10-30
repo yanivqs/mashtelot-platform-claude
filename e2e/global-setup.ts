@@ -32,6 +32,9 @@ export const E2E_OWNER9 = { email: 'owner9@e2e.invalid', password: 'e2e-owner9-p
 /** משתלת "סרגל צף": הודעת סטיקי, צבע רקע, וריאנטים גודל × צבע (חנות נפרדת — לא משנה את e2eshop) */
 export const E2E_FLOAT_OWNER = { email: 'float-owner@e2e.invalid', password: 'e2e-float-pass-123' };
 export const FLOAT_SHOP = 'http://e2efloat.localhost:3100';
+/** משתלה לתיקוני הבעלים (שעות, מלאי, קטגוריות, הזמנות) — נפרדת כדי לא להתנגש בבדיקות הסרגל הצף */
+export const E2E_FIX_OWNER = { email: 'fix-owner@e2e.invalid', password: 'e2e-fix-pass-1234' };
+export const FIX_SHOP = 'http://e2efix.localhost:3100';
 /** תבנית מפורסמת שנוצרת כאן לבדיקת המוצרים הקבועים (PT-04) */
 export const E2E_SAVED_TEMPLATE = 'תוויות קבועות E2E';
 export const E2E_PREFLIGHT_TEMPLATE = 'שלט ייצור E2E';
@@ -62,13 +65,19 @@ export default async function globalSetup() {
       await db.user.deleteMany({ where: { nurseryId: oldFloat.id } });
       await db.nursery.delete({ where: { id: oldFloat.id } });
     }
+    const oldFix = await db.nursery.findUnique({ where: { subdomain: 'e2efix' } });
+    if (oldFix) {
+      await db.order.deleteMany({ where: { nurseryId: oldFix.id } });
+      await db.user.deleteMany({ where: { nurseryId: oldFix.id } });
+      await db.nursery.delete({ where: { id: oldFix.id } });
+    }
     const old = await db.nursery.findUnique({ where: { subdomain: 'e2eshop' } });
     if (old) {
       await db.order.deleteMany({ where: { nurseryId: old.id } });
       await db.user.deleteMany({ where: { nurseryId: old.id } });
       await db.nursery.delete({ where: { id: old.id } });
     }
-    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, E2E_OWNER7.email, E2E_LIFE_OWNER.email, E2E_SUPER6.email, E2E_OWNER8.email, E2E_OWNER9.email, E2E_FLOAT_OWNER.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
+    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, E2E_OWNER7.email, E2E_LIFE_OWNER.email, E2E_SUPER6.email, E2E_OWNER8.email, E2E_OWNER9.email, E2E_FLOAT_OWNER.email, E2E_FIX_OWNER.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
     // המוצרים נמחקו עם המשתלה; הצמח המרכזי (והגרסאות שלו) נמחק כאן
     await db.plant.deleteMany({ where: { hebrewName: E2E_PLANT } });
     // תבנית הדפוס שבדיקת PT יוצרת (ההזמנות שלה נמחקו עם המשתלה)
@@ -229,6 +238,47 @@ export default async function globalSetup() {
     });
     await db.user.create({
       data: { email: E2E_FLOAT_OWNER.email, role: 'NURSERY_OWNER', nurseryId: fl.id, passwordHash: await bcrypt.hash(E2E_FLOAT_OWNER.password, 4) },
+    });
+
+    const fix = await db.nursery.create({
+      data: {
+        name: 'משתלת התיקונים',
+        subdomain: 'e2efix',
+        ownerEmail: E2E_FIX_OWNER.email,
+        addressLine: 'הרצל 1',
+        city: 'רחובות',
+        openingHours: [{ label: 'ראשון - חמישי | 09', value: '00-17:00' }],
+        themeConfig: { headerStyle: 'floatTop' },
+      },
+    });
+    await db.nurseryModule.createMany({
+      data: ['plant_catalog', 'supplies', 'sales', 'orders'].map((moduleKey) => ({
+        nurseryId: fix.id,
+        moduleKey,
+        isEnabled: true,
+        ...(moduleKey === 'sales' ? { config: { mode: 'ONLINE' } } : {}),
+      })),
+    });
+    const fixPlants = await db.nurseryCategory.create({ data: { nurseryId: fix.id, name: 'צמחים', slug: 'fix-plants' } });
+    const fixHerbs = await db.nurseryCategory.create({ data: { nurseryId: fix.id, name: 'תבלינים', slug: 'fix-herbs', parentId: fixPlants.id } });
+    const basil = await db.nurseryProduct.create({
+      data: { nurseryId: fix.id, customTitle: 'בזיליקום', price: '15.00', stockQuantity: 30, categories: { create: [{ nurseryCategoryId: fixHerbs.id }] } },
+    });
+    await db.nurseryProduct.create({ data: { nurseryId: fix.id, customTitle: 'פיקוס כינורי', price: '120.00', stockQuantity: 2 } });
+    await db.nurseryProduct.create({ data: { nurseryId: fix.id, customTitle: 'מלכודת זבובים', price: '45.00', stockQuantity: 9, isActive: false } });
+    await db.order.create({
+      data: {
+        nurseryId: fix.id,
+        customerName: 'לקוחת תיקונים',
+        customerEmail: 'fix-customer@e2e.invalid',
+        customerPhone: '050-0000000',
+        deliveryMethod: 'PICKUP',
+        totalAmount: '30.00',
+        items: { create: [{ nurseryProductId: basil.id, productTitle: 'בזיליקום', quantity: 2, unitPrice: '15.00' }] },
+      },
+    });
+    await db.user.create({
+      data: { email: E2E_FIX_OWNER.email, role: 'NURSERY_OWNER', nurseryId: fix.id, passwordHash: await bcrypt.hash(E2E_FIX_OWNER.password, 4) },
     });
 
     const life = await db.nursery.create({ data: { name: 'משתלת מחזור חיים', subdomain: 'e2elife', ownerEmail: E2E_LIFE_OWNER.email, phoneNumber: '03-5551234', city: 'חולון' } });

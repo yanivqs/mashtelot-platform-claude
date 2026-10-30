@@ -4,6 +4,8 @@ import { Phone, Mail, MapPin, Clock } from 'lucide-react';
 import { normalizeOpeningHours } from '@/lib/theme';
 import type { EnabledChannel } from '@/lib/channels';
 import { SocialLinks } from './social-links';
+import { WazeIcon } from '@/components/waze-icon';
+import { wazeUrl } from '@/lib/waze';
 
 export function SiteFooter({
   nursery,
@@ -47,6 +49,17 @@ export function SiteFooter({
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
               <span>
                 {address}
+                {' · '}
+                <a
+                  href={wazeUrl(address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="ניווט ב-Waze"
+                  className="inline-flex items-center gap-1 align-middle text-sky-700 hover:underline"
+                >
+                  <WazeIcon className="h-4 w-4" />
+                  Waze
+                </a>
                 {nursery.mapLink && (
                   <>
                     {' · '}
@@ -89,7 +102,10 @@ export function SiteFooter({
       </div>
 
       <div className="border-t border-gray-100 py-5 text-center text-xs text-gray-400">
-        © {new Date().getFullYear()} {nursery.name} · כל הזכויות שמורות
+        © {new Date().getFullYear()} {nursery.name} · נבנה ע&quot;י{' '}
+        <a href="https://yanivsharabi.com/ai-solutions" target="_blank" rel="noopener" className="font-medium text-gray-500 hover:text-gray-700 hover:underline">
+          פתרונות איכות
+        </a>
       </div>
     </footer>
   );

@@ -23,12 +23,15 @@ export function MobileFloatBar({
   name,
   nav,
   categories,
+  dock = true,
 }: {
   basePath: string;
   logoUrl: string | null;
   name: string;
   nav: NavItem[];
   categories: CategoryNode[];
+  /** false (floatTop) — הסרגל נשאר בכותרת הדבוקה, בלי עותק תחתון */
+  dock?: boolean;
 }) {
   const topRef = useRef<HTMLDivElement>(null);
   const [docked, setDocked] = useState(false);
@@ -37,14 +40,14 @@ export function MobileFloatBar({
 
   useEffect(() => {
     const el = topRef.current;
-    if (!el) return;
+    if (!el || !dock) return;
     const io = new IntersectionObserver(([entry]) => {
       // רק כשהסרגל יצא מלמעלה (גלילה למטה), לא כשהוא מתחת למסך
       setDocked(!entry!.isIntersecting && entry!.boundingClientRect.top < 0);
     });
     io.observe(el);
     return () => io.disconnect();
-  }, []);
+  }, [dock]);
 
   useEffect(() => {
     if (!menuOpen && !searchOpen) return;
@@ -80,6 +83,7 @@ export function MobileFloatBar({
     <div className="md:hidden">
       <div ref={topRef}>{bar('top')}</div>
 
+      {dock && (
       <div
         data-testid="float-bar"
         data-docked={docked ? 'true' : 'false'}
@@ -91,6 +95,7 @@ export function MobileFloatBar({
       >
         {bar('bottom')}
       </div>
+      )}
 
       {/* מגירה וחיפוש — ב-portal לשורש החנות: הכותרת היא stacking context (z-30) מתחת להודעת הסטיקי.
           נפתחים רק אחרי לחיצה, כך שאין רינדור בשרת */}

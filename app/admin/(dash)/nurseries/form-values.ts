@@ -1,5 +1,5 @@
 import type { Nursery } from '@prisma/client';
-import { getNurseryTheme, openingHoursToText } from '@/lib/theme';
+import { getNurseryTheme, normalizeOpeningHours } from '@/lib/theme';
 import type { NurseryFormValues } from './profile-form';
 
 /** ממפה רשומת משתלה מה-DB לערכי הטופס המשותף. */
@@ -22,7 +22,7 @@ export function nurseryToFormValues(n: Nursery): NurseryFormValues {
     accentColor: theme.colors.accent,
     backgroundColor: theme.colors.background,
     headerStyle: theme.headerStyle,
-    openingHoursText: openingHoursToText(n.openingHours),
+    openingHours: normalizeOpeningHours(n.openingHours),
     hero: theme.hero,
     stickyHeader: theme.stickyHeader,
     carousel: theme.carousel,

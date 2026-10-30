@@ -129,9 +129,9 @@ export default async function TenantLayout(props: LayoutProps) {
         {theme.headerStyle === 'float' ? (
           // מקום לסרגל הצף כדי שלא יסתיר את תחתית הדף
           <div className="h-16 md:hidden" aria-hidden />
-        ) : (
+        ) : theme.headerStyle === 'classic' ? (
           <BottomNav basePath="" />
-        )}
+        ) : null}
         {promotion?.popupText && (
           <PromoPopup id={promotion.id} title={promotion.title} text={promotion.popupText} />
         )}

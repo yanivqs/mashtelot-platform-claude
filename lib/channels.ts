@@ -15,6 +15,7 @@ export const CHANNEL_PROVIDERS: ChannelProvider[] = [
   'LINKEDIN',
   'PINTEREST',
   'GOOGLE_BUSINESS',
+  'WOLT',
 ];
 
 export const CHANNEL_LABELS: Record<ChannelProvider, string> = {
@@ -27,6 +28,7 @@ export const CHANNEL_LABELS: Record<ChannelProvider, string> = {
   LINKEDIN: 'לינקדאין',
   PINTEREST: 'פינטרסט',
   GOOGLE_BUSINESS: 'Google Business',
+  WOLT: 'וולט (Wolt)',
 };
 
 /** וואטסאפ נשמר כמספר טלפון גולמי (לא URL) — כמו היום. שאר הערוצים הם URL. */
@@ -40,6 +42,7 @@ export const CHANNEL_VALUE_PLACEHOLDERS: Partial<Record<ChannelProvider, string>
   LINKEDIN: 'https://linkedin.com/company/...',
   PINTEREST: 'https://pinterest.com/...',
   GOOGLE_BUSINESS: 'https://g.page/...',
+  WOLT: 'https://wolt.com/he/isr/...',
 };
 
 export interface EnabledChannel {

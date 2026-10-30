@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireUser, hashPassword } from '@/lib/auth';
-import { parseOpeningHoursText, normalizeCarousel, HERO_LAYOUTS, HEADER_STYLES, type HeaderStyle, type HeroLayout } from '@/lib/theme';
+import { normalizeOpeningHours, parseOpeningHoursText, normalizeCarousel, HERO_LAYOUTS, HEADER_STYLES, type HeaderStyle, type HeroLayout } from '@/lib/theme';
 import { MODULE_KEYS } from '@/lib/modules';
 import { syncMasterCategoriesToNursery } from '@/lib/category-provision';
 import { nurseryActionScope } from '@/lib/nursery-scope';
@@ -158,8 +158,16 @@ export async function updateNursery(
     headerStyle: HEADER_STYLES.includes(headerStyleRaw) ? headerStyleRaw : 'classic',
   };
 
-  const openingHoursText = String(formData.get('openingHoursText') || '');
-  const openingHours = parseOpeningHoursText(openingHoursText);
+  // העורך שולח JSON מובנה; טקסט חופשי נתמך לתאימות
+  const hoursJson = formData.get('openingHoursJson');
+  let openingHours = parseOpeningHoursText(String(formData.get('openingHoursText') || ''));
+  if (typeof hoursJson === 'string') {
+    try {
+      openingHours = normalizeOpeningHours(JSON.parse(hoursJson));
+    } catch {
+      return { error: 'שעות הפעילות לא תקינות' };
+    }
+  }
 
   const data: Prisma.NurseryUpdateInput = {
     name,

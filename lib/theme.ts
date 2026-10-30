@@ -30,9 +30,12 @@ export interface HeroConfig {
   ctaHref: string | null;
 }
 
-/** סגנון הכותרת: classic — סרגל עליון + ניווט תחתון; float — במובייל הסרגל (☰ לוגו 🔍) יורד לתחתית בגלילה. */
-export type HeaderStyle = 'classic' | 'float';
-export const HEADER_STYLES: HeaderStyle[] = ['classic', 'float'];
+/**
+ * סגנון הכותרת: classic — סרגל עליון + ניווט תחתון; float — במובייל הסרגל (☰ לוגו 🔍) יורד לתחתית בגלילה;
+ * floatTop — אותו סרגל, נשאר דבוק למעלה.
+ */
+export type HeaderStyle = 'classic' | 'float' | 'floatTop';
+export const HEADER_STYLES: HeaderStyle[] = ['classic', 'float', 'floatTop'];
 
 /** הודעת סטיקי בראש החנות, עם קישור לדף באתר. */
 export interface AnnouncementConfig {
@@ -153,31 +156,61 @@ export function normalizeCarousel(json: unknown): CarouselConfig {
   };
 }
 
+export const MAX_OPENING_HOURS_ROWS = 14;
+
 /** המרת ה-JSON של שעות הפעילות למערך שורות תצוגה. */
 export function normalizeOpeningHours(json: unknown): OpeningHoursRow[] {
   if (!Array.isArray(json)) return [];
   const rows: OpeningHoursRow[] = [];
   for (const item of json) {
     if (!item || typeof item !== 'object') continue;
-    const label = str((item as Record<string, unknown>).label);
-    const value = str((item as Record<string, unknown>).value);
-    if (label && value) rows.push({ label, value });
+    const label = str((item as Record<string, unknown>).label)?.slice(0, 60);
+    const value = str((item as Record<string, unknown>).value)?.slice(0, 60);
+    if (!label || !value) continue;
+    // תיקון שורות שנשמרו שבורות (הפענוח הישן חתך בנקודתיים של השעה: "ראשון | 09" + "00-17:00")
+    const broken = /\d$/.test(label) && /^\d{2}(?!\d)/.test(value) ? parseOpeningHoursLine(`${label}:${value}`) : null;
+    rows.push(broken ?? { label, value });
+    if (rows.length >= MAX_OPENING_HOURS_ROWS) break;
   }
   return rows;
+}
+
+/**
+ * שורה אחת: "תווית: ערך". נקודתיים בין ספרות (09:00) הן חלק מהשעה ולא מפריד;
+ * בלי מפריד — התווית נגמרת במקום שהשעה מתחילה ("ראשון - חמישי | 09:00-17:00").
+ */
+export function parseOpeningHoursLine(line: string): OpeningHoursRow | null {
+  const t = line.trim();
+  let idx = -1;
+  for (let i = 0; i < t.length; i++) {
+    if (t[i] === ':' && !(/\d/.test(t[i - 1] ?? '') && /\d/.test(t[i + 1] ?? ''))) {
+      idx = i;
+      break;
+    }
+  }
+  let label: string;
+  let value: string;
+  if (idx !== -1) {
+    label = t.slice(0, idx);
+    value = t.slice(idx + 1);
+  } else {
+    const m = /^(.*?[^\d\s:|–-])[\s:|–-]*(\d.*)$/.exec(t);
+    if (!m) return null;
+    label = m[1]!;
+    value = m[2]!;
+  }
+  label = label.replace(/[\s:|–-]+$/, '').trim();
+  value = value.trim();
+  return label && value ? { label: label.slice(0, 60), value: value.slice(0, 60) } : null;
 }
 
 /** פענוח טקסט חופשי (שורה = "תווית: ערך") למבנה שעות הפעילות. */
 export function parseOpeningHoursText(text: string): OpeningHoursRow[] {
   return text
     .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const idx = line.indexOf(':');
-      if (idx === -1) return { label: line, value: '' };
-      return { label: line.slice(0, idx).trim(), value: line.slice(idx + 1).trim() };
-    })
-    .filter((r) => r.label && r.value);
+    .map(parseOpeningHoursLine)
+    .filter((r): r is OpeningHoursRow => r !== null)
+    .slice(0, MAX_OPENING_HOURS_ROWS);
 }
 
 /** מבנה שעות הפעילות חזרה לטקסט לעריכה. */

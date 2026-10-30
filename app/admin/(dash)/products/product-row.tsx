@@ -105,15 +105,17 @@ export function ProductRow({
             <span className="text-sky-700"> · {product.reservedQuantity} שמורות</span>
           )}
         </div>
+        <div className="hidden w-16 sm:block">
         <span
-          className={`hidden rounded-full px-2 py-0.5 text-xs font-medium sm:inline ${
+          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
             product.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
           }`}
         >
           {product.isActive ? 'פעיל' : 'מוסתר'}
         </span>
+        </div>
         <span
-          className="hidden items-center gap-1 text-xs sm:flex"
+          className="hidden w-12 items-center gap-1 text-xs sm:flex"
           title={`מדד SEO: ${product.seo.score}/100 (${SEO_LEVEL_META[product.seo.level].label})`}
         >
           <span className={`h-2 w-2 rounded-full ${SEO_LEVEL_META[product.seo.level].dot}`} />

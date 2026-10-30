@@ -5,6 +5,7 @@ import type { CategoryNode } from '@/lib/catalog';
 import { CartBadge } from './cart-badge';
 import { MobileMenu } from './mobile-menu';
 import { MobileFloatBar } from './mobile-float-bar';
+import { HeaderSearch } from './header-search';
 
 function categoryHref(basePath: string, slug: string) {
   return `${basePath}/catalog?category=${encodeURIComponent(slug)}`;
@@ -80,16 +81,20 @@ export function SiteHeader({
   showBlog?: boolean;
   /** R06-03: מודול חשבונות לקוח */
   showAccount?: boolean;
-  /** float: במובייל הסרגל יורד לתחתית בגלילה (MobileFloatBar) */
-  mobileStyle?: 'classic' | 'float';
+  /** float: במובייל הסרגל יורד לתחתית בגלילה (MobileFloatBar); floatTop: אותו סרגל נשאר למעלה */
+  mobileStyle?: 'classic' | 'float' | 'floatTop';
   /** יש הודעת סטיקי מעל — הכותרת נדבקת מתחתיה */
   belowAnnouncement?: boolean;
 }) {
-  const float = mobileStyle === 'float';
-  // במצב float הכותרת נדבקת רק במחשב; בנייד הסרגל עובר לתחתית (מחלקות מלאות — Tailwind סורק טקסט)
-  const stickyClass = !sticky
+  const float = mobileStyle === 'float' || mobileStyle === 'floatTop';
+  const docking = mobileStyle === 'float';
+  // במצב float הכותרת נדבקת רק במחשב; בנייד הסרגל עובר לתחתית (מחלקות מלאות — Tailwind סורק טקסט).
+  // floatTop — דבוקה תמיד, גם בנייד.
+  const stickyClass = mobileStyle === 'floatTop'
+    ? belowAnnouncement ? 'sticky top-9' : 'sticky top-0'
+    : !sticky
     ? ''
-    : float
+    : docking
       ? belowAnnouncement ? 'md:sticky md:top-9' : 'md:sticky md:top-0'
       : belowAnnouncement ? 'sticky top-9' : 'sticky top-0';
   const nav = [
@@ -104,7 +109,7 @@ export function SiteHeader({
   return (
     // float: בנייד בלי backdrop-blur — הוא הופך את הכותרת ל-containing block של הסרגל ה-fixed
     <header
-      className={`${stickyClass} z-30 border-b border-black/5 ${float ? 'bg-white md:bg-white/90 md:backdrop-blur' : 'bg-white/90 backdrop-blur'}`}
+      className={`${stickyClass} z-30 border-b border-black/5 ${docking ? 'bg-white md:bg-white/90 md:backdrop-blur' : 'bg-white/90 backdrop-blur'}`}
     >
       {float && (
         <MobileFloatBar
@@ -113,6 +118,7 @@ export function SiteHeader({
           name={nursery.name}
           nav={nav}
           categories={categories}
+          dock={docking}
         />
       )}
       <div className={`mx-auto max-w-6xl items-center justify-between gap-4 px-6 py-3 ${float ? 'hidden md:flex' : 'flex'}`}>
@@ -149,6 +155,7 @@ export function SiteHeader({
               {item.label}
             </Link>
           ))}
+          <HeaderSearch basePath={basePath} />
           <CartBadge href={`${basePath}/cart`} />
         </nav>
 

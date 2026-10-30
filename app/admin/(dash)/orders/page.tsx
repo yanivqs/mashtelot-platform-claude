@@ -4,6 +4,9 @@ import { formatPrice } from '@/lib/utils';
 import { PAYMENT_METHOD_LABELS } from '@/lib/payment-methods';
 import { releaseExpiredReservations } from '@/lib/order-service';
 import { OrderStatusSelect, PaymentStatusSelect } from './order-status';
+import { DeleteOrderButton, OrderNote } from './order-extras';
+import { tenantUrl } from '@/lib/seo';
+import { productSlug } from '@/lib/utils';
 
 function StockBadge({ state, expiresAt }: { state: string; expiresAt: Date | null }) {
   if (state === 'RESERVED') {
@@ -37,6 +40,7 @@ export default async function AdminOrdersPage() {
   // שמירות שפגו (48 שעות ללא אישור) משוחררות לפני התצוגה — ההזמנה עצמה נשארת פתוחה
   await releaseExpiredReservations(prisma, { nurseryId });
 
+  const nursery = await prisma.nursery.findUniqueOrThrow({ where: { id: nurseryId }, select: { subdomain: true, customDomain: true } });
   const orders = await prisma.order.findMany({
     where,
     include: { items: true, shippingZone: true },
@@ -131,12 +135,27 @@ export default async function AdminOrdersPage() {
                 {o.items.map((item) => (
                   <li key={item.id} className="flex justify-between py-0.5">
                     <span>
-                      {item.productTitle} × {item.quantity}
+                      <a
+                        href={tenantUrl(nursery, `/product/${productSlug(item.nurseryProductId, item.productTitle)}`)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-gray-800 underline-offset-2 hover:text-brand-700 hover:underline"
+                      >
+                        {item.productTitle}
+                      </a>{' '}
+                      × {item.quantity}
                     </span>
                     <span>{formatPrice(Number(item.unitPrice) * item.quantity)}</span>
                   </li>
                 ))}
               </ul>
+
+              <div className="mt-3 flex flex-wrap items-end justify-between gap-3 border-t border-gray-100 pt-3">
+                <div className="min-w-0 flex-1 basis-64">
+                  <OrderNote id={o.id} note={o.adminNote} />
+                </div>
+                <DeleteOrderButton id={o.id} customerName={o.customerName} />
+              </div>
             </div>
           ))}
         </div>
