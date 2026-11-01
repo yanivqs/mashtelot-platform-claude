@@ -32,6 +32,7 @@ export function ProductPurchase({
   variants,
   header,
   footer,
+  preview = false,
 }: {
   productId: string;
   title: string;
@@ -44,6 +45,8 @@ export function ProductPurchase({
   header: React.ReactNode;
   /** עובדות על הצמח (מרונדרות בשרת) */
   footer?: React.ReactNode;
+  /** תצוגה מקדימה מהאדמין (מוצר מוסתר) — בלי הוספה לסל */
+  preview?: boolean;
 }) {
   const initial = variants.find((v) => v.available > 0) ?? variants[0]!;
   const [selectedId, setSelectedId] = useState(initial.id);
@@ -188,6 +191,9 @@ export function ProductPurchase({
         )}
 
         <div className="mt-6 max-w-sm">
+          {preview ? (
+            <p className="rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-600">תצוגה מקדימה — לא ניתן להוסיף לסל</p>
+          ) : (
           <AddToCartButton
             // מפתח לפי וריאנט — מאפס כמות והודעת "נוסף" בהחלפה
             key={v.id}
@@ -202,6 +208,7 @@ export function ProductPurchase({
               slug,
             }}
           />
+          )}
         </div>
 
         {footer}

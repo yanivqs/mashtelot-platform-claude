@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ExternalLink } from 'lucide-react';
 import type { Plant } from '@prisma/client';
 import { formatPrice } from '@/lib/utils';
 import { SEO_LEVEL_META, type SeoScore } from '@/lib/seo-score';
@@ -48,7 +48,7 @@ export interface CategoryOption {
 }
 
 /** שורה ברשימת המלאי — לחיצה פותחת את דף העריכה של המוצר. */
-export function ProductRow({ product }: { product: RowProduct }) {
+export function ProductRow({ product, viewUrl }: { product: RowProduct; viewUrl: string }) {
   const href = `/admin/products/${product.id}`;
   const multi = product.variants.length > 1;
   const hidden = !product.isActive || product.imageRequired;
@@ -113,6 +113,16 @@ export function ProductRow({ product }: { product: RowProduct }) {
           <span className={`h-2 w-2 rounded-full ${SEO_LEVEL_META[product.seo.level].dot}`} />
           <span className={SEO_LEVEL_META[product.seo.level].text}>SEO</span>
         </span>
+        <a
+          href={viewUrl}
+          target="_blank"
+          rel="noopener"
+          aria-label={hidden ? 'תצוגה מקדימה' : 'צפייה באתר'}
+          title={hidden ? 'תצוגה מקדימה (המוצר מוסתר)' : 'צפייה באתר'}
+          className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </a>
         <Link href={href} aria-label="עריכה" className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
           <ChevronLeft className="h-4 w-4" />
         </Link>

@@ -87,6 +87,40 @@ test('categories: rename and change slug; search products to add', async ({ page
 
   await page.goto(`${FIX_SHOP}/catalog?category=herbs`);
   await expect(page.getByRole('heading', { name: 'צמחי תבלין' })).toBeVisible();
+
+  // סדר מוצרים בקטגוריה לפי מספר מיקום
+  await page.goto(`${ADMIN}/admin/products/categories`);
+  await page.getByRole('link', { name: 'צמחי תבלין' }).click();
+  const names = page.locator('main a.truncate.text-sm.font-medium');
+  await expect(names).toHaveText(['בזיליקום', 'פיקוס כינורי']);
+  const ficusPos = page.getByLabel('מיקום פיקוס כינורי');
+  await ficusPos.fill('1');
+  await ficusPos.press('Enter');
+  await expect(names).toHaveText(['פיקוס כינורי', 'בזיליקום']);
+
+  // שינוי סטטוס מדף הקטגוריה; מוצר מוסתר — תצוגה מקדימה חתומה בלבד
+  await page.getByRole('button', { name: 'הסתרת פיקוס כינורי' }).click();
+  await expect(page.getByRole('button', { name: 'הצגת פיקוס כינורי' })).toHaveText('מוסתר');
+  const preview = page.getByRole('link', { name: 'תצוגה מקדימה' });
+  const href = (await preview.getAttribute('href'))!;
+  expect(href).toMatch(/^http:\/\/e2efix\.localhost:3100\/preview\/product\/[0-9a-f-]{36}\?t=/);
+  await page.goto(href);
+  await expect(page.getByText(/תצוגה מקדימה — המוצר מוסתר מהאתר/)).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'פיקוס כינורי' })).toBeVisible();
+  await expect(page.getByText('תצוגה מקדימה — לא ניתן להוסיף לסל')).toBeVisible();
+  const bad = await page.goto(href.replace(/t=\d+/, 't=1'));
+  expect(bad?.status()).toBe(404);
+
+  // סדר קטגוריות: קטגוריה ראשית חדשה, ואז הזזה בחיצים
+  await page.goto(`${ADMIN}/admin/products/categories`);
+  await page.locator('input[name="name"]').fill('פרחים');
+  await page.getByRole('button', { name: 'הוספת קטגוריה' }).click();
+  await expect(page.getByLabel('מיקום פרחים')).toHaveValue('1');
+  await expect(page.getByLabel('מיקום צמחים')).toHaveValue('2');
+  await page.getByRole('button', { name: 'העלאת צמחים' }).click();
+  await expect(page.getByLabel('מיקום צמחים')).toHaveValue('1');
+  await expect(page.getByLabel('מיקום פרחים')).toHaveValue('2');
+  await expect(page.getByLabel('מיקום צמחי תבלין')).toHaveValue('1');
 });
 
 test('orders: product links to the store, internal note, permanent delete', async ({ page }) => {

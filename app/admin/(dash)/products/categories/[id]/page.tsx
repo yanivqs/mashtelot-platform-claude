@@ -1,11 +1,14 @@
 import { catalogRevisionInclude, localizeProduct } from '@/lib/catalog-localize';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowRight, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { ArrowRight, ArrowUp, ArrowDown, ExternalLink, X } from 'lucide-react';
 import { requireNurseryPage } from '@/lib/nursery-scope';
 import { prisma } from '@/lib/prisma';
-import { resolveProductContent } from '@/lib/seo';
-import { moveProductInCategory, removeProductFromCategory } from './actions';
+import { resolveProductContent, tenantOrigin } from '@/lib/seo';
+import { productSlug } from '@/lib/utils';
+import { adminProductViewUrl } from '@/lib/product-preview';
+import { PositionInput } from '@/components/admin/position-input';
+import { moveProductInCategory, removeProductFromCategory, toggleProductActive } from './actions';
 import { AddProductsList } from './add-products';
 import { EditCategoryForm } from '../forms';
 
@@ -19,7 +22,7 @@ export default async function CategoryManagerPage(props: { params: Promise<{ id:
   const category = await prisma.nurseryCategory.findFirst({ where: { id: params.id, nurseryId } });
   if (!category) notFound();
 
-  const [allCategories, assignments, allProducts] = await Promise.all([
+  const [allCategories, assignments, allProducts, nursery] = await Promise.all([
     prisma.nurseryCategory.findMany({ where: { nurseryId: category.nurseryId } }),
     prisma.nurseryProductCategory.findMany({
       where: { nurseryCategoryId: category.id },
@@ -31,7 +34,9 @@ export default async function CategoryManagerPage(props: { params: Promise<{ id:
       include: { plant: true, supply: true, ...catalogRevisionInclude },
       orderBy: { createdAt: 'desc' },
     }).then((rows) => rows.map(localizeProduct)),
+    prisma.nursery.findUniqueOrThrow({ where: { id: category.nurseryId }, select: { subdomain: true, customDomain: true } }),
   ]);
+  const origin = tenantOrigin(nursery);
 
   const byId = new Map(allCategories.map((c) => [c.id, c]));
   const path: string[] = [];
@@ -56,7 +61,7 @@ export default async function CategoryManagerPage(props: { params: Promise<{ id:
         <p className="text-xs text-gray-400">{path.join(' › ')}</p>
         <h1 className="text-2xl font-bold">{category.name}</h1>
         <p className="text-sm text-gray-500">
-          {assignments.length} מוצרים · הסדר כאן הוא הסדר שבו המוצרים מוצגים בחנות כשמסננים לפי קטגוריה.
+          {assignments.length} מוצרים · הסדר כאן הוא הסדר שבו המוצרים מוצגים בחנות כשמסננים לפי קטגוריה. אפשר להקליד מספר מיקום ולהקיש Enter, או להשתמש בחיצים.
         </p>
       </div>
 
@@ -71,10 +76,21 @@ export default async function CategoryManagerPage(props: { params: Promise<{ id:
         ) : (
           <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
             {assignments.map((a, index) => {
-              const { title, image } = resolveProductContent(a.nurseryProduct);
+              const p = a.nurseryProduct;
+              const { title, image } = resolveProductContent(p);
+              const visible = p.isActive && !p.imageRequired;
+              const viewUrl = adminProductViewUrl(origin, { id: p.id, slug: productSlug(p.id, title, p.slug), visible });
+              const ids = (
+                <>
+                  <input type="hidden" name="categoryId" value={category.id} />
+                  <input type="hidden" name="productId" value={a.nurseryProductId} />
+                </>
+              );
               return (
-                <div key={a.nurseryProductId} className="flex items-center gap-3 border-b border-gray-50 px-4 py-2.5 last:border-0">
-                  <span className="w-6 text-center text-xs text-gray-400">{index + 1}</span>
+                <div key={a.nurseryProductId} className="flex flex-wrap items-center gap-2 border-b border-gray-50 px-3 py-2.5 last:border-0 sm:flex-nowrap sm:gap-3 sm:px-4">
+                  <PositionInput key={`${a.nurseryProductId}-${index}`} action={moveProductInCategory} position={index + 1} max={assignments.length} label={`מיקום ${title}`}>
+                    {ids}
+                  </PositionInput>
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-50">
                     {image ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -84,32 +100,55 @@ export default async function CategoryManagerPage(props: { params: Promise<{ id:
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-gray-900">{title}</p>
-                    {!a.nurseryProduct.isActive && <p className="text-xs text-gray-400">מוסתר בחנות</p>}
+                    <Link href={`/admin/products/${p.id}`} className="block truncate text-sm font-medium text-gray-900 hover:text-brand-700 hover:underline">
+                      {title}
+                    </Link>
+                    {p.isActive && p.imageRequired && <p className="text-xs text-red-700">מוסתר עד שתועלה תמונה</p>}
                   </div>
-                  <form action={moveProductInCategory}>
-                    <input type="hidden" name="categoryId" value={category.id} />
-                    <input type="hidden" name="productId" value={a.nurseryProductId} />
-                    <input type="hidden" name="direction" value="up" />
-                    <button disabled={index === 0} aria-label="העלאה" className="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30">
-                      <ArrowUp className="h-4 w-4" />
-                    </button>
-                  </form>
-                  <form action={moveProductInCategory}>
-                    <input type="hidden" name="categoryId" value={category.id} />
-                    <input type="hidden" name="productId" value={a.nurseryProductId} />
-                    <input type="hidden" name="direction" value="down" />
-                    <button disabled={index === assignments.length - 1} aria-label="הורדה" className="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30">
-                      <ArrowDown className="h-4 w-4" />
-                    </button>
-                  </form>
-                  <form action={removeProductFromCategory}>
-                    <input type="hidden" name="categoryId" value={category.id} />
-                    <input type="hidden" name="productId" value={a.nurseryProductId} />
-                    <button aria-label="הסרה מהקטגוריה" className="rounded p-1.5 text-red-500 hover:bg-red-50">
-                      <X className="h-4 w-4" />
-                    </button>
-                  </form>
+                  <div className="flex items-center gap-0.5">
+                    <form action={toggleProductActive}>
+                      {ids}
+                      <button
+                        aria-label={p.isActive ? `הסתרת ${title}` : `הצגת ${title}`}
+                        title={p.isActive ? 'לחצו כדי להסתיר מהחנות' : 'לחצו כדי להציג בחנות'}
+                        className={`me-1 rounded-full px-2.5 py-1 text-xs font-medium ${
+                          visible ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {p.isActive ? 'פעיל' : 'מוסתר'}
+                      </button>
+                    </form>
+                    <a
+                      href={viewUrl}
+                      target="_blank"
+                      rel="noopener"
+                      aria-label={visible ? 'צפייה באתר' : 'תצוגה מקדימה'}
+                      title={visible ? 'צפייה באתר' : 'תצוגה מקדימה (המוצר מוסתר)'}
+                      className="rounded p-1.5 text-gray-500 hover:bg-gray-100"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                    <form action={moveProductInCategory}>
+                      {ids}
+                      <input type="hidden" name="direction" value="up" />
+                      <button disabled={index === 0} aria-label="העלאה" className="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30">
+                        <ArrowUp className="h-4 w-4" />
+                      </button>
+                    </form>
+                    <form action={moveProductInCategory}>
+                      {ids}
+                      <input type="hidden" name="direction" value="down" />
+                      <button disabled={index === assignments.length - 1} aria-label="הורדה" className="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30">
+                        <ArrowDown className="h-4 w-4" />
+                      </button>
+                    </form>
+                    <form action={removeProductFromCategory}>
+                      {ids}
+                      <button aria-label="הסרה מהקטגוריה" className="rounded p-1.5 text-red-500 hover:bg-red-50">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </form>
+                  </div>
                 </div>
               );
             })}

@@ -49,7 +49,10 @@ export async function createNurseryCategory(
   const exists = await prisma.nurseryCategory.findFirst({ where: { nurseryId, slug } });
   if (exists) return { error: 'קטגוריה בשם זה כבר קיימת' };
 
-  await prisma.nurseryCategory.create({ data: { nurseryId, name, slug, parentId } });
+  // אם בעל המשתלה כבר סידר את האחיות ידנית — החדשה בסוף; אחרת נשאר הסדר האלפביתי (0)
+  const last = await prisma.nurseryCategory.aggregate({ where: { nurseryId, parentId }, _max: { sortOrder: true } });
+  const sortOrder = (last._max.sortOrder ?? 0) > 0 ? last._max.sortOrder! + 1 : 0;
+  await prisma.nurseryCategory.create({ data: { nurseryId, name, slug, parentId, sortOrder } });
   revalidatePath('/admin/products/categories');
   revalidatePath('/admin/products');
   return { ok: true };
@@ -108,4 +111,43 @@ export async function updateNurseryCategory(
   revalidatePath(`/admin/products/categories/${id}`);
   revalidatePath('/admin/products');
   return { ok: true };
+}
+
+/** מזיז פריט למיקום (0-based, נחתך לטווח) ברשימה — מחזיר רשימה חדשה. */
+function moveTo<T>(list: T[], item: T, index: number): T[] {
+  const rest = list.filter((x) => x !== item);
+  const at = Math.max(0, Math.min(index, rest.length));
+  return [...rest.slice(0, at), item, ...rest.slice(at)];
+}
+
+/**
+ * סדר תצוגת קטגוריה בין אחיותיה (אותה קטגוריית אב) — בתפריט, בסינון ובקטלוג.
+ * position: מספר 1..n, או direction=up/down להזזה במקום אחד. האחיות ממוספרות מחדש 0..n-1.
+ */
+export async function moveNurseryCategory(formData: FormData): Promise<void> {
+  const nurseryId = await resolveNurseryId();
+  const id = String(formData.get('id') || '');
+  const category = await prisma.nurseryCategory.findFirst({ where: { id, nurseryId }, select: { id: true, parentId: true } });
+  if (!category) return;
+
+  const all = await prisma.nurseryCategory.findMany({
+    where: { nurseryId },
+    select: { id: true, name: true, parentId: true, sortOrder: true },
+  });
+  const ids = new Set(all.map((c) => c.id));
+  // הורה שנמחק = שורש (כמו בעץ)
+  const parentOf = (c: { parentId: string | null }) => (c.parentId && ids.has(c.parentId) ? c.parentId : null);
+  const siblings = all
+    .filter((c) => parentOf(c) === parentOf(category))
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'he'))
+    .map((c) => c.id);
+  const current = siblings.indexOf(id);
+  const direction = String(formData.get('direction') || '');
+  const position = parseInt(String(formData.get('position') || ''), 10);
+  const target = direction === 'up' ? current - 1 : direction === 'down' ? current + 1 : Number.isFinite(position) ? position - 1 : current;
+  const order = moveTo(siblings, id, target);
+
+  await prisma.$transaction(order.map((cid, index) => prisma.nurseryCategory.update({ where: { id: cid }, data: { sortOrder: index } })));
+  revalidatePath('/admin/products/categories');
+  revalidatePath('/admin/products');
 }

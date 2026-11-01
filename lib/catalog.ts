@@ -245,6 +245,12 @@ export async function getProductById(nurseryId: string, id: string) {
   return p ? localizeProduct(p) : null;
 }
 
+/** מוצר של המשתלה גם אם מוסתר — לתצוגה מקדימה חתומה מהאדמין בלבד. */
+export async function getProductForPreview(nurseryId: string, id: string) {
+  const p = await prisma.nurseryProduct.findFirst({ where: { id, nurseryId }, include: withRefs });
+  return p ? localizeProduct(p) : null;
+}
+
 /** מוצר לפי הכתובת: slug שמור, 8 תווי מזהה בסוף הכתובת, או מזהה מלא (פורמט ישן). */
 export const getProductByParam = cache(async (nurseryId: string, param: string) => {
   const bySlug = await prisma.nurseryProduct.findFirst({ where: { nurseryId, slug: param, ...STORE_VISIBLE }, include: withRefs });

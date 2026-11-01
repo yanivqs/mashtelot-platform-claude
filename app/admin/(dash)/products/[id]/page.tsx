@@ -5,6 +5,7 @@ import { requireNurseryPage } from '@/lib/nursery-scope';
 import { prisma } from '@/lib/prisma';
 import { flattenCategoryTree } from '@/lib/category-tree';
 import { tenantOrigin } from '@/lib/seo';
+import { adminProductViewUrl } from '@/lib/product-preview';
 import { aiSlugAvailable } from '@/lib/ai-slug';
 import { loadAdminProducts } from '../load';
 import { ProductEditor } from '../product-editor';
@@ -45,17 +46,15 @@ export default async function EditProductPage(props: {
             <span className={visible ? 'text-green-700' : 'text-gray-500'}>{visible ? 'מוצג באתר' : 'מוסתר מהאתר'}</span>
           </p>
         </div>
-        {visible && (
-          <a
-            href={`${origin}/product/${product.slug ?? product.autoSlug}`}
+        <a
+            href={adminProductViewUrl(origin, { id: product.id, slug: product.slug ?? product.autoSlug, visible })}
             target="_blank"
             rel="noopener"
             className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
           >
             <ExternalLink className="h-4 w-4" />
-            צפייה באתר
+            {visible ? 'צפייה באתר' : 'תצוגה מקדימה'}
           </a>
-        )}
       </div>
 
       {(isNew || product.imageRequired || product.needsDescription) && (

@@ -8,6 +8,8 @@ import { lettersOf } from '@/lib/letter-filter';
 import { AlphabetBar } from '@/components/alphabet-bar';
 import { ProductRow } from './product-row';
 import { loadAdminProducts } from './load';
+import { tenantOrigin } from '@/lib/seo';
+import { adminProductViewUrl } from '@/lib/product-preview';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,10 +22,12 @@ export default async function AdminProductsPage(
   const { nurseryId } = await requireNurseryPage({ any: ['plant_catalog', 'supplies'] });
 
 
-  const [rows, nurseryCategories] = await Promise.all([
+  const [rows, nurseryCategories, nursery] = await Promise.all([
     loadAdminProducts(nurseryId),
     prisma.nurseryCategory.findMany({ where: { nurseryId } }),
+    prisma.nursery.findUniqueOrThrow({ where: { id: nurseryId }, select: { subdomain: true, customDomain: true } }),
   ]);
+  const origin = tenantOrigin(nursery);
 
   const categoryOptions = flattenCategoryTree(nurseryCategories);
   const waitingImage = rows.filter((r) => r.imageRequired).length;
@@ -197,13 +201,17 @@ export default async function AdminProductsPage(
                   {sortMark(c.key)}
                 </Link>
               ))}
-              <span className="hidden w-8 sm:block" />
+              <span className="hidden w-[4.5rem] sm:block" />
             </div>
             {visibleRows.length === 0 && (
               <p className="p-8 text-center text-sm text-gray-500">לא נמצאו מוצרים.</p>
             )}
             {visibleRows.map((product) => (
-              <ProductRow key={product.id} product={product} />
+              <ProductRow
+                key={product.id}
+                product={product}
+                viewUrl={adminProductViewUrl(origin, { id: product.id, slug: product.slug ?? product.autoSlug, visible: product.isActive && !product.imageRequired })}
+              />
             ))}
           </div>
         </>
