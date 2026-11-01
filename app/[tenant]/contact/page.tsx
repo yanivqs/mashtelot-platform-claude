@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Breadcrumbs } from '@/components/storefront/breadcrumbs';
 import { notFound } from 'next/navigation';
 import { Phone, Mail, MapPin, Clock } from 'lucide-react';
 import { getNurseryByTenant } from '@/lib/tenant';
@@ -44,6 +45,7 @@ export default async function ContactPage(props: { params: Promise<{ tenant: str
 
   return (
     <div dir="rtl" className="mx-auto max-w-4xl px-6 py-12">
+      <Breadcrumbs nursery={nursery} items={[{ label: 'צור קשר' }]} className="mb-4" />
       <h1 className="text-3xl font-bold tracking-tight text-gray-900">צור קשר</h1>
       {nursery.aboutText?.trim() && (
         <p className="mt-4 max-w-2xl whitespace-pre-line leading-relaxed text-gray-600">

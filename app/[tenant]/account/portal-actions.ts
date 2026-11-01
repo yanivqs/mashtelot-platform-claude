@@ -57,7 +57,7 @@ export async function productSummaries(tenant: string, ids: string[]): Promise<P
     .map((p) => {
       const { title, image } = resolveProductContent(p);
       const s = priceSummary(p.variants, p);
-      return { id: p.id, title, slug: productSlug(p.id, title), image, price: s.min, fromPrice: s.min !== s.max };
+      return { id: p.id, title, slug: productSlug(p.id, title, p.slug), image, price: s.min, fromPrice: s.min !== s.max };
     });
 }
 

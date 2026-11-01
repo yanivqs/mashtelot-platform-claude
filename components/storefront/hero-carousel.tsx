@@ -81,14 +81,14 @@ export function HeroCarousel({
                 loading={i === 0 ? 'eager' : 'lazy'}
                 className="absolute inset-0 -z-10 h-full w-full object-cover"
               />
-              <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/70 via-black/35 to-black/10" />
+              <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/50 to-black/30" />
               <div className="mx-auto flex h-full max-w-5xl flex-col items-center justify-center px-6 text-center text-white">
                 {i === 0 ? (
-                  <h1 className="text-4xl font-bold tracking-tight drop-shadow-sm sm:text-5xl">{headline}</h1>
+                  <h1 className="text-4xl font-bold tracking-tight [text-shadow:0_2px_12px_rgb(0_0_0/0.55)] sm:text-5xl">{headline}</h1>
                 ) : (
-                  <h2 className="text-4xl font-bold tracking-tight drop-shadow-sm sm:text-5xl">{headline}</h2>
+                  <h2 className="text-4xl font-bold tracking-tight [text-shadow:0_2px_12px_rgb(0_0_0/0.55)] sm:text-5xl">{headline}</h2>
                 )}
-                {sub && <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-white/90">{sub}</p>}
+                {sub && <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-white [text-shadow:0_1px_8px_rgb(0_0_0/0.6)]">{sub}</p>}
                 <Link
                   href={ctaHref}
                   tabIndex={active ? 0 : -1}

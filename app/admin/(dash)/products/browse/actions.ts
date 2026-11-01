@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
 import { assignPlantCategoriesToProduct } from '@/lib/category-provision';
@@ -17,6 +18,7 @@ export async function addCatalogItem(formData: FormData): Promise<void> {
 
   if (!refId) return;
 
+  let createdId: string | null = null;
   try {
     const product = await prisma.nurseryProduct.create({
       data: {
@@ -24,9 +26,12 @@ export async function addCatalogItem(formData: FormData): Promise<void> {
         price,
         stockQuantity: 0,
         isActive: price !== '0.00',
+        // מוסתר מהחנות עד שבעל המשתלה מעלה תמונה משלו (תמונת הקטלוג משותפת לכל המשתלות)
+        imageRequired: true,
         ...(kind === 'supply' ? { supplyId: refId } : { plantId: refId }),
       },
     });
+    createdId = product.id;
     if (kind !== 'supply') await assignPlantCategoriesToProduct(product.id, nurseryId, refId);
   } catch {
     // כנראה כבר קיים (unique constraint) - מתעלמים
@@ -34,4 +39,6 @@ export async function addCatalogItem(formData: FormData): Promise<void> {
 
   revalidatePath('/admin/products/browse');
   revalidatePath('/admin/products');
+  // ממשיכים מיד להשלמת תמונה ותיאור
+  if (createdId) redirect(`/admin/products/${createdId}?new=1`);
 }

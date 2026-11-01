@@ -154,7 +154,7 @@ export default async function AdminOverviewPage(
       {draftBanner}
       <h1 className="mb-1 text-2xl font-bold">{user.nursery?.name}</h1>
       <p className="mb-6 text-sm text-gray-500">סקירת החנות שלך</p>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Stat label="סה״כ מוצרים" value={total} href="/admin/products" />
         <Stat label="פעילים" value={active} href="/admin/products" />
         <Stat label="אזלו מהמלאי" value={outOfStock} href="/admin/products" />

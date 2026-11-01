@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Breadcrumbs, categoryCrumbHref } from '@/components/storefront/breadcrumbs';
 import { notFound } from 'next/navigation';
 import { getNurseryByTenant } from '@/lib/tenant';
 import { getCatalogPage, getCategoryNav, findCategoryPath, parseFacetParams } from '@/lib/catalog';
@@ -77,11 +78,22 @@ export default async function CatalogPage(props: CatalogPageProps) {
   return (
     <div dir="rtl" className="mx-auto max-w-6xl px-6 py-10">
       <header className="mb-6 border-b border-gray-100 pb-5">
-        {view.categoryPath.length > 0 && (
-          <p className="mb-1 text-sm text-gray-500">
-            {view.categoryPath.map((c) => c.name).join(' › ')}
-          </p>
-        )}
+        <Breadcrumbs
+          nursery={nursery}
+          className="mb-3"
+          items={
+            view.categoryPath.length > 0 || searchParams.q
+              ? [
+                  { label: 'קטלוג', href: '/catalog' },
+                  ...view.categoryPath.map((c, i) => ({
+                    label: c.name,
+                    href: i < view.categoryPath.length - 1 || searchParams.q ? categoryCrumbHref(c.slug) : undefined,
+                  })),
+                  ...(searchParams.q ? [{ label: `חיפוש: ${searchParams.q}` }] : []),
+                ]
+              : [{ label: 'קטלוג' }]
+          }
+        />
         <h1 className="text-3xl font-bold tracking-tight text-gray-900">
           {searchParams.q
             ? `תוצאות חיפוש: ${searchParams.q}`

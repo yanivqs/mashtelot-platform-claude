@@ -7,6 +7,10 @@ import { requireNurseryAction } from '@/lib/nursery-scope';
 import { assertOwnedBy } from '@/lib/ownership';
 import { setOnHandStock } from '@/lib/order-service';
 import { recordAudit } from '@/lib/audit';
+import { saveRedirect } from '@/lib/redirects-admin';
+import { rateLimit } from '@/lib/rate-limit';
+import { suggestSlugWithAi } from '@/lib/ai-slug';
+import { isReservedProductSlug, normalizeProductSlug, productSlug } from '@/lib/utils';
 
 /** המוצר שייך למשתלת המשתמש המחובר (ללא עקיפה לסופר-אדמין — C-P1-01). */
 async function ownedProduct(
@@ -60,11 +64,25 @@ export async function updateProduct(
     const { nurseryId, actorEmail } = await ownedProduct(id);
     const before = await prisma.nurseryProduct.findUnique({
       where: { id },
-      select: { price: true, stockQuantity: true },
+      select: { price: true, stockQuantity: true, slug: true, customTitle: true, plant: { select: { hebrewName: true } }, supply: { select: { title: true } } },
     });
 
     const price = toDecimalString(formData.get('price'));
     if (!price) return { error: 'מחיר לא תקין' };
+
+    // כתובת המוצר: אותיות לועזיות, ספרות ומקפים; ייחודית במשתלה
+    let slug = before?.slug ?? null;
+    if (formData.has('slug')) {
+      const raw = String(formData.get('slug') || '');
+      slug = normalizeProductSlug(raw);
+      if (raw.trim() && !slug) return { error: 'כתובת לא תקינה — אותיות באנגלית, ספרות ומקפים בלבד' };
+      if (slug && isReservedProductSlug(slug)) return { error: 'הכתובת לא יכולה להיות מזהה — בחרו מילים' };
+      if (slug && slug !== before?.slug) {
+        const taken = await prisma.nurseryProduct.findFirst({ where: { nurseryId, slug, id: { not: id } }, select: { id: true } });
+        if (taken) return { error: 'הכתובת כבר בשימוש במוצר אחר' };
+      }
+    }
+    const customImageUrl = optionalUrl(formData.get('customImageUrl'));
 
     // מלאי ברמת המוצר רק כשיש וריאנט יחיד (השדה לא מוצג כשיש כמה — המלאי לכל וריאנט, §7.01)
     const stockField = formData.get('stockQuantity');
@@ -85,7 +103,10 @@ export async function updateProduct(
         isActive: formData.get('isActive') === 'on',
         customTitle: (String(formData.get('customTitle') || '').trim() || null),
         customDescription: (String(formData.get('customDescription') || '').trim() || null),
-        customImageUrl: optionalUrl(formData.get('customImageUrl')),
+        customImageUrl,
+        slug,
+        // הועלתה תמונה משלכם — המוצר כבר לא ממתין לתמונה
+        ...(customImageUrl ? { imageRequired: false } : {}),
         seoMetaTitle: (String(formData.get('seoMetaTitle') || '').trim() || null),
         seoMetaDescription: (String(formData.get('seoMetaDescription') || '').trim() || null),
         ...(formData.has('optionLabel')
@@ -98,6 +119,13 @@ export async function updateProduct(
     });
 
     await syncProductCategories(id, nurseryId, formData.getAll('categoryIds').map(String));
+
+    // הכתובת השמורה הקודמת ממשיכה לעבוד — הפניה קבועה לכתובת החדשה
+    if (before?.slug && before.slug !== slug) {
+      const title = String(formData.get('customTitle') || '').trim() || before.customTitle || before.plant?.hebrewName || before.supply?.title || 'מוצר';
+      const res = await saveRedirect(prisma, nurseryId, `/product/${before.slug}`, `/product/${productSlug(id, title, slug)}`);
+      if (!res.ok) console.warn('[products] הפניה מהכתובת הקודמת לא נשמרה', res.error);
+    }
 
     if (before) {
       const priceChanged = before.price.toString() !== price;
@@ -120,10 +148,31 @@ export async function updateProduct(
     }
 
     revalidatePath('/admin/products');
+    revalidatePath(`/admin/products/${id}`);
     return { ok: true };
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'שגיאה בעדכון' };
   }
+}
+
+export type SuggestSlugState = { slug?: string; error?: string };
+
+/** הצעת כתובת באנגלית עם AI (נספר לחיוב — lib/ai-slug.ts). */
+export async function suggestProductSlug(productId: string, title: string): Promise<SuggestSlugState> {
+  const { nurseryId, actorEmail } = await ownedProduct(productId);
+  const rl = await rateLimit(`ai-slug:${nurseryId}`, 30, 60 * 60 * 1000);
+  if (!rl.ok) return { error: 'הגעתם למגבלת ההצעות לשעה — נסו שוב מאוחר יותר' };
+  const p = await prisma.nurseryProduct.findUnique({
+    where: { id: productId },
+    select: { plantId: true, supplyId: true, plant: { select: { latinName: true } } },
+  });
+  return suggestSlugWithAi({
+    nurseryId,
+    actorEmail,
+    title: String(title || '').trim().slice(0, 120) || 'מוצר',
+    latinName: p?.plant?.latinName ?? null,
+    kind: p?.plantId ? 'plant' : p?.supplyId ? 'garden supply' : null,
+  });
 }
 
 export async function createCustomProduct(
@@ -166,4 +215,5 @@ export async function deleteProduct(formData: FormData): Promise<void> {
   await ownedProduct(id);
   await prisma.nurseryProduct.delete({ where: { id } });
   revalidatePath('/admin/products');
+  redirect('/admin/products');
 }

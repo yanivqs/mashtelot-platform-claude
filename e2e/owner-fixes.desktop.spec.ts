@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { PrismaClient } from '@prisma/client';
 import { expect, test } from './fixtures';
 import { ADMIN } from '../playwright.config';
 import { E2E_FIX_OWNER, FIX_SHOP } from './global-setup';
@@ -59,7 +60,7 @@ test('inventory: filter by parent category includes subcategories; sort by price
   await expect(page.getByText('מוצגים 2 מתוך 3')).toBeVisible();
 
   await page.goto(`${ADMIN}/admin/products`);
-  const titles = page.locator('p.truncate.text-sm.font-medium');
+  const titles = page.locator('main a.truncate.text-sm.font-medium');
   await page.getByRole('link', { name: 'מיון לפי מחיר' }).click();
   await expect(page).toHaveURL(/sort=price&dir=asc/);
   await expect(titles.first()).toHaveText('בזיליקום');
@@ -91,7 +92,7 @@ test('categories: rename and change slug; search products to add', async ({ page
 test('orders: product links to the store, internal note, permanent delete', async ({ page }) => {
   await login(page);
   await page.goto(`${ADMIN}/admin/orders`);
-  await expect(page.getByRole('link', { name: 'בזיליקום' })).toHaveAttribute('href', /^http:\/\/e2efix\.localhost:3100\/product\/.+--/);
+  await expect(page.getByRole('link', { name: 'בזיליקום' })).toHaveAttribute('href', /^http:\/\/e2efix\.localhost:3100\/product\/.+-[0-9a-f]{8}$/);
 
   await page.getByRole('button', { name: '+ הוספת הערה' }).click();
   await page.getByLabel('הערה פנימית (לא נשלחת ללקוח)').fill('להתקשר לפני איסוף');
@@ -103,4 +104,57 @@ test('orders: product links to the store, internal note, permanent delete', asyn
   await page.getByRole('button', { name: 'מחיקת הזמנה' }).click();
   await page.getByRole('button', { name: 'כן, למחוק' }).click();
   await expect(page.getByText('אין הזמנות עדיין.')).toBeVisible();
+});
+
+test('product name opens the edit page; saved slug, redirects, breadcrumbs; product waiting for an image is hidden', async ({ page }) => {
+  await login(page);
+  await page.goto(`${ADMIN}/admin/products`);
+  await page.getByRole('link', { name: 'בזיליקום' }).click();
+  await expect(page).toHaveURL(/\/admin\/products\/[0-9a-f-]{36}$/);
+  const id = page.url().split('/').pop()!;
+  // בלי מפתח API הכפתור מוצג כלא זמין
+  await expect(page.getByRole('button', { name: 'הצע שם עם AI' })).toBeDisabled();
+
+  await page.getByLabel('כתובת המוצר באתר (באנגלית)').fill('Fresh Basil');
+  await page.getByRole('button', { name: 'שמירה' }).click();
+  await expect(page.getByText('נשמר ✓')).toBeVisible();
+
+  await page.goto(`${FIX_SHOP}/product/fresh-basil`);
+  await expect(page.getByRole('heading', { level: 1, name: 'בזיליקום' })).toBeVisible();
+  const crumbs = page.getByRole('navigation', { name: 'פירורי לחם' });
+  await expect(crumbs.getByRole('link', { name: 'קטלוג' })).toBeVisible();
+  await expect(crumbs.getByRole('link', { name: 'צמחים' })).toBeVisible();
+
+  // כתובת קצרה (שם + 8 תווי מזהה) ופורמט ישן (מזהה מלא) — הפניה לכתובת השמורה
+  await page.goto(`${FIX_SHOP}/product/${encodeURIComponent('בזיליקום')}-${id.slice(0, 8)}`);
+  await expect(page).toHaveURL(`${FIX_SHOP}/product/fresh-basil`);
+  await page.goto(`${FIX_SHOP}/product/x--${id}`);
+  await expect(page).toHaveURL(`${FIX_SHOP}/product/fresh-basil`);
+
+  // שינוי הכתובת — הכתובת השמורה הקודמת מופנית לחדשה
+  await page.goto(`${ADMIN}/admin/products/${id}`);
+  await page.getByLabel('כתובת המוצר באתר (באנגלית)').fill('basil');
+  await page.getByRole('button', { name: 'שמירה' }).click();
+  await expect(page.getByText('נשמר ✓')).toBeVisible();
+  await page.goto(`${FIX_SHOP}/product/fresh-basil`);
+  await expect(page).toHaveURL(`${FIX_SHOP}/product/basil`);
+
+  // מוצר שממתין לתמונה: מוסתר מהחנות ומסומן באדמין (אותה כניסה — מגבלת ניסיונות התחברות לאימייל)
+  const db = new PrismaClient();
+  try {
+    const fix = await db.nursery.findUniqueOrThrow({ where: { subdomain: 'e2efix' } });
+    await db.nurseryProduct.create({
+      data: { nurseryId: fix.id, customTitle: 'רקפת ממתינה', price: '20.00', stockQuantity: 5, imageRequired: true },
+    });
+  } finally {
+    await db.$disconnect();
+  }
+  await page.goto(`${FIX_SHOP}/catalog`);
+  await expect(page.getByText('בזיליקום').first()).toBeVisible();
+  await expect(page.getByText('רקפת ממתינה')).toHaveCount(0);
+
+  await page.goto(`${ADMIN}/admin/products`);
+  await expect(page.getByText(/1 מוצרים מוסתרים מהאתר/)).toBeVisible();
+  await page.getByRole('link', { name: 'רקפת ממתינה' }).click();
+  await expect(page.getByText(/חובה להעלות תמונה משלכם/)).toBeVisible();
 });

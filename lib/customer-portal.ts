@@ -3,6 +3,7 @@
  * מקבל את ה-DB כפרמטר (בר-בדיקה). כל שאילתה מסוננת לפי הלקוח **וגם** המשתלה —
  * לקוח לעולם לא רואה הזמנה/כתובת/מוצר של לקוח או משתלה אחרים (§13 קבלה).
  */
+import { STORE_VISIBLE } from '@/lib/product-visibility';
 import type { PrismaClient } from '@prisma/client';
 import { availableQuantity } from '@/lib/stock';
 import { activeVariants, effectivePrice, lineTitle } from '@/lib/variants';
@@ -90,7 +91,7 @@ export async function toggleFavorite(db: PrismaClient, nurseryId: string, custom
     await db.customerFavorite.delete({ where: { id: existing.id } });
     return { ok: true, favorite: false };
   }
-  const p = await db.nurseryProduct.findFirst({ where: { id: productId, nurseryId, isActive: true }, select: { id: true } });
+  const p = await db.nurseryProduct.findFirst({ where: { id: productId, nurseryId, ...STORE_VISIBLE }, select: { id: true } });
   if (!p) return { ok: false, error: 'המוצר לא נמצא' };
   await db.customerFavorite.upsert({
     where: { customerId_nurseryProductId: { customerId, nurseryProductId: p.id } },
@@ -131,7 +132,7 @@ export async function reorderLines(
   for (const item of order.items) {
     const name = lineTitle(item.productTitle, item.variantName);
     const product = await db.nurseryProduct.findFirst({
-      where: { id: item.nurseryProductId, nurseryId, isActive: true },
+      where: { id: item.nurseryProductId, nurseryId, ...STORE_VISIBLE },
       include: { variants: true },
     });
     const variants = product ? activeVariants(product.variants) : [];

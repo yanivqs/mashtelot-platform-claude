@@ -8,6 +8,8 @@ import { categoryAndDescendantIds } from '@/lib/category-tree';
 import { parseLetter } from '@/lib/alphabet';
 import { PLANT_FACETS } from '@/lib/plant-facets';
 import { priceSummary } from '@/lib/variants';
+import { STORE_VISIBLE } from '@/lib/product-visibility';
+import { parseProductParam } from '@/lib/utils';
 import {
   buildCatalogView,
   parseSort,
@@ -62,7 +64,7 @@ export const getCategoryNav = cache(async (nurseryId: string): Promise<CategoryN
   const [categories, used] = await Promise.all([
     getRawCategories(nurseryId),
     prisma.nurseryProductCategory.findMany({
-      where: { nurseryProduct: { nurseryId, isActive: true } },
+      where: { nurseryProduct: { nurseryId, ...STORE_VISIBLE } },
       select: { nurseryCategoryId: true },
       distinct: ['nurseryCategoryId'],
     }),
@@ -113,7 +115,7 @@ export function findCategoryPath(nav: CategoryNode[], param: string | undefined)
 /** כל המוצרים הפעילים של המשתלה בשדות מינימליים — בסיס לסינון ולספירות. */
 const getCatalogIndex = cache(async (nurseryId: string) => {
   const rows = await prisma.nurseryProduct.findMany({
-    where: { nurseryId, isActive: true },
+    where: { nurseryId, ...STORE_VISIBLE },
     select: {
       id: true,
       createdAt: true,
@@ -227,7 +229,7 @@ export async function getCatalogPage(
 
 export async function getFeaturedProducts(nurseryId: string, take = 8) {
   const rows = await prisma.nurseryProduct.findMany({
-    where: { nurseryId, isActive: true },
+    where: { nurseryId, ...STORE_VISIBLE },
     include: withRefs,
     orderBy: { createdAt: 'desc' },
     take,
@@ -237,10 +239,43 @@ export async function getFeaturedProducts(nurseryId: string, take = 8) {
 
 export async function getProductById(nurseryId: string, id: string) {
   const p = await prisma.nurseryProduct.findFirst({
-    where: { id, nurseryId, isActive: true },
+    where: { id, nurseryId, ...STORE_VISIBLE },
     include: withRefs,
   });
   return p ? localizeProduct(p) : null;
+}
+
+/** מוצר לפי הכתובת: slug שמור, 8 תווי מזהה בסוף הכתובת, או מזהה מלא (פורמט ישן). */
+export const getProductByParam = cache(async (nurseryId: string, param: string) => {
+  const bySlug = await prisma.nurseryProduct.findFirst({ where: { nurseryId, slug: param, ...STORE_VISIBLE }, include: withRefs });
+  if (bySlug) return localizeProduct(bySlug);
+  const parsed = parseProductParam(param);
+  if (!parsed) return null;
+  if ('id' in parsed) return getProductById(nurseryId, parsed.id);
+  const rows = await prisma.nurseryProduct.findMany({
+    where: { nurseryId, id: { startsWith: parsed.idPrefix }, ...STORE_VISIBLE },
+    include: withRefs,
+    take: 2,
+  });
+  // קידומת שמתאימה ליותר ממוצר אחד (נדיר מאוד) — לא מנחשים
+  return rows.length === 1 ? localizeProduct(rows[0]!) : null;
+});
+
+/** מסלול הקטגוריה העמוקה ביותר של המוצר (שורש → קטגוריה) — לפירורי הלחם בדף המוצר. */
+export async function getProductCategoryPath(nurseryId: string, productId: string): Promise<CategoryNode[]> {
+  const [links, nav] = await Promise.all([
+    prisma.nurseryProductCategory.findMany({
+      where: { nurseryProductId: productId, nurseryCategory: { nurseryId } },
+      select: { nurseryCategoryId: true },
+    }),
+    getCategoryNav(nurseryId),
+  ]);
+  let best: CategoryNode[] = [];
+  for (const l of links) {
+    const path = findCategoryPath(nav, l.nurseryCategoryId);
+    if (path.length > best.length) best = path;
+  }
+  return best;
 }
 
 /** שם הקטגוריה לתצוגה בכרטיס (הקטגוריה הספציפית ביותר של המוצר). רק קטגוריות של המשתלה. */
@@ -277,7 +312,7 @@ export async function getBlockProducts(
   nurseryId: string,
   src: { source: 'manual' | 'newest' | 'sale' | 'category' | 'mixed'; productIds: string[]; categoryId: string; limit: number },
 ): Promise<CatalogProduct[]> {
-  const base = { nurseryId, isActive: true } satisfies Prisma.NurseryProductWhereInput;
+  const base = { nurseryId, ...STORE_VISIBLE } satisfies Prisma.NurseryProductWhereInput;
   if (src.source === 'mixed') {
     const raw = await getRawCategories(nurseryId);
     const roots = raw.filter((c) => !c.parentId).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'he'));

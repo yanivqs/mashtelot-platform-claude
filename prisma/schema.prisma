@@ -95,6 +95,7 @@ model Nursery {
   promotions      Promotion[]
   users           User[]
   auditEvents     AuditEvent[]
+  aiUsage         AiUsage[]
   channels        NurseryChannel[]
   shippingZones   ShippingZone[]
   categories      NurseryCategory[]
@@ -200,6 +201,22 @@ model AuditEvent {
   @@map("audit_events")
 }
 
+/// שימוש בכלי AI (הצעת כתובת למוצר וכו׳) — לספירה ולחיוב עתידי ע"י מנהל הפלטפורמה
+model AiUsage {
+  id           String   @id @default(uuid())
+  nurseryId    String?  @map("nursery_id")
+  actorEmail   String?  @map("actor_email")
+  feature      String
+  model        String
+  inputTokens  Int      @default(0) @map("input_tokens")
+  outputTokens Int      @default(0) @map("output_tokens")
+  createdAt    DateTime @default(now()) @map("created_at")
+  nursery      Nursery? @relation(fields: [nurseryId], references: [id], onDelete: SetNull)
+
+  @@index([nurseryId, createdAt])
+  @@map("ai_usage")
+}
+
 model NurseryPaymentMethod {
   id           String        @id @default(uuid())
   nurseryId    String        @map("nursery_id")
@@ -251,38 +268,40 @@ model StaticPage {
 }
 
 model Plant {
-  id              String                    @id @default(uuid())
-  plantId         Int?                      @unique @map("plant_id")
-  hebrewName      String                    @map("hebrew_name")
-  latinName       String?                   @map("latin_name")
-  nickname        String?
-  family          String?
-  description     String?
-  notes           String?
-  origin          String?
-  native          String?
-  plantType       String?                   @map("plant_type")
-  light           String?
-  water           String?
-  flowering       String?
-  floweringSeason String?                   @map("flowering_season")
-  flowerColor     String?                   @map("flower_color")
-  foliage         String?
-  evergreen       String?
-  height          String?
-  spacing         String?
-  growthRate      String?                   @map("growth_rate")
-  climateZones    String?                   @map("climate_zones")
-  resistance      String?
-  coastal         String?
-  care            String?
-  uniqueness      String?
-  imageUrl        String?                   @map("image_url")
-  createdAt       DateTime                  @default(now()) @map("created_at")
-  updatedAt       DateTime                  @updatedAt @map("updated_at")
-  nurseryProducts NurseryProduct[]
-  categories      PlantCategoryAssignment[]
-  revisions       CatalogRevision[]
+  id               String                    @id @default(uuid())
+  plantId          Int?                      @unique @map("plant_id")
+  hebrewName       String                    @map("hebrew_name")
+  latinName        String?                   @map("latin_name")
+  nickname         String?
+  family           String?
+  description      String?
+  notes            String?
+  origin           String?
+  native           String?
+  plantType        String?                   @map("plant_type")
+  light            String?
+  water            String?
+  flowering        String?
+  floweringSeason  String?                   @map("flowering_season")
+  flowerColor      String?                   @map("flower_color")
+  foliage          String?
+  evergreen        String?
+  height           String?
+  spacing          String?
+  growthRate       String?                   @map("growth_rate")
+  climateZones     String?                   @map("climate_zones")
+  resistance       String?
+  coastal          String?
+  care             String?
+  uniqueness       String?
+  imageUrl         String?                   @map("image_url")
+  /// התמונה הועתקה מאתר חיצוני (סלונר/מלצר) ויש להחליפה בתמונה משלנו
+  imageNeedsUpdate Boolean                   @default(false) @map("image_needs_update")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+  nurseryProducts  NurseryProduct[]
+  categories       PlantCategoryAssignment[]
+  revisions        CatalogRevision[]
 
   @@map("plants")
 }
@@ -334,6 +353,10 @@ model NurseryProduct {
   supplyId           String?                  @map("supply_id")
   customTitle        String?                  @map("custom_title")
   customImageUrl     String?                  @map("custom_image_url")
+  /// כתובת המוצר בחנות (/product/<slug>), ייחודית במשתלה; ריק = שם המוצר + 8 תווי המזהה
+  slug               String?
+  /// שויך מהקטלוג ועדיין בלי תמונה משלו — מוסתר מהחנות עד שתועלה תמונה
+  imageRequired      Boolean                  @default(false) @map("image_required")
   price              Decimal                  @db.Decimal(10, 2)
   compareAtPrice     Decimal?                 @map("compare_at_price") @db.Decimal(10, 2)
   /// on_hand — יחידות פיזיות במלאי
@@ -367,6 +390,7 @@ model NurseryProduct {
 
   @@unique([nurseryId, plantId])
   @@unique([nurseryId, supplyId])
+  @@unique([nurseryId, slug])
   @@map("nursery_products")
 }
 

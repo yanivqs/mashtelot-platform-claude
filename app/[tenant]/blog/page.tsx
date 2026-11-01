@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Breadcrumbs } from '@/components/storefront/breadcrumbs';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getNurseryByTenant } from '@/lib/tenant';
@@ -35,6 +36,7 @@ export default async function BlogIndex(props: { params: Promise<{ tenant: strin
 
   return (
     <div dir="rtl" className="mx-auto max-w-4xl px-6 py-12">
+      <Breadcrumbs nursery={nursery} items={[{ label: 'בלוג' }]} className="mb-4" />
       <h1 className="text-3xl font-bold tracking-tight text-gray-900">בלוג</h1>
 
       {posts.length === 0 ? (

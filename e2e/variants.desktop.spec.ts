@@ -70,8 +70,10 @@ test('owner adds a variant in the admin and the storefront offers a choice', asy
   await expect(page).toHaveURL(`${ADMIN}/admin`);
 
   await page.goto(`${ADMIN}/admin/products`);
-  const row = page.locator('div.border-b').filter({ hasText: 'לבנדר רפואי' }).first();
-  await row.getByRole('button', { name: 'עריכה' }).click();
+  // לחיצה על שם המוצר פותחת את דף העריכה שלו
+  await page.getByRole('link', { name: 'לבנדר רפואי' }).click();
+  await expect(page).toHaveURL(/\/admin\/products\/[0-9a-f-]{36}$/);
+  const row = page.locator('main');
   await row.getByRole('button', { name: '+ הוספת וריאנט' }).click();
 
   const forms = row.locator('form').filter({ has: page.locator('input[name="variantId"]') });

@@ -15,6 +15,9 @@ test('admin login: wrong password is refused, correct one logs in, logout return
   await page.getByRole('button', { name: /התחבר|כניסה/ }).click();
   await expect(page).toHaveURL(`${ADMIN}/admin`);
 
+  // בנייד התפריט (וההתנתקות) במגירה
+  const openMenu = page.getByRole('button', { name: 'פתיחת תפריט הניהול' });
+  if (await openMenu.isVisible()) await openMenu.click();
   await page.getByRole('button', { name: /התנתק|יציאה/ }).first().click();
   await expect(page).toHaveURL(/\/admin\/login/);
 });

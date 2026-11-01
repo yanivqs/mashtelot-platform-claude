@@ -28,6 +28,7 @@ import {
   Gift,
   LayoutTemplate,
   History,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
@@ -39,6 +40,7 @@ import { pendingUpdateCount } from '@/lib/catalog-sync-admin';
 import { ROLE_LABELS, roleAllowsArea } from '@/lib/nursery-access';
 import type { Role } from '@prisma/client';
 import { logout } from './actions';
+import { AdminShell } from '@/components/admin/admin-shell';
 
 export const metadata: Metadata = {
   title: 'פורטל ניהול',
@@ -79,6 +81,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/search-synonyms', label: 'מילים נרדפות בחיפוש', icon: SearchCode },
   { href: '/admin/security', label: 'יומן התחברויות', icon: ShieldCheck },
   { href: '/admin/activity', label: 'יומן פעולות', icon: History },
+  { href: '/admin/ai-usage', label: 'שימוש ב-AI', icon: Sparkles },
 ];
 
 /** מסכי תוכן (R06: כותב תוכן רואה רק אותם). */
@@ -145,13 +148,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     storeUrl = nursery ? tenantOrigin(nursery) : null;
   }
 
-  return (
-    <div dir="rtl" className="flex min-h-screen bg-gray-50 text-gray-900">
-      <aside className="flex w-60 shrink-0 flex-col border-l border-gray-200 bg-white">
+  const title = isSuper ? 'ניהול פלטפורמה' : user.nursery?.name ?? 'המשתלה שלי';
+  const sidebar = (
+      <>
         <div className="border-b border-gray-100 px-5 py-4">
-          <p className="text-sm font-bold">
-            {isSuper ? 'ניהול פלטפורמה' : user.nursery?.name ?? 'המשתלה שלי'}
-          </p>
+          <p className="text-sm font-bold">{title}</p>
           <p className="mt-0.5 truncate text-xs text-gray-500">{user.email}</p>
           {ROLE_LABELS[user.role] && user.role !== 'NURSERY_OWNER' && (
             <p className="mt-0.5 text-xs text-gray-400">{ROLE_LABELS[user.role]}</p>
@@ -223,9 +224,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
             התנתקות
           </button>
         </form>
-      </aside>
+      </>
+  );
 
-      <main className="flex-1 overflow-x-hidden p-8">{children}</main>
-    </div>
+  return (
+    <AdminShell title={title} sidebar={sidebar}>
+      {children}
+    </AdminShell>
   );
 }

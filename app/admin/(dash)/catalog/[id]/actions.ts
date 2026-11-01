@@ -66,7 +66,10 @@ export async function updatePlant(
     await prisma.$transaction(async (tx) => {
       // §6: מקור ומבצע לגרסה שה-trigger יוצר (plants_record_revision)
       await tx.$executeRaw`SELECT set_config('app.catalog_source', 'admin', true), set_config('app.catalog_actor', ${user.email}, true)`;
-      await tx.plant.update({ where: { id }, data });
+      const before = await tx.plant.findUnique({ where: { id }, select: { imageUrl: true } });
+      // תמונה חדשה מחליפה תמונה שסומנה לעדכון (הועתקה מאתר חיצוני)
+      const imageReplaced = before !== null && before.imageUrl !== data.imageUrl;
+      await tx.plant.update({ where: { id }, data: { ...data, ...(imageReplaced ? { imageNeedsUpdate: false } : {}) } });
       await tx.plantCategoryAssignment.deleteMany({ where: { plantId: id } });
       if (categoryIds.length > 0) {
         await tx.plantCategoryAssignment.createMany({

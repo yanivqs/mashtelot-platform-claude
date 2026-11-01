@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { isModuleEnabled } from '@/lib/module-access';
 import { getCategoryNav, type CategoryNode } from '@/lib/catalog';
 import { productSlug } from '@/lib/utils';
+import { STORE_VISIBLE } from '@/lib/product-visibility';
 import type { SitemapEntry } from '@/lib/seo-files';
 
 /**
@@ -14,11 +15,12 @@ import type { SitemapEntry } from '@/lib/seo-files';
 export async function nurserySitemapEntries(nurseryId: string): Promise<SitemapEntry[]> {
   const [products, categories, pagesOn, blogOn] = await Promise.all([
     prisma.nurseryProduct.findMany({
-      where: { nurseryId, isActive: true },
+      where: { nurseryId, ...STORE_VISIBLE },
       select: {
         id: true,
         updatedAt: true,
         customTitle: true,
+        slug: true,
         plant: { select: { hebrewName: true } },
         supply: { select: { title: true } },
         catalogOverrides: true,
@@ -49,7 +51,7 @@ export async function nurserySitemapEntries(nurseryId: string): Promise<SitemapE
     { path: '/contact', priority: 0.5 },
     ...flatCategories.map((c) => ({ path: `/catalog?category=${c.slug}`, priority: 0.8 })),
     ...products.map((p) => ({
-      path: `/product/${productSlug(p.id, p.customTitle || p.plant?.hebrewName || p.supply?.title || 'מוצר')}`,
+      path: `/product/${productSlug(p.id, p.customTitle || p.plant?.hebrewName || p.supply?.title || 'מוצר', p.slug)}`,
       lastModified: p.updatedAt,
       priority: 0.7,
     })),

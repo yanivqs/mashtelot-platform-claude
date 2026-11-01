@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Breadcrumbs } from '@/components/storefront/breadcrumbs';
 import { notFound } from 'next/navigation';
 import { getNurseryByTenant } from '@/lib/tenant';
 import { isModuleEnabled } from '@/lib/module-access';
@@ -40,14 +41,13 @@ export default async function BlogPostView(
 ) {
   const params = await props.params;
   const post = await loadPost(params.tenant, params.slug);
-  if (!post) {
-    const nursery = await getNurseryByTenant(params.tenant);
-    if (!nursery) notFound();
-    return redirectOrNotFound(nursery.id, `/blog/${params.slug}`);
-  }
+  const nursery = await getNurseryByTenant(params.tenant);
+  if (!nursery) notFound();
+  if (!post) return redirectOrNotFound(nursery.id, `/blog/${params.slug}`);
 
   return (
     <article dir="rtl" className="mx-auto max-w-3xl px-6 py-12">
+      <Breadcrumbs nursery={nursery} items={[{ label: 'בלוג', href: '/blog' }, { label: post.title }]} className="mb-4" />
       <h1 className="text-3xl font-bold tracking-tight text-gray-900">{post.title}</h1>
       {post.publishedAt && (
         <p className="mt-2 text-sm text-gray-400">{post.publishedAt.toLocaleDateString('he-IL')}</p>

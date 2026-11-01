@@ -1,15 +1,13 @@
 import Link from 'next/link';
 import { requireNurseryPage } from '@/lib/nursery-scope';
 import { prisma } from '@/lib/prisma';
-import { resolveProductContent } from '@/lib/seo';
-import { scoreProductSeo } from '@/lib/seo-score';
 import { categoryAndDescendantIds, flattenCategoryTree } from '@/lib/category-tree';
 import { parseInventorySort, sortInventory, type InventorySortKey } from '@/lib/inventory-sort';
 import { firstLetter, parseLetter } from '@/lib/alphabet';
 import { lettersOf } from '@/lib/letter-filter';
-import { catalogRevisionInclude, localizeProduct } from '@/lib/catalog-localize';
 import { AlphabetBar } from '@/components/alphabet-bar';
-import { ProductRow, type RowProduct } from './product-row';
+import { ProductRow } from './product-row';
+import { loadAdminProducts } from './load';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,64 +20,14 @@ export default async function AdminProductsPage(
   const { nurseryId } = await requireNurseryPage({ any: ['plant_catalog', 'supplies'] });
 
 
-  const [products, nurseryCategories] = await Promise.all([
-    prisma.nurseryProduct.findMany({
-      where: { nurseryId },
-      include: {
-        plant: true,
-        supply: true,
-        categories: true,
-        variants: { orderBy: [{ isDefault: 'desc' }, { sortOrder: 'asc' }] },
-        ...catalogRevisionInclude,
-      },
-      orderBy: { createdAt: 'desc' },
-    }),
+  const [rows, nurseryCategories] = await Promise.all([
+    loadAdminProducts(nurseryId),
     prisma.nurseryCategory.findMany({ where: { nurseryId } }),
   ]);
 
   const categoryOptions = flattenCategoryTree(nurseryCategories);
-
-  const rows: RowProduct[] = products.map(localizeProduct).map((p) => {
-    const { title, image } = resolveProductContent(p);
-    return {
-      id: p.id,
-      title,
-      latinName: p.plant?.latinName ?? null,
-      image,
-      kind: p.plantId ? 'צמח' : p.supplyId ? 'ציוד' : 'מוצר מותאם',
-      price: p.price.toString(),
-      compareAtPrice: p.compareAtPrice?.toString() ?? null,
-      stockQuantity: p.stockQuantity,
-      reservedQuantity: p.reservedQuantity,
-      isActive: p.isActive,
-      customTitle: p.customTitle,
-      customDescription: p.customDescription,
-      customImageUrl: p.customImageUrl,
-      seoMetaTitle: p.seoMetaTitle,
-      seoMetaDescription: p.seoMetaDescription,
-      categoryIds: p.categories.map((c) => c.nurseryCategoryId),
-      plant: p.plant,
-      seo: scoreProductSeo(p),
-      optionLabel: p.optionLabel,
-      option2Label: p.option2Label,
-      variants: p.variants.map((v) => ({
-        id: v.id,
-        // ערך הציר הראשון; וריאנטים ישנים (לפני שני הצירים) — השם
-        name: v.option1 ?? (v.option2 ? '' : v.name),
-        option2: v.option2,
-        colorHex: v.colorHex,
-        sku: v.sku,
-        barcode: v.barcode,
-        price: v.price?.toString() ?? null,
-        compareAtPrice: v.compareAtPrice?.toString() ?? null,
-        stockQuantity: v.stockQuantity,
-        reservedQuantity: v.reservedQuantity,
-        imageUrls: v.imageUrls,
-        isDefault: v.isDefault,
-        isActive: v.isActive,
-      })),
-    };
-  });
+  const waitingImage = rows.filter((r) => r.imageRequired).length;
+  const missingDescription = rows.filter((r) => r.needsDescription).length;
 
   const needsSeo = rows.filter((r) => r.seo.level !== 'good').length;
 
@@ -155,6 +103,21 @@ export default async function AdminProductsPage(
           </Link>
         </div>
       </div>
+
+      {(waitingImage > 0 || missingDescription > 0) && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          {waitingImage > 0 && (
+            <p>
+              <strong>{waitingImage} מוצרים מוסתרים מהאתר</strong> עד שתעלו להם תמונה משלכם.
+            </p>
+          )}
+          {missingDescription > 0 && (
+            <p>
+              <strong>{missingDescription} מוצרים בלי תיאור משלכם</strong> — מוצג התיאור הכללי מהקטלוג. לחצו על שם המוצר כדי לעדכן.
+            </p>
+          )}
+        </div>
+      )}
 
       {needsSeo > 0 && (
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -240,7 +203,7 @@ export default async function AdminProductsPage(
               <p className="p-8 text-center text-sm text-gray-500">לא נמצאו מוצרים.</p>
             )}
             {visibleRows.map((product) => (
-              <ProductRow key={product.id} product={product} categoryOptions={categoryOptions} />
+              <ProductRow key={product.id} product={product} />
             ))}
           </div>
         </>

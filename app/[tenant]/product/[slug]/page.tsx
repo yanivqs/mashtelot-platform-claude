@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { availableQuantity } from '@/lib/stock';
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { getNurseryByTenant } from '@/lib/tenant';
-import { getProductById } from '@/lib/catalog';
-import { idFromSlug, productSlug, formatPrice } from '@/lib/utils';
+import { getProductByParam, getProductCategoryPath } from '@/lib/catalog';
+import { productSlug } from '@/lib/utils';
+import { Breadcrumbs, categoryCrumbHref } from '@/components/storefront/breadcrumbs';
 import { resolveProductContent, productJsonLd, tenantUrl } from '@/lib/seo';
 import { ProductPurchase, type PurchaseVariant } from '@/components/storefront/product-purchase';
 import { activeVariants, effectiveCompareAt, effectivePrice, variantImages } from '@/lib/variants';
@@ -15,6 +15,14 @@ import { isModuleEnabled } from '@/lib/module-access';
 import { ProductPersonal } from '@/components/storefront/product-personal';
 
 export const revalidate = 300;
+
+function decodeParam(p: string): string {
+  try {
+    return decodeURIComponent(p);
+  } catch {
+    return p;
+  }
+}
 export const dynamicParams = true;
 
 interface ProductPageProps {
@@ -26,11 +34,11 @@ export async function generateMetadata(props: ProductPageProps): Promise<Metadat
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) return {};
 
-  const product = await getProductById(nursery.id, idFromSlug(params.slug));
+  const product = await getProductByParam(nursery.id, decodeParam(params.slug));
   if (!product) return { title: 'המוצר לא נמצא' };
 
   const { title, metaTitle, metaDescription, image } = resolveProductContent(product);
-  const canonical = `/product/${productSlug(product.id, title)}`;
+  const canonical = `/product/${productSlug(product.id, title, product.slug)}`;
 
   return {
     title: metaTitle,
@@ -51,10 +59,15 @@ export default async function ProductPage(props: ProductPageProps) {
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) notFound();
 
-  const product = await getProductById(nursery.id, idFromSlug(params.slug));
+  const param = decodeParam(params.slug);
+  const product = await getProductByParam(nursery.id, param);
   if (!product) return redirectOrNotFound(nursery.id, `/product/${params.slug}`);
 
   const { title, description, image } = resolveProductContent(product);
+  const slug = productSlug(product.id, title, product.slug);
+  // כתובת ישנה (מזהה מלא) או לא עדכנית — הפניה קבועה לכתובת הנוכחית
+  if (param !== slug) permanentRedirect(`/product/${encodeURIComponent(slug)}`);
+  const categoryPath = await getProductCategoryPath(nursery.id, product.id);
   // §7.01: וריאנטים פעילים — מחיר, מחיר לפני הנחה, זמינות ותמונות לכל אחד
   const purchaseVariants: PurchaseVariant[] = activeVariants(product.variants).map((v) => {
     const price = effectivePrice(v, product);
@@ -73,7 +86,7 @@ export default async function ProductPage(props: ProductPageProps) {
   });
   const plant = product.plant;
   const kicker = plant?.plantType || product.supply?.brand || null;
-  const canonicalPath = `/product/${productSlug(product.id, title)}`;
+  const canonicalPath = `/product/${slug}`;
   const care = plant?.care?.trim();
   // R06-04: מועדפים ו"נצפו לאחרונה" — רק כשמודול החשבונות פעיל (המצב נטען בדפדפן)
   const personal = (await isModuleEnabled(nursery.id, 'customer_accounts')) ? <ProductPersonal tenant={params.tenant} productId={product.id} /> : null;
@@ -87,17 +100,20 @@ export default async function ProductPage(props: ProductPageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <nav className="mb-6 text-sm text-gray-500">
-        <Link href="/" className="hover:underline">בית</Link> /{' '}
-        <Link href="/catalog" className="hover:underline">קטלוג</Link> /{' '}
-        <span className="text-gray-700">{title}</span>
-      </nav>
+      <Breadcrumbs
+        nursery={nursery}
+        items={[
+          { label: 'קטלוג', href: '/catalog' },
+          ...categoryPath.map((c) => ({ label: c.name, href: categoryCrumbHref(c.slug) })),
+          { label: title },
+        ]}
+      />
 
       {purchaseVariants.length > 0 ? (
         <ProductPurchase
           productId={product.id}
           title={title}
-          slug={productSlug(product.id, title)}
+          slug={slug}
           optionLabel={product.optionLabel?.trim() || (purchaseVariants.some((v) => v.option2) ? 'גודל' : 'אפשרות')}
           option2Label={product.option2Label?.trim() || 'צבע'}
           variants={purchaseVariants}

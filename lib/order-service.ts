@@ -8,6 +8,7 @@
  * כל שינוי — עדכון מותנה אטומי על product_variants (אין overselling במקביל) + רשומת StockMovement.
  * מלאי המוצר (nursery_products) = סכום הווריאנטים הפעילים — מתוחזק ב-DB (trigger, מיגרציה 20261019050000).
  */
+import { STORE_VISIBLE } from '@/lib/product-visibility';
 import { Prisma, type OrderStatus, type PaymentStatus, type PaymentMethod, type PrismaClient } from '@prisma/client';
 import { activeLoyaltyConfig, addEntry, balanceOf, groupDiscountAmount, lockCustomer, loyaltyOnTransition, maxRedeemablePoints, pointsDiscount, round2 } from '@/lib/loyalty';
 import {
@@ -212,7 +213,7 @@ export async function createOrderRecord(db: PrismaClient, input: CreateOrderInpu
   try {
     const orderId = await db.$transaction(async (tx) => {
       const products = await tx.nurseryProduct.findMany({
-        where: { id: { in: input.items.map((c) => c.productId) }, nurseryId: input.nurseryId, isActive: true },
+        where: { id: { in: input.items.map((c) => c.productId) }, nurseryId: input.nurseryId, ...STORE_VISIBLE },
         include: { plant: true, supply: true, variants: true, ...catalogRevisionInclude },
       });
       // §6: שם המוצר בהזמנה — לפי הגרסה המאושרת של הפריט המרכזי

@@ -17,7 +17,7 @@ export function ProductCard({
   categoryLabel?: string | null;
 }) {
   const { title, image } = resolveProductContent(product);
-  const slug = productSlug(product.id, title);
+  const slug = productSlug(product.id, title, product.slug);
   const href = `${basePath}/product/${slug}`;
   // §7.01: מחיר וזמינות לפי הווריאנטים הפעילים
   const variants = activeVariants(product.variants);

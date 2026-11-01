@@ -54,12 +54,12 @@ export function Hero({ nursery, theme }: HeroProps) {
       <section className="relative isolate overflow-hidden border-b border-gray-100">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={image} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/70 via-black/40 to-black/20" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/50 to-black/30" />
         <div className="mx-auto max-w-5xl px-6 py-28 text-center text-white sm:py-36">
-          <h1 className="text-4xl font-bold tracking-tight drop-shadow-sm sm:text-5xl">
+          <h1 className="text-4xl font-bold tracking-tight [text-shadow:0_2px_12px_rgb(0_0_0/0.55)] sm:text-5xl">
             {headline}
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-white/90">
+          <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-white [text-shadow:0_1px_8px_rgb(0_0_0/0.6)]">
             {subheadline}
           </p>
           <div className="flex justify-center">

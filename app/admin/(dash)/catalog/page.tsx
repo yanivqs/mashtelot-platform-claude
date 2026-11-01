@@ -13,7 +13,7 @@ const PAGE_SIZE = 30;
 
 export default async function AdminCatalogPage(
   props: {
-    searchParams: Promise<{ q?: string; page?: string; letter?: string }>;
+    searchParams: Promise<{ q?: string; page?: string; letter?: string; img?: string }>;
   }
 ) {
   const searchParams = await props.searchParams;
@@ -22,7 +22,10 @@ export default async function AdminCatalogPage(
   const q = searchParams.q?.trim() || '';
   const letter = parseLetter(searchParams.letter);
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10) || 1);
+  // תמונות שהועתקו מאתרים חיצוניים וממתינות להחלפה
+  const imgUpdate = searchParams.img === 'update';
   const where = {
+    ...(imgUpdate ? { imageNeedsUpdate: true } : {}),
     ...(q
       ? {
           OR: [
@@ -35,7 +38,7 @@ export default async function AdminCatalogPage(
     ...plantLetterWhere(letter),
   };
 
-  const [plants, total, letters] = await Promise.all([
+  const [plants, total, letters, needsImage] = await Promise.all([
     prisma.plant.findMany({
       where,
       orderBy: { hebrewName: 'asc' },
@@ -44,12 +47,14 @@ export default async function AdminCatalogPage(
     }),
     prisma.plant.count({ where }),
     plantLetters(),
+    prisma.plant.count({ where: { imageNeedsUpdate: true } }),
   ]);
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const pageHref = (p: number, nextLetter: string | null = letter) => {
     const sp = new URLSearchParams();
     if (q) sp.set('q', q);
+    if (imgUpdate) sp.set('img', 'update');
     if (nextLetter) sp.set('letter', nextLetter);
     if (p > 1) sp.set('page', String(p));
     const s = sp.toString();
@@ -75,10 +80,21 @@ export default async function AdminCatalogPage(
           </Link>
         </div>
       </div>
-      <p className="mb-6 text-sm text-gray-500">{total.toLocaleString('he-IL')} צמחים</p>
+      <p className="mb-6 text-sm text-gray-500">
+        {total.toLocaleString('he-IL')} צמחים
+        {needsImage > 0 && (
+          <>
+            {' · '}
+            <Link href={imgUpdate ? '/admin/catalog' : '/admin/catalog?img=update'} className="text-amber-700 hover:underline">
+              {imgUpdate ? 'הצגת כל הצמחים' : `${needsImage.toLocaleString('he-IL')} תמונות לעדכון`}
+            </Link>
+          </>
+        )}
+      </p>
 
       <form method="get" className="mb-4 flex max-w-lg gap-3">
         {letter && <input type="hidden" name="letter" value={letter} />}
+        {imgUpdate && <input type="hidden" name="img" value="update" />}
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -119,7 +135,10 @@ export default async function AdminCatalogPage(
                 {[p.latinName, p.family].filter(Boolean).join(' · ') || '—'}
               </p>
             </div>
-            {p.plantType && <span className="text-xs text-gray-400">{p.plantType}</span>}
+            {p.imageNeedsUpdate && (
+              <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">תמונה לעדכון</span>
+            )}
+            {p.plantType && <span className="hidden text-xs text-gray-400 sm:inline">{p.plantType}</span>}
           </Link>
         ))}
       </div>
