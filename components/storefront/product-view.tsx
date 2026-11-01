@@ -2,7 +2,7 @@ import type { Nursery } from '@prisma/client';
 import { sellableQuantity } from '@/lib/stock';
 import { getProductCategoryPath, type CatalogProduct } from '@/lib/catalog';
 import { Breadcrumbs, categoryCrumbHref } from '@/components/storefront/breadcrumbs';
-import { resolveProductContent, productJsonLd, tenantUrl } from '@/lib/seo';
+import { resolveProductContent, productJsonLd, jsonLdHtml, tenantUrl } from '@/lib/seo';
 import { ProductPurchase, type PurchaseVariant } from '@/components/storefront/product-purchase';
 import { activeVariants, effectiveCompareAt, effectivePrice, variantImages } from '@/lib/variants';
 import { PlantFactsGrid } from '@/components/storefront/plant-key-facts';
@@ -61,7 +61,7 @@ export async function ProductView({
       {jsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }}
         />
       )}
 
@@ -97,7 +97,7 @@ export async function ProductView({
                 </span>
               )}
               <h1 className="mt-3 text-3xl font-bold leading-tight text-gray-900">{title}</h1>
-              {plant?.latinName && <p className="mt-1 text-sm italic text-gray-400">{plant.latinName}</p>}
+              {plant?.latinName && <p className="mt-1 text-sm italic text-gray-600">{plant.latinName}</p>}
               {personal}
             </>
           }

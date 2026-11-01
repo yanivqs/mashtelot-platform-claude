@@ -29,7 +29,7 @@ export default function CartPage() {
         <h1 className="text-2xl font-bold text-gray-900">
           {isQuote ? 'הבקשה ריקה' : 'העגלה ריקה'}
         </h1>
-        <p className="mt-2 text-gray-500">עדיין לא הוספתם מוצרים.</p>
+        <p className="mt-2 text-gray-600">עדיין לא הוספתם מוצרים.</p>
         <Link
           href="/catalog"
           className="mt-6 inline-block rounded-lg bg-brand-600 px-6 py-3 font-medium text-white hover:bg-brand-700"
@@ -46,7 +46,7 @@ export default function CartPage() {
         <h1 className="text-2xl font-bold text-gray-900">
           {isQuote ? 'בקשת הצעת מחיר' : 'עגלת קניות'}
         </h1>
-        <button onClick={clear} className="text-sm text-gray-500 hover:text-red-600">
+        <button onClick={clear} className="text-sm text-gray-600 hover:text-red-600">
           {isQuote ? 'נקה הכל' : 'רוקן עגלה'}
         </button>
       </div>
@@ -71,14 +71,14 @@ export default function CartPage() {
               >
                 {item.title}
               </Link>
-              <p className="text-sm text-gray-500">{formatPrice(item.price)} ליחידה</p>
+              <p className="text-sm text-gray-600">{formatPrice(item.price)} ליחידה</p>
             </div>
 
             <div className="flex w-full items-center justify-between gap-4 sm:w-auto">
             <div className="flex items-center rounded-lg border border-gray-200">
               <button
                 aria-label="הפחת"
-                className="px-2.5 py-1.5 text-gray-500 hover:text-gray-900"
+                className="px-2.5 py-1.5 text-gray-600 hover:text-gray-900"
                 onClick={() => setQuantity(cartKey(item), item.quantity - 1)}
               >
                 −
@@ -86,7 +86,7 @@ export default function CartPage() {
               <span className="w-8 text-center text-sm">{item.quantity}</span>
               <button
                 aria-label="הוסף"
-                className="px-2.5 py-1.5 text-gray-500 hover:text-gray-900"
+                className="px-2.5 py-1.5 text-gray-600 hover:text-gray-900"
                 onClick={() => setQuantity(cartKey(item), item.quantity + 1)}
               >
                 +
@@ -100,7 +100,7 @@ export default function CartPage() {
             <button
               aria-label="הסר מהעגלה"
               onClick={() => remove(cartKey(item))}
-              className="text-gray-400 hover:text-red-600"
+              className="text-gray-600 hover:text-red-600"
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -116,7 +116,7 @@ export default function CartPage() {
         <span className="text-2xl font-bold text-gray-900">{formatPrice(subtotal)}</span>
       </div>
       {isQuote && (
-        <p className="mt-2 text-center text-xs text-gray-400">
+        <p className="mt-2 text-center text-xs text-gray-600">
           המחיר הסופי ייקבע בהצעה שתקבלו מהמשתלה.
         </p>
       )}

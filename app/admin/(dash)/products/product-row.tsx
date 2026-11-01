@@ -6,6 +6,7 @@ import { SEO_LEVEL_META, type SeoScore } from '@/lib/seo-score';
 import type { EditorVariant } from './variants-editor';
 import { toggleAlwaysInStock } from './actions';
 import { ToggleCheckbox } from '@/components/admin/toggle-checkbox';
+import { StatusToggle } from '@/components/admin/status-toggle';
 
 export interface RowProduct {
   id: string;
@@ -56,6 +57,14 @@ export function ProductRow({ product, viewUrl }: { product: RowProduct; viewUrl:
   const href = `/admin/products/${product.id}`;
   const multi = product.variants.length > 1;
   const hidden = !product.isActive || product.imageRequired;
+  const status = (
+    <StatusToggle
+      productId={product.id}
+      title={product.customTitle || product.title}
+      isActive={product.isActive}
+      imageRequired={product.imageRequired}
+    />
+  );
 
   return (
     <div className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
@@ -90,8 +99,8 @@ export function ProductRow({ product, viewUrl }: { product: RowProduct; viewUrl:
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-gray-600 sm:hidden">
             <span className="font-medium text-gray-900">{formatPrice(product.price)}</span>
             <span>· {product.alwaysInStock ? 'תמיד במלאי' : `${product.stockQuantity} יח׳`}</span>
-            <span className={hidden ? 'text-gray-400' : 'text-green-700'}>· {hidden ? 'מוסתר' : 'פעיל'}</span>
           </p>
+          <div className="mt-1 sm:hidden">{status}</div>
           <ToggleCheckbox
             action={toggleAlwaysInStock}
             checked={product.alwaysInStock}
@@ -109,15 +118,7 @@ export function ProductRow({ product, viewUrl }: { product: RowProduct; viewUrl:
           {product.alwaysInStock ? <span className="text-brand-700">∞</span> : <>{product.stockQuantity} יח׳</>}
           {product.reservedQuantity > 0 && <span className="text-sky-700"> · {product.reservedQuantity} שמורות</span>}
         </div>
-        <div className="hidden w-16 sm:block">
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-              !hidden ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
-            }`}
-          >
-            {!hidden ? 'פעיל' : 'מוסתר'}
-          </span>
-        </div>
+        <div className="hidden w-16 sm:block">{status}</div>
         <span
           className="hidden w-12 items-center gap-1 text-xs sm:flex"
           title={`מדד SEO: ${product.seo.score}/100 (${SEO_LEVEL_META[product.seo.level].label})`}

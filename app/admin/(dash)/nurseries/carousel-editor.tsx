@@ -116,6 +116,7 @@ export function CarouselEditor({ carousel }: { carousel: CarouselConfig }) {
             <ImageUpload
               defaultValue={s.imageUrl}
               folder="logos"
+              hint="מידה מומלצת: 1920×800 פיקסלים (לרוחב). בנייד נחתכים הצדדים, אז כדאי שהעיקר יהיה במרכז התמונה."
               onChange={(url) => patch(s.key, { imageUrl: url })}
             />
             <div className="grid gap-2 sm:grid-cols-2">

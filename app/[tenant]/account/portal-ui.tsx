@@ -12,7 +12,7 @@ import { addAddressAction, productSummaries, reorderAction, type AddressState, t
 const field = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[var(--brand,#16a34a)]';
 
 export function ProductGrid({ items, empty }: { items: ProductSummary[]; empty: string }) {
-  if (!items.length) return <p className="text-sm text-gray-500">{empty}</p>;
+  if (!items.length) return <p className="text-sm text-gray-600">{empty}</p>;
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {items.map((p) => (
@@ -117,7 +117,7 @@ export function ReorderButton({ tenant, orderId }: { tenant: string; orderId: st
       >
         {busy ? '...' : 'הזמן שוב'}
       </button>
-      <p className="text-xs text-gray-500">הפריטים הזמינים יתווספו לעגלה במחיר של היום.</p>
+      <p className="text-xs text-gray-600">הפריטים הזמינים יתווספו לעגלה במחיר של היום.</p>
       {msg && (
         <p className="text-sm text-amber-800">
           {msg}{' '}

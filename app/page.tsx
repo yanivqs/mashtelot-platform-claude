@@ -4,10 +4,18 @@ import { Leaf, Store, Search, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { tenantOrigin } from '@/lib/seo';
 
+const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'localhost:3000';
+const ORIGIN = `${ROOT_DOMAIN.startsWith('localhost') ? 'http' : 'https'}://${ROOT_DOMAIN}`;
+const TITLE = 'פלטפורמת משתלות SaaS | חנות מקוונת וקטלוג בוטני למשתלות';
+const DESCRIPTION =
+  'הקימו חנות מקוונת למשתלה שלכם על דומיין משלכם, מבוססת קטלוג בוטני של אלפי צמחים עם מחירים, מלאי ותוכן ייחודי לכל משתלה.';
+
 export const metadata: Metadata = {
-  title: 'פלטפורמת משתלות SaaS | חנות מקוונת וקטלוג בוטני למשתלות',
-  description:
-    'הקימו חנות מקוונת למשתלה שלכם על דומיין משלכם, מבוססת קטלוג בוטני של אלפי צמחים עם מחירים, מלאי ותוכן ייחודי לכל משתלה.',
+  metadataBase: new URL(ORIGIN),
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: '/' },
+  openGraph: { type: 'website', title: TITLE, description: DESCRIPTION, url: ORIGIN, siteName: 'פלטפורמת משתלות', locale: 'he_IL' },
 };
 
 export const revalidate = 3600;
@@ -98,7 +106,10 @@ export default async function LandingPage() {
       </section>
 
       <footer className="border-t border-gray-100 py-10 text-center text-sm text-gray-500">
-        © {new Date().getFullYear()} פלטפורמת משתלות · כל הזכויות שמורות
+        © {new Date().getFullYear()} פלטפורמת משתלות · כל הזכויות שמורות ·{' '}
+        <Link href="/accessibility" className="underline hover:text-gray-800">
+          הצהרת נגישות
+        </Link>
       </footer>
     </div>
   );

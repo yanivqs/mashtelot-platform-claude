@@ -19,9 +19,11 @@ interface Props {
   onChange?: (url: string) => void;
   /** תמונת מוצר: העלאה נשמרת גם בתיקיית התמונות של המשתלה, ואפשר לבחור ממנה */
   nurseryFolder?: boolean;
+  /** הנחיה מתחת לכפתורים, למשל המידה המומלצת */
+  hint?: string;
 }
 
-export function ImageUpload({ name, defaultValue, label, folder = 'misc', onChange, nurseryFolder = false }: Props) {
+export function ImageUpload({ name, defaultValue, label, folder = 'misc', onChange, nurseryFolder = false, hint }: Props) {
   const [url, setUrlState] = useState(defaultValue ?? '');
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -93,7 +95,8 @@ export function ImageUpload({ name, defaultValue, label, folder = 'misc', onChan
               <X className="h-3 w-3" /> הסרה
             </button>
           )}
-          <span className="text-[11px] text-gray-400">JPG/PNG/WEBP · תמונות גדולות מוקטנות אוטומטית</span>
+          {hint && <span className="text-[11px] font-medium text-gray-600">{hint}</span>}
+          <span className="text-[11px] text-gray-500">JPG/PNG/WEBP · תמונות גדולות מוקטנות אוטומטית</span>
         </div>
       </div>
 

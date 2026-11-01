@@ -246,6 +246,7 @@ export function NurseryProfileForm({
             defaultValue={nursery.hero.imageUrl}
             label="תמונת Hero (לפריסת טקסט+תמונה / רקע מלא)"
             folder="logos"
+            hint="מידה מומלצת: רקע מלא 1920×800 פיקסלים; טקסט+תמונה 1200×900 פיקסלים. כדאי שהעיקר יהיה במרכז התמונה."
           />
         </div>
         <Text name="primaryColor" label="צבע ראשי (hex)" defaultValue={nursery.primaryColor} dir="ltr" placeholder="#16a34a" />

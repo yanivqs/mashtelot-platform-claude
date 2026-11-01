@@ -13,7 +13,7 @@ export function SpecTable({ plant }: { plant: Plant | null | undefined }) {
           key={label}
           className="flex justify-between gap-4 border-b border-gray-100 py-2.5"
         >
-          <dt className="shrink-0 text-sm font-medium text-gray-500">{label}</dt>
+          <dt className="shrink-0 text-sm font-medium text-gray-600">{label}</dt>
           <dd className="text-left text-sm text-gray-900">{value}</dd>
         </div>
       ))}

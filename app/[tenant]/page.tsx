@@ -46,7 +46,7 @@ export default async function TenantHomePage(props: { params: Promise<{ tenant: 
         </div>
 
         {featured.length === 0 ? (
-          <p className="rounded-xl bg-gray-50 p-10 text-center text-gray-500">
+          <p className="rounded-xl bg-gray-50 p-10 text-center text-gray-600">
             הקטלוג מתעדכן. חזרו בקרוב.
           </p>
         ) : (

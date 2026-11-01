@@ -65,7 +65,7 @@ export function LoginForm({ tenant }: { tenant: string }) {
       </label>
       {ver.error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{ver.error}</p>}
       <Submit label="כניסה" />
-      <button type="button" onClick={() => window.location.reload()} className="w-full text-center text-xs text-gray-500 hover:underline">
+      <button type="button" onClick={() => window.location.reload()} className="w-full text-center text-xs text-gray-600 hover:underline">
         מייל אחר / שליחה מחדש
       </button>
     </form>
@@ -140,7 +140,7 @@ export function PrivacySection({ tenant }: { tenant: string }) {
         >
           {busy ? '...' : 'הורדת המידע שלי'}
         </button>
-        <p className="mt-1 text-xs text-gray-500">קובץ עם הפרטים, הכתובות, ההזמנות, המועדפים והנקודות שלכם בחנות הזו.</p>
+        <p className="mt-1 text-xs text-gray-600">קובץ עם הפרטים, הכתובות, ההזמנות, המועדפים והנקודות שלכם בחנות הזו.</p>
         {err && <p className="text-sm text-red-600">{err}</p>}
       </div>
       <form action={action} className="space-y-2 rounded-lg border border-rose-100 bg-rose-50/40 p-3">

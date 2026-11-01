@@ -112,7 +112,7 @@ export function ProductPurchase({
           <span className="text-3xl font-bold text-gray-900" data-testid="variant-price">
             {formatPrice(v.price)}
           </span>
-          {v.compareAt !== null && <span className="text-lg text-gray-400 line-through">{formatPrice(v.compareAt)}</span>}
+          {v.compareAt !== null && <span className="text-lg text-gray-600 line-through">{formatPrice(v.compareAt)}</span>}
         </div>
         <p className={`mt-1 text-sm ${outOfStock ? 'text-rose-600' : 'text-brand-700'}`}>
           {outOfStock ? 'אזל מהמלאי' : v.unlimited ? 'במלאי' : `במלאי (${v.available} יח')`}
@@ -170,7 +170,7 @@ export function ProductPurchase({
                       active
                         ? 'border-[var(--brand,#16a34a)] bg-brand-50 font-medium ring-1 ring-[var(--brand,#16a34a)]'
                         : 'border-gray-200 hover:border-gray-300'
-                    } ${soldOut ? 'text-gray-400' : 'text-gray-800'}`}
+                    } ${soldOut ? 'text-gray-600' : 'text-gray-800'}`}
                   >
                     <input
                       type="radio"
@@ -242,7 +242,7 @@ function OptionGroup({
     <fieldset className="mt-5">
       <legend className="mb-2 text-sm font-medium text-gray-700">
         {label}
-        {swatches && selected && <span className="mr-1 font-normal text-gray-500">: {selected}</span>}
+        {swatches && selected && <span className="mr-1 font-normal text-gray-600">: {selected}</span>}
       </legend>
       <div className="flex flex-wrap gap-2">
         {values.map((o) => {
@@ -260,7 +260,7 @@ function OptionGroup({
                       active
                         ? 'border-[var(--brand,#16a34a)] bg-brand-50 font-medium ring-1 ring-[var(--brand,#16a34a)]'
                         : 'border-gray-200 hover:border-gray-300'
-                    } ${st === 'soldout' ? 'text-gray-400' : 'text-gray-800'}`
+                    } ${st === 'soldout' ? 'text-gray-600' : 'text-gray-800'}`
               }`}
             >
               <input

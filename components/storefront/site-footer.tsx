@@ -23,7 +23,7 @@ export function SiteFooter({
         <div>
           <p className="text-base font-bold text-gray-900">{nursery.name}</p>
           {nursery.aboutText?.trim() && (
-            <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-gray-500">
+            <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-gray-600">
               {nursery.aboutText}
             </p>
           )}
@@ -67,7 +67,7 @@ export function SiteFooter({
                       href={nursery.mapLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-brand-700 hover:underline"
+                      className="text-brand-700 underline"
                     >
                       במפה
                     </a>
@@ -87,7 +87,7 @@ export function SiteFooter({
             {hours.map((row) => (
               <p key={row.label} className="flex justify-between gap-4">
                 <span>{row.label}</span>
-                <span className="text-gray-500">{row.value}</span>
+                <span className="text-gray-600">{row.value}</span>
               </p>
             ))}
           </div>
@@ -98,12 +98,13 @@ export function SiteFooter({
           <Link href="/catalog" className="block text-gray-600 hover:text-gray-900">קטלוג</Link>
           <Link href="/contact" className="block text-gray-600 hover:text-gray-900">צור קשר</Link>
           <Link href="/cart" className="block text-gray-600 hover:text-gray-900">עגלת קניות</Link>
+          <Link href="/accessibility" className="block text-gray-600 hover:text-gray-900">הצהרת נגישות</Link>
         </div>
       </div>
 
-      <div className="border-t border-gray-100 py-5 text-center text-xs text-gray-400">
+      <div className="border-t border-gray-100 py-5 text-center text-xs text-gray-600">
         © {new Date().getFullYear()} {nursery.name} · נבנה ע&quot;י{' '}
-        <a href="https://yanivsharabi.com/ai-solutions" target="_blank" rel="noopener" className="font-medium text-gray-500 hover:text-gray-700 hover:underline">
+        <a href="https://yanivsharabi.com/ai-solutions" target="_blank" rel="noopener" className="font-medium text-gray-600 hover:text-gray-700 hover:underline">
           פתרונות איכות
         </a>
       </div>

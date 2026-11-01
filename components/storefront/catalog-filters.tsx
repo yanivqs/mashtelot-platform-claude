@@ -46,7 +46,7 @@ export function CatalogSearch({
         <input key={k} type="hidden" name={k} value={current[k]} />
       ))}
       <div className="relative flex-1">
-        <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
         <input
           type="search"
           name="q"
@@ -123,7 +123,7 @@ export function CategoryRows({
 /** רשימות המאפיינים (פאסטים) עם ספירה — רק ערכים שקיימים במלאי המסונן. */
 export function FacetList({ facets, href }: { facets: FacetView[]; href: HrefBuilder }) {
   if (facets.length === 0) {
-    return <p className="text-sm text-gray-400">אין מאפיינים לסינון בתוצאות אלו.</p>;
+    return <p className="text-sm text-gray-600">אין מאפיינים לסינון בתוצאות אלו.</p>;
   }
   return (
     <div className="space-y-6">
@@ -156,7 +156,7 @@ export function FacetList({ facets, href }: { facets: FacetView[]; href: HrefBui
                       </span>
                       <span className="truncate">{o.label}</span>
                     </span>
-                    <span className="shrink-0 text-xs text-gray-400">{o.count}</span>
+                    <span className="shrink-0 text-xs text-gray-600">{o.count}</span>
                   </Link>
                 </li>
               );
@@ -207,7 +207,7 @@ export function ActiveFilters({
           <X className="h-3 w-3" />
         </Link>
       ))}
-      <Link href={clearHref} className="text-xs font-medium text-gray-500 underline hover:text-gray-800">
+      <Link href={clearHref} className="text-xs font-medium text-gray-600 underline hover:text-gray-800">
         ניקוי הכל
       </Link>
     </div>

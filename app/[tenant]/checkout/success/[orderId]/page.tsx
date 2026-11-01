@@ -42,7 +42,7 @@ export default async function OrderSuccessPage(
             ? `המשתלה תחזור אליך בטלפון ${order.customerPhone} עם הצעת מחיר מפורטת. אין חיוב בשלב זה.`
             : `המשתלה תיצור איתך קשר בטלפון ${order.customerPhone} לתיאום תשלום ואיסוף/משלוח.`}
         </p>
-        <p className="mt-3 text-sm text-gray-400">
+        <p className="mt-3 text-sm text-gray-600">
           {isQuote ? 'מספר פנייה' : 'מספר הזמנה'}: {order.id}
         </p>
 

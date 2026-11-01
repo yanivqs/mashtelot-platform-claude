@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import type { Nursery } from '@prisma/client';
-import { tenantUrl } from '@/lib/seo';
+import { jsonLdHtml, tenantUrl } from '@/lib/seo';
 
 export interface Crumb {
   label: string;
@@ -31,8 +31,8 @@ export function Breadcrumbs({
     })),
   };
   return (
-    <nav aria-label="פירורי לחם" className={`text-sm text-gray-500 ${className}`}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+    <nav aria-label="פירורי לחם" className={`text-sm text-gray-600 ${className}`}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }} />
       <ol className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
         {all.map((c, i) => {
           const last = i === all.length - 1;
@@ -47,7 +47,7 @@ export function Breadcrumbs({
                   {c.label}
                 </span>
               )}
-              {!last && <ChevronLeft className="h-3.5 w-3.5 shrink-0 text-gray-300" aria-hidden />}
+              {!last && <ChevronLeft className="h-3.5 w-3.5 shrink-0 text-gray-600" aria-hidden />}
             </li>
           );
         })}

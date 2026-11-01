@@ -118,13 +118,13 @@ export function MobileFloatBar({
               </div>
               {categories.length > 0 && (
                 <div className="border-b border-black/5 px-2 py-2">
-                  <p className="px-2 py-1 text-xs font-bold text-gray-500">קטגוריות</p>
+                  <p className="px-2 py-1 text-xs font-bold text-gray-600">קטגוריות</p>
                   {categories.map((c) =>
                     c.children.length > 0 ? (
                       <details key={c.id} className="group">
                         <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-2 py-2.5 text-[15px] font-semibold text-gray-900">
                           {c.name}
-                          <ChevronDown className="h-4 w-4 text-gray-500 transition group-open:rotate-180" />
+                          <ChevronDown className="h-4 w-4 text-gray-600 transition group-open:rotate-180" />
                         </summary>
                         <div className="mb-1 mr-3 border-r-2 border-[var(--accent)] pr-2">
                           <Link
@@ -186,8 +186,8 @@ export function MobileFloatBar({
                 aria-label="חיפוש"
                 className="min-w-0 flex-1 rounded-full border border-gray-200 bg-surface px-4 py-2.5 text-base outline-none focus:border-[var(--brand)]"
               />
-              <button className="rounded-full bg-[var(--accent)] px-4 text-sm font-bold text-white">חיפוש</button>
-              <button type="button" onClick={() => setSearchOpen(false)} aria-label="סגירת החיפוש" className="px-1 text-gray-500">
+              <button className="rounded-full bg-[var(--accent-strong)] px-4 text-sm font-bold text-white">חיפוש</button>
+              <button type="button" onClick={() => setSearchOpen(false)} aria-label="סגירת החיפוש" className="px-1 text-gray-600">
                 <X className="h-5 w-5" />
               </button>
             </form>
@@ -247,7 +247,7 @@ function Bar({
         >
           {salesMode === 'QUOTE' ? <FileText className="h-5 w-5" /> : <ShoppingCart className="h-5 w-5" />}
           {count > 0 && (
-            <span className="absolute right-0.5 top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[11px] font-bold text-white">
+            <span className="absolute right-0.5 top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent-strong)] px-1 text-[11px] font-bold text-white">
               {count}
             </span>
           )}

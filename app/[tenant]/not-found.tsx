@@ -7,7 +7,7 @@ export default function TenantNotFound() {
         🌵
       </span>
       <h1 className="mt-6 text-2xl font-bold text-gray-900">הדף לא נמצא</h1>
-      <p className="mt-2 text-gray-500">
+      <p className="mt-2 text-gray-600">
         ייתכן שהמשתלה אינה קיימת, אינה פעילה, או שהכתובת שגויה.
       </p>
       <Link

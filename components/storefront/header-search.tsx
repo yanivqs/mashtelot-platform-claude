@@ -38,7 +38,7 @@ export function HeaderSearch({ basePath }: { basePath: string }) {
       <button type="submit" aria-label="חיפוש" className="rounded-full p-2 text-gray-700 hover:bg-gray-100">
         <Search className="h-4 w-4" />
       </button>
-      <button type="button" onClick={() => setOpen(false)} aria-label="סגירת החיפוש" className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100">
+      <button type="button" onClick={() => setOpen(false)} aria-label="סגירת החיפוש" className="rounded-full p-1.5 text-gray-600 hover:bg-gray-100">
         <X className="h-4 w-4" />
       </button>
     </form>

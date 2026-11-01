@@ -8,7 +8,8 @@ import { AnnouncementBar } from '@/components/storefront/announcement-bar';
 import { isModuleEnabled } from '@/lib/module-access';
 import { getSalesMode } from '@/lib/sales';
 import { getNavPages, hasPublicBlog } from '@/lib/pages';
-import { tenantOrigin, localBusinessJsonLd } from '@/lib/seo';
+import { tenantOrigin, localBusinessJsonLd, jsonLdHtml } from '@/lib/seo';
+import { getStoreShareImage } from '@/lib/share-image';
 import { getEnabledChannels } from '@/lib/channel-access';
 import { getCategoryNav } from '@/lib/catalog';
 import { CartProvider } from '@/components/cart/cart-provider';
@@ -32,6 +33,7 @@ export async function generateMetadata(props: LayoutProps): Promise<Metadata> {
   }
 
   const origin = tenantOrigin(nursery);
+  const shareImage = await getStoreShareImage(nursery);
   return {
     metadataBase: new URL(origin),
     title: {
@@ -44,7 +46,7 @@ export async function generateMetadata(props: LayoutProps): Promise<Metadata> {
       type: 'website',
       siteName: nursery.name,
       locale: 'he_IL',
-      url: origin,
+      ...(shareImage ? { images: [{ url: shareImage, alt: nursery.name }] } : {}),
     },
   };
 }
@@ -110,8 +112,14 @@ export default async function TenantLayout(props: LayoutProps) {
       >
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }}
         />
+        <a
+          href="#main"
+          className="sr-only rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-lg focus:not-sr-only focus:fixed focus:right-3 focus:top-3 focus:z-[100]"
+        >
+          דילוג לתוכן
+        </a>
         <AnnouncementBar announcement={theme.announcement} basePath="" />
         <SiteHeader
           nursery={nursery}
@@ -124,7 +132,9 @@ export default async function TenantLayout(props: LayoutProps) {
           showBlog={showBlog}
           showAccount={showAccount}
         />
-        <main className="flex-1">{children}</main>
+        <main id="main" tabIndex={-1} className="flex-1 outline-none">
+          {children}
+        </main>
         <SiteFooter nursery={nursery} channels={channels} />
         {theme.headerStyle === 'float' ? (
           // מקום לסרגל הצף כדי שלא יסתיר את תחתית הדף

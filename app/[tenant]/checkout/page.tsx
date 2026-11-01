@@ -104,6 +104,7 @@ export default function CheckoutPage() {
     const res = await createOrder({
       tenant,
       customerName: String(fd.get('customerName') || ''),
+      website: String(fd.get('website') || ''),
       customerEmail: String(fd.get('customerEmail') || ''),
       customerPhone: String(fd.get('customerPhone') || ''),
       deliveryMethod: delivery,
@@ -141,9 +142,16 @@ export default function CheckoutPage() {
 
       <div className="grid gap-8 md:grid-cols-[1fr_320px]">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* מלכודת בוטים: נסתרת ומחוץ לסדר הטאב */}
+          <div aria-hidden="true" className="sr-only">
+            <label>
+              אתר
+              <input type="text" name="website" tabIndex={-1} autoComplete="off" />
+            </label>
+          </div>
           <section ref={contactRef} className="space-y-4">
             <h2 className="font-bold text-gray-900">פרטי התקשרות</h2>
-            {prefill && <p className="text-xs text-gray-500">מחובר/ת לחשבון — הפרטים מולאו מראש.</p>}
+            {prefill && <p className="text-xs text-gray-600">מחובר/ת לחשבון — הפרטים מולאו מראש.</p>}
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="text-sm">
                 <span className="mb-1 block font-medium text-gray-700">שם מלא *</span>
@@ -163,7 +171,7 @@ export default function CheckoutPage() {
           <section className="space-y-3">
             <h2 className="font-bold text-gray-900">אופן קבלת ההזמנה *</h2>
             {!options ? (
-              <p className="text-sm text-gray-400">טוען אפשרויות...</p>
+              <p className="text-sm text-gray-600">טוען אפשרויות...</p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 {options.deliveryMethods.map((m) => {
@@ -190,7 +198,7 @@ export default function CheckoutPage() {
                           <Icon className="h-4 w-4" />
                           {title}
                         </span>
-                        <span className="mt-0.5 block text-xs text-gray-500">
+                        <span className="mt-0.5 block text-xs text-gray-600">
                           {m === 'PICKUP'
                             ? options.pickupAddress
                               ? `ללא עלות · ${options.pickupAddress}`
@@ -294,7 +302,7 @@ export default function CheckoutPage() {
                   />
                 </label>
                 {zoneCities.length > 0 && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-600">
                     {usesPostcodes ? 'אין משלוח לכתובת שלכם? צרו קשר עם המשתלה לתיאום.' : 'העיר שלכם לא ברשימה? צרו קשר עם המשתלה לתיאום משלוח.'}
                   </p>
                 )}
@@ -401,7 +409,7 @@ export default function CheckoutPage() {
                 ? 'שליחת בקשת הצעת מחיר'
                 : 'שליחת הזמנה'}
           </button>
-          <p className="text-center text-xs text-gray-400">
+          <p className="text-center text-xs text-gray-600">
             {isQuote
               ? 'המשתלה תחזור אליכם עם הצעת מחיר מפורטת. אין חיוב בשלב זה.'
               : 'התשלום מתבצע מול המשתלה לאחר יצירת ההזמנה.'}
@@ -458,7 +466,7 @@ export default function CheckoutPage() {
             <span>{isQuote ? 'סה"כ משוער' : 'סה"כ לתשלום'}</span>
             <span>{formatPrice(subtotal - groupAmount - redeemAmount + (shippingEstimate ?? 0))}</span>
           </div>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-gray-600">
             {isQuote
               ? 'המחיר הסופי ייקבע בהצעת המחיר.'
               : 'הנחת קופון (אם הוזן) תחושב בעת שליחת ההזמנה.'}

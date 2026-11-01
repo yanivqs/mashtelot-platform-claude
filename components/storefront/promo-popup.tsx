@@ -53,7 +53,7 @@ export function PromoPopup({
         <button
           onClick={close}
           aria-label="סגירה"
-          className="absolute left-4 top-4 text-gray-400 hover:text-gray-700"
+          className="absolute left-4 top-4 text-gray-600 hover:text-gray-700"
         >
           <X className="h-5 w-5" />
         </button>

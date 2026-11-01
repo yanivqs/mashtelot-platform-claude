@@ -91,12 +91,12 @@ export function SiteHeader({
   // במצב float הכותרת נדבקת רק במחשב; בנייד הסרגל עובר לתחתית (מחלקות מלאות — Tailwind סורק טקסט).
   // floatTop — דבוקה תמיד, גם בנייד.
   const stickyClass = mobileStyle === 'floatTop'
-    ? belowAnnouncement ? 'sticky top-9' : 'sticky top-0'
+    ? belowAnnouncement ? 'sticky top-[var(--announce-h,2.25rem)]' : 'sticky top-0'
     : !sticky
     ? ''
     : docking
-      ? belowAnnouncement ? 'md:sticky md:top-9' : 'md:sticky md:top-0'
-      : belowAnnouncement ? 'sticky top-9' : 'sticky top-0';
+      ? belowAnnouncement ? 'md:sticky md:top-[var(--announce-h,2.25rem)]' : 'md:sticky md:top-0'
+      : belowAnnouncement ? 'sticky top-[var(--announce-h,2.25rem)]' : 'sticky top-0';
   const nav = [
     { href: basePath || '/', label: 'בית' },
     { href: `${basePath}/catalog`, label: 'קטלוג' },
@@ -174,7 +174,7 @@ export function SiteHeader({
               ))}
               {categories.length > 0 && (
                 <div className="mt-2 border-t border-gray-100 pt-2">
-                  <p className="px-3 py-1 text-xs font-bold uppercase text-gray-400">קטגוריות</p>
+                  <p className="px-3 py-1 text-xs font-bold uppercase text-gray-600">קטגוריות</p>
                   {categories.map((c) => (
                     <div key={c.id}>
                       <Link

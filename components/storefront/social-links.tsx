@@ -108,7 +108,7 @@ export function SocialLinks({
             target="_blank"
             rel="noopener noreferrer"
             aria-label={channel.label}
-            className="text-gray-400 transition hover:text-brand-700"
+            className="text-gray-600 transition hover:text-brand-700"
           >
             <Icon className="h-5 w-5" />
           </a>

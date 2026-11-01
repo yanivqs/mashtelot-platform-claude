@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { getNurseryByTenant } from '@/lib/tenant';
+import { getStoreShareImage } from '@/lib/share-image';
 import { getProductByParam } from '@/lib/catalog';
 import { productSlug } from '@/lib/utils';
 import { resolveProductContent, tenantUrl } from '@/lib/seo';
@@ -32,6 +33,7 @@ export async function generateMetadata(props: ProductPageProps): Promise<Metadat
 
   const { title, metaTitle, metaDescription, image } = resolveProductContent(product);
   const canonical = `/product/${productSlug(product.id, title, product.slug)}`;
+  const shareImage = await getStoreShareImage(nursery);
 
   return {
     title: metaTitle,
@@ -42,7 +44,7 @@ export async function generateMetadata(props: ProductPageProps): Promise<Metadat
       description: metaDescription,
       type: 'website',
       url: tenantUrl(nursery, canonical),
-      images: image ? [{ url: image }] : undefined,
+      images: image || shareImage ? [{ url: (image || shareImage)! }] : undefined,
     },
   };
 }

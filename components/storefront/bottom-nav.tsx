@@ -59,7 +59,7 @@ export function BottomNav({ basePath }: { basePath: string }) {
               type="button"
               onClick={() => setSearchOpen(false)}
               aria-label="סגירת החיפוש"
-              className="rounded-lg px-2 text-gray-500"
+              className="rounded-lg px-2 text-gray-600"
             >
               <X className="h-5 w-5" />
             </button>

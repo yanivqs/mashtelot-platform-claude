@@ -40,7 +40,7 @@ export default async function BlogIndex(props: { params: Promise<{ tenant: strin
       <h1 className="text-3xl font-bold tracking-tight text-gray-900">בלוג</h1>
 
       {posts.length === 0 ? (
-        <p className="mt-8 rounded-lg bg-gray-50 p-10 text-center text-gray-500">
+        <p className="mt-8 rounded-lg bg-gray-50 p-10 text-center text-gray-600">
           עדיין אין פוסטים. חזרו בקרוב.
         </p>
       ) : (
@@ -59,7 +59,7 @@ export default async function BlogIndex(props: { params: Promise<{ tenant: strin
                 <h2 className="text-lg font-bold text-gray-900 group-hover:text-brand-700">{p.title}</h2>
                 {p.excerpt && <p className="mt-2 line-clamp-3 text-sm text-gray-600">{p.excerpt}</p>}
                 {p.publishedAt && (
-                  <p className="mt-3 text-xs text-gray-400">
+                  <p className="mt-3 text-xs text-gray-600">
                     {p.publishedAt.toLocaleDateString('he-IL')}
                   </p>
                 )}

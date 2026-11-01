@@ -33,12 +33,12 @@ export default async function CustomerOrderPage(props: { params: Promise<{ tenan
 
   return (
     <div dir="rtl" className="mx-auto max-w-2xl space-y-5 px-6 py-10">
-      <Link href="/account" className="text-sm text-gray-500 hover:underline">
+      <Link href="/account" className="text-sm text-gray-600 hover:underline">
         ← החשבון שלי
       </Link>
       <div>
         <h1 className="text-2xl font-bold text-gray-900">הזמנה #{order.id.slice(0, 8)}</h1>
-        <p className="text-sm text-gray-500">{dateFmt.format(order.createdAt)}</p>
+        <p className="text-sm text-gray-600">{dateFmt.format(order.createdAt)}</p>
       </div>
       <div className="flex flex-wrap gap-2 text-sm">
         <span className="rounded-full bg-gray-100 px-3 py-1">סטטוס: {ORDER_STATUS_LABELS[order.status]}</span>

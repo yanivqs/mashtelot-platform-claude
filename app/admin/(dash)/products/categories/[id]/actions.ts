@@ -106,4 +106,5 @@ export async function toggleProductActive(formData: FormData): Promise<void> {
   if (categoryId) revalidatePath(`/admin/products/categories/${categoryId}`);
   revalidatePath('/admin/products');
   revalidatePath(`/admin/products/${productId}`);
+  revalidatePath('/[tenant]', 'layout');
 }

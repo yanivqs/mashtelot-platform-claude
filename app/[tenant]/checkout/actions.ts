@@ -41,6 +41,8 @@ export interface CheckoutInput {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  /** שדה מלכודת: נסתר מאדם, בוט שממלא את כל השדות נחסם */
+  website?: string;
   deliveryMethod?: DeliveryChoice;
   shippingAddress?: string;
   city?: string;
@@ -160,6 +162,8 @@ export async function createOrder(input: CheckoutInput): Promise<CheckoutResult>
       i.quantity > 0,
   );
   if (cart.length === 0) return { error: 'העגלה ריקה' };
+
+  if (input.website?.trim()) return { error: 'לא ניתן להשלים את ההזמנה' };
 
   // הגבלת קצב לפי כתובת IP כדי לבלום הצפת הזמנות
   if (!(await rateLimit(`checkout:ip:${await clientIp()}`, 6, 10 * 60_000)).ok) {

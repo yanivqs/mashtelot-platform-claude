@@ -133,3 +133,39 @@ export function productJsonLd(params: {
     },
   };
 }
+
+/** JSON-LD בטוח לתוך <script>: תוכן של בעל המשתלה לא יכול לסגור את התגית. */
+export function jsonLdHtml(data: unknown): string {
+  return JSON.stringify(data).replace(/</g, '\\u003c');
+}
+
+/** Schema.org/BlogPosting למאמר בבלוג. המחבר הוא המשתלה — אין שדה מחבר אישי. */
+export function articleJsonLd(
+  nursery: Pick<Nursery, 'name' | 'subdomain' | 'customDomain' | 'logoUrl'>,
+  post: {
+    slug: string;
+    title: string;
+    excerpt: string | null;
+    coverImageUrl: string | null;
+    publishedAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+  },
+) {
+  const organization = { '@type': 'Organization', name: nursery.name, url: tenantOrigin(nursery) };
+  return {
+    '@context': 'https://schema.org/',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.excerpt || undefined,
+    image: post.coverImageUrl ? [post.coverImageUrl] : undefined,
+    datePublished: (post.publishedAt ?? post.createdAt).toISOString(),
+    dateModified: post.updatedAt.toISOString(),
+    author: organization,
+    publisher: {
+      ...organization,
+      logo: nursery.logoUrl ? { '@type': 'ImageObject', url: nursery.logoUrl } : undefined,
+    },
+    mainEntityOfPage: tenantUrl(nursery, `/blog/${post.slug}`),
+  };
+}

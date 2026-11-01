@@ -38,7 +38,7 @@ export function ProductCard({
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <Link href={href} className="relative block aspect-[4/3] overflow-hidden bg-brand-50">
+      <Link href={href} aria-label={title} className="relative block aspect-[4/3] overflow-hidden bg-brand-50">
         {image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -68,7 +68,7 @@ export function ProductCard({
         {kicker &&
           (categoryLabel ? (
             <span
-              className="w-fit rounded-full px-2 py-0.5 text-[11px] font-bold text-[var(--accent,#16a34a)]"
+              className="w-fit rounded-full px-2 py-0.5 text-[11px] font-bold text-[var(--accent-strong,#15803d)]"
               style={{ backgroundColor: 'color-mix(in srgb, var(--accent, #16a34a) 12%, transparent)' }}
               data-testid="card-category"
             >
@@ -84,7 +84,7 @@ export function ProductCard({
           </h3>
         </Link>
         {product.plant?.latinName && (
-          <p className="-mt-1 text-xs italic text-gray-400">{product.plant.latinName}</p>
+          <p className="-mt-1 text-xs italic text-gray-600">{product.plant.latinName}</p>
         )}
 
         <PlantFactsInline plant={product.plant} limit={3} />
@@ -99,10 +99,10 @@ export function ProductCard({
 
         <div className="mt-auto pt-2">
           <div className="mb-3 flex items-baseline gap-2">
-            {choice && summary.min !== summary.max && <span className="text-xs text-gray-500">החל מ-</span>}
+            {choice && summary.min !== summary.max && <span className="text-xs text-gray-600">החל מ-</span>}
             <span className="text-lg font-bold text-gray-900">{formatPrice(price)}</span>
             {onSale && (
-              <span className="text-sm text-gray-400 line-through">{formatPrice(compareAt!)}</span>
+              <span className="text-sm text-gray-600 line-through">{formatPrice(compareAt!)}</span>
             )}
           </div>
           {choice ? (

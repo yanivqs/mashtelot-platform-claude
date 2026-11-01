@@ -44,7 +44,7 @@ export default async function AccountPage(props: { params: Promise<{ tenant: str
           </p>
         )}
         <h1 className="mb-2 text-2xl font-bold text-gray-900">כניסה לחשבון</h1>
-        <p className="mb-6 text-sm text-gray-500">
+        <p className="mb-6 text-sm text-gray-600">
           נשלח לכם קוד חד-פעמי במייל — בלי סיסמה. אין לכם חשבון? הוא ייפתח אוטומטית בכניסה הראשונה, וההזמנות הקודמות שלכם עם אותו מייל יופיעו בו.
         </p>
         <LoginForm tenant={tenant} />
@@ -69,7 +69,7 @@ export default async function AccountPage(props: { params: Promise<{ tenant: str
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">החשבון שלי</h1>
-          <p className="text-sm text-gray-500" dir="ltr">
+          <p className="text-sm text-gray-600" dir="ltr">
             {customer.email}
           </p>
         </div>
@@ -98,7 +98,7 @@ export default async function AccountPage(props: { params: Promise<{ tenant: str
                     <li key={e.id} className="flex gap-3 py-1.5">
                       <span className={e.points > 0 ? 'text-green-700' : 'text-rose-700'}>{e.points > 0 ? `+${e.points}` : e.points}</span>
                       <span>{LOYALTY_KIND_LABELS[e.kind]}</span>
-                      <span className="ms-auto text-xs text-gray-500">{dateFmt.format(e.createdAt)}</span>
+                      <span className="ms-auto text-xs text-gray-600">{dateFmt.format(e.createdAt)}</span>
                     </li>
                   ))}
                 </ul>
@@ -123,7 +123,7 @@ export default async function AccountPage(props: { params: Promise<{ tenant: str
               {orders.map((o) => (
                 <li key={o.id}>
                   <Link href={`/account/orders/${o.id}`} className="flex flex-wrap items-center gap-3 py-2.5 hover:bg-gray-50">
-                    <span className="font-mono text-xs text-gray-500">#{o.id.slice(0, 8)}</span>
+                    <span className="font-mono text-xs text-gray-600">#{o.id.slice(0, 8)}</span>
                     <span>{dateFmt.format(o.createdAt)}</span>
                     <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs">{ORDER_STATUS_LABELS[o.status]}</span>
                     <span className="ms-auto font-medium">{formatPrice(o.totalAmount.toString())}</span>
@@ -197,7 +197,7 @@ export default async function AccountPage(props: { params: Promise<{ tenant: str
       <form action={logoutAction} className="text-center">
         <input type="hidden" name="tenant" value={tenant} />
         <input type="hidden" name="all" value="1" />
-        <button className="text-xs text-gray-500 hover:underline">יציאה מכל המכשירים</button>
+        <button className="text-xs text-gray-600 hover:underline">יציאה מכל המכשירים</button>
       </form>
     </div>
   );

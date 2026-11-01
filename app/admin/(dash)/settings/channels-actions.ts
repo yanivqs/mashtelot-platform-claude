@@ -40,5 +40,6 @@ export async function saveChannels(
   await auditAsCurrentUser({ nurseryId, action: 'channels.updated', entityType: 'Nursery', entityId: nurseryId });
 
   revalidatePath('/admin/settings');
+  revalidatePath('/[tenant]', 'layout');
   return { ok: true };
 }

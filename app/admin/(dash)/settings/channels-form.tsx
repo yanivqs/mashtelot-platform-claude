@@ -1,9 +1,9 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
-import type { NurseryChannel } from '@prisma/client';
+import type { ChannelProvider, NurseryChannel } from '@prisma/client';
 import { saveChannels, type SaveChannelsState } from './channels-actions';
 import { CHANNEL_PROVIDERS, CHANNEL_LABELS, CHANNEL_VALUE_PLACEHOLDERS } from '@/lib/channels';
 
@@ -23,6 +23,43 @@ function Submit() {
   );
 }
 
+/** שורת ערוץ: הקלדת קישור בשורה ריקה מסמנת אותה אוטומטית, וקישור כבוי מסומן שאינו מוצג באתר. */
+function ChannelRow({ provider, row }: { provider: ChannelProvider; row?: NurseryChannel }) {
+  const [enabled, setEnabled] = useState(row?.isEnabled ?? false);
+  const [value, setValue] = useState(row?.value ?? '');
+
+  return (
+    <div className="rounded-lg border border-gray-100 p-3">
+      <div className="flex items-center gap-3">
+        <label className="flex w-40 shrink-0 items-center gap-2 text-sm font-medium text-gray-900">
+          <input
+            type="checkbox"
+            name={`${provider}_enabled`}
+            checked={enabled}
+            onChange={(e) => setEnabled(e.target.checked)}
+          />
+          {CHANNEL_LABELS[provider]}
+        </label>
+        <input
+          name={`${provider}_value`}
+          value={value}
+          onChange={(e) => {
+            if (!value.trim() && e.target.value.trim()) setEnabled(true);
+            setValue(e.target.value);
+          }}
+          placeholder={CHANNEL_VALUE_PLACEHOLDERS[provider]}
+          aria-label={`קישור ${CHANNEL_LABELS[provider]}`}
+          dir="ltr"
+          className={field}
+        />
+      </div>
+      {value.trim() && !enabled && (
+        <p className="mt-1.5 text-xs text-amber-700">הקישור שמור אבל לא מוצג באתר. סמנו את התיבה כדי להציג אותו.</p>
+      )}
+    </div>
+  );
+}
+
 export function ChannelsForm({ channels }: { channels: NurseryChannel[] }) {
   const [state, action] = useActionState(saveChannels, initial);
   const keep = useKeepFormValues(state);
@@ -30,28 +67,9 @@ export function ChannelsForm({ channels }: { channels: NurseryChannel[] }) {
 
   return (
     <form ref={keep} action={action} className="space-y-3">
-      {CHANNEL_PROVIDERS.map((provider) => {
-        const row = byProvider.get(provider);
-        return (
-          <div key={provider} className="flex items-center gap-3 rounded-lg border border-gray-100 p-3">
-            <label className="flex w-40 shrink-0 items-center gap-2 text-sm font-medium text-gray-900">
-              <input
-                type="checkbox"
-                name={`${provider}_enabled`}
-                defaultChecked={row?.isEnabled ?? false}
-              />
-              {CHANNEL_LABELS[provider]}
-            </label>
-            <input
-              name={`${provider}_value`}
-              defaultValue={row?.value ?? ''}
-              placeholder={CHANNEL_VALUE_PLACEHOLDERS[provider]}
-              dir="ltr"
-              className={field}
-            />
-          </div>
-        );
-      })}
+      {CHANNEL_PROVIDERS.map((provider) => (
+        <ChannelRow key={provider} provider={provider} row={byProvider.get(provider)} />
+      ))}
       <div className="flex items-center gap-3 pt-1">
         <Submit />
         {state.ok && <span className="text-sm text-green-700">נשמר ✓</span>}

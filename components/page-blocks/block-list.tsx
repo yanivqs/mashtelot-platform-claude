@@ -169,7 +169,7 @@ function BlockView({ b, nursery, data, level }: { b: Block; nursery: Nursery; da
             </Link>
           </div>
           {items.length === 0 ? (
-            <p className="rounded-xl bg-gray-50 p-10 text-center text-gray-500">הקטלוג מתעדכן. חזרו בקרוב.</p>
+            <p className="rounded-xl bg-gray-50 p-10 text-center text-gray-600">הקטלוג מתעדכן. חזרו בקרוב.</p>
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
               {items.map((p) => (
@@ -192,7 +192,7 @@ function BlockView({ b, nursery, data, level }: { b: Block; nursery: Nursery; da
               <Link
                 key={c.id}
                 href={`/catalog?category=${encodeURIComponent(c.slug)}`}
-                className="flex min-h-16 w-32 shrink-0 items-center justify-center rounded-2xl border border-black/5 bg-white p-3 text-center font-bold text-brand-800 shadow-sm transition hover:border-[var(--accent,#16a34a)] hover:text-[var(--accent,#16a34a)] sm:min-h-20 sm:w-auto sm:p-4"
+                className="flex min-h-16 w-32 shrink-0 items-center justify-center rounded-2xl border border-black/5 bg-white p-3 text-center font-bold text-brand-800 shadow-sm transition hover:border-[var(--accent,#16a34a)] hover:text-[var(--accent-strong,#15803d)] sm:min-h-20 sm:w-auto sm:p-4"
               >
                 {c.name}
               </Link>
@@ -226,7 +226,7 @@ function BlockView({ b, nursery, data, level }: { b: Block; nursery: Nursery; da
                     <h3 className="text-lg font-bold leading-snug text-gray-900 group-hover:text-brand-700">{c.title}</h3>
                     {c.text && <p className="line-clamp-3 text-sm leading-relaxed text-gray-600">{c.text}</p>}
                     {c.href && (
-                      <span className="mt-auto inline-flex items-center gap-1 pt-1 text-sm font-bold text-[var(--accent,#16a34a)]">
+                      <span className="mt-auto inline-flex items-center gap-1 pt-1 text-sm font-bold text-[var(--accent-strong,#15803d)]">
                         לקריאה
                         <ArrowLeft className="h-4 w-4" />
                       </span>

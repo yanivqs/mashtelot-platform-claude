@@ -100,7 +100,7 @@ export default async function CatalogPage(props: CatalogPageProps) {
             : selectedCategory?.name ?? 'הקטלוג שלנו'}
         </h1>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-gray-500">{view.total} מוצרים</p>
+          <p className="text-sm text-gray-600">{view.total} מוצרים</p>
           <SortSelect
             value={view.sort}
             options={CATALOG_SORTS.map((s) => ({
@@ -136,7 +136,7 @@ export default async function CatalogPage(props: CatalogPageProps) {
 
         <div>
           {view.items.length === 0 ? (
-            <p className="rounded-lg bg-gray-50 p-10 text-center text-gray-500">
+            <p className="rounded-lg bg-gray-50 p-10 text-center text-gray-600">
               לא נמצאו מוצרים התואמים את הסינון.
             </p>
           ) : (

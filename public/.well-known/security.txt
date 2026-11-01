@@ -1,0 +1,4 @@
+Contact: mailto:hello@mashtelot.net
+Expires: 2027-11-01T00:00:00.000Z
+Preferred-Languages: he, en
+Canonical: https://mashtelot.net/.well-known/security.txt

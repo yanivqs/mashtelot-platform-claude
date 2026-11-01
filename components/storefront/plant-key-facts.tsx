@@ -13,7 +13,7 @@ export function PlantFactsInline({
   if (facts.length === 0) return null;
 
   return (
-    <ul className="flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-gray-500">
+    <ul className="flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-gray-600">
       {facts.map(({ key, value, Icon, label }) => (
         <li key={key} className="flex items-center gap-1" title={`${label}: ${value}`}>
           <Icon className="h-3.5 w-3.5 shrink-0 text-brand-600" aria-hidden />
@@ -43,7 +43,7 @@ export function PlantFactsGrid({
           className="rounded-xl border border-gray-100 bg-white p-3 text-center shadow-sm"
         >
           <Icon className="mx-auto h-5 w-5 text-brand-600" aria-hidden />
-          <dt className="mt-1.5 text-xs font-medium text-gray-400">{label}</dt>
+          <dt className="mt-1.5 text-xs font-medium text-gray-600">{label}</dt>
           <dd className="mt-0.5 text-sm font-semibold text-gray-900">{value}</dd>
         </div>
       ))}

@@ -71,7 +71,7 @@ function HeroFields({ b, set }: { b: BlockOf<'hero'>; set: Patch<BlockOf<'hero'>
       </label>
       <Text label="כותרת (ריק = שם המשתלה)" value={b.headline} onChange={(v) => set({ headline: v })} />
       <Text label="כותרת משנה" value={b.subheadline} onChange={(v) => set({ subheadline: v })} />
-      {b.variant === 'image' && <ImageUpload key={`${b.id}-img`} label="תמונת רקע" folder="misc" defaultValue={b.imageUrl} onChange={(url) => set({ imageUrl: url })} />}
+      {b.variant === 'image' && <ImageUpload key={`${b.id}-img`} label="תמונת רקע" folder="misc" hint="מידה מומלצת: 1920×800 פיקסלים (לרוחב). בנייד נחתכים הצדדים, אז כדאי שהעיקר יהיה במרכז התמונה." defaultValue={b.imageUrl} onChange={(url) => set({ imageUrl: url })} />}
       {b.variant === 'video' && <Text label="קישור YouTube" value={b.videoUrl} onChange={(v) => set({ videoUrl: v })} max={500} dir="ltr" />}
       {b.variant === 'carousel' && (
         <div className="space-y-3 rounded-lg border border-gray-100 bg-gray-50 p-3">
@@ -85,7 +85,7 @@ function HeroFields({ b, set }: { b: BlockOf<'hero'>; set: Patch<BlockOf<'hero'>
                     הסרה
                   </button>
                 </div>
-                <ImageUpload key={`${b.id}-s${i}-${s.imageUrl ? 1 : 0}`} folder="misc" defaultValue={s.imageUrl} onChange={(url) => upd({ imageUrl: url })} />
+                <ImageUpload key={`${b.id}-s${i}-${s.imageUrl ? 1 : 0}`} folder="misc" hint="מידה מומלצת: 1920×800 פיקסלים (לרוחב). בנייד נחתכים הצדדים, אז כדאי שהעיקר יהיה במרכז התמונה." defaultValue={s.imageUrl} onChange={(url) => upd({ imageUrl: url })} />
                 <Text label="כותרת" value={s.headline} onChange={(v) => upd({ headline: v })} />
                 <Text label="כותרת משנה" value={s.subheadline} onChange={(v) => upd({ subheadline: v })} />
                 <CtaFields text={s.ctaText} href={s.ctaHref} onText={(v) => upd({ ctaText: v })} onHref={(v) => upd({ ctaHref: v })} />
@@ -189,7 +189,7 @@ function BlockFields({
     case 'imageText':
       return (
         <div className="space-y-3">
-          <ImageUpload key={`${b.id}-img`} folder="misc" defaultValue={b.imageUrl} onChange={(url) => set({ imageUrl: url } as Partial<typeof b>)} />
+          <ImageUpload key={`${b.id}-img`} folder="misc" hint="מידה מומלצת: 1200×900 פיקסלים (יחס 4:3)." defaultValue={b.imageUrl} onChange={(url) => set({ imageUrl: url } as Partial<typeof b>)} />
           <Text label="כותרת" value={b.title} onChange={(v) => set({ title: v } as Partial<typeof b>)} />
           <RichTextEditor key={b.id} defaultValue={b.html} onChange={(html) => set({ html } as Partial<typeof b>)} />
           <label className="block text-sm">
@@ -273,7 +273,7 @@ function BlockFields({
                 const upd = (patch: Partial<typeof c>) => set({ cards: b.cards.map((x, j) => (j === i ? { ...x, ...patch } : x)) } as Partial<typeof b>);
                 return (
                   <div key={i} className="space-y-2 rounded-lg bg-gray-50 p-3">
-                    <ImageUpload key={`${b.id}-card-${i}`} folder="misc" defaultValue={c.imageUrl} onChange={(url) => upd({ imageUrl: url })} />
+                    <ImageUpload key={`${b.id}-card-${i}`} folder="misc" hint="מידה מומלצת: 1200×750 פיקסלים (יחס 16:10)." defaultValue={c.imageUrl} onChange={(url) => upd({ imageUrl: url })} />
                     <Text label={`כותרת כרטיס ${i + 1} *`} value={c.title} onChange={(v) => upd({ title: v })} max={120} />
                     <label className="block text-sm">
                       <span className="mb-1 block font-medium text-gray-700">תיאור</span>
