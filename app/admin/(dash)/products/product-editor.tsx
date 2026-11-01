@@ -136,6 +136,7 @@ export function ProductEditor({
             defaultValue={product.customImageUrl}
             label="תמונת המוצר בחנות"
             folder="plants"
+            nurseryFolder
             onChange={setImageUrl}
           />
           {product.imageRequired && !imageUrl ? (

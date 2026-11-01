@@ -3,6 +3,7 @@ import { Check, Search, SlidersHorizontal, X } from 'lucide-react';
 import type { CategoryNode } from '@/lib/catalog';
 import type { FacetView } from '@/lib/catalog-filter';
 import { FACET_KEYS } from '@/lib/plant-facets';
+import { ScrollRow } from '@/components/storefront/scroll-row';
 
 /** הפרמטרים שנשמרים בין קישורי הסינון (page מתאפס בכל שינוי). */
 export const FILTER_PARAM_KEYS = ['q', 'category', 'letter', 'sort', ...FACET_KEYS];
@@ -27,7 +28,7 @@ export function makeHrefBuilder(
   };
 }
 
-const chip = 'rounded-full border px-3.5 py-1.5 text-sm transition';
+const chip = 'shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm transition';
 const chipIdle = `${chip} border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50`;
 const chipActive = `${chip} border-transparent bg-[var(--brand,#16a34a)] font-medium text-white`;
 
@@ -64,6 +65,7 @@ export function CatalogSearch({
 /**
  * שורות קטגוריות: שורה ראשית של קטגוריות-על, ומתחתיה תתי-הקטגוריות של הקטגוריה
  * שנבחרה בלבד (רמה אחר רמה). רק קטגוריות שיש בהן מוצרים פעילים מגיעות לכאן.
+ * בנייד כל רמה היא שורה אחת בגלילה אופקית, כדי שהמוצרים לא יידחקו אל מתחת למסך.
  */
 export function CategoryRows({
   nav,
@@ -88,14 +90,15 @@ export function CategoryRows({
   return (
     <div className="space-y-2.5">
       {rows.map((row, i) => (
-        <div key={i} className="flex flex-wrap items-center gap-2">
+        <ScrollRow key={i}>
           {i === 0 ? (
-            <Link href={href({ category: null })} className={path.length ? chipIdle : chipActive}>
+            <Link href={href({ category: null })} aria-current={path.length ? undefined : 'true'} className={path.length ? chipIdle : chipActive}>
               הכל
             </Link>
           ) : (
             <Link
               href={href({ category: row.parent!.slug })}
+              aria-current={row.activeId ? undefined : 'true'}
               className={row.activeId ? chipIdle : chipActive}
             >
               הכל ב{row.parent!.name}
@@ -105,12 +108,13 @@ export function CategoryRows({
             <Link
               key={node.id}
               href={href({ category: node.slug })}
+              aria-current={node.id === row.activeId ? 'true' : undefined}
               className={node.id === row.activeId ? chipActive : chipIdle}
             >
               {node.name}
             </Link>
           ))}
-        </div>
+        </ScrollRow>
       ))}
     </div>
   );

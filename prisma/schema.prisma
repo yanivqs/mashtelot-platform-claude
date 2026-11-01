@@ -102,6 +102,7 @@ model Nursery {
   blogPosts       BlogPost[]
   stockMovements  StockMovement[]
   pageLayouts     PageLayout[]
+  images          NurseryImage[]
 
   @@map("nurseries")
 }
@@ -1332,4 +1333,19 @@ model PageLayoutVersion {
   @@unique([layoutId, version])
   @@index([layoutId, publishAt])
   @@map("page_layout_versions")
+}
+
+/// תיקיית התמונות של המשתלה: הועלו בידי בעל המשתלה או מנהל הפלטפורמה, ומשויכות למוצרים לפי הצורך
+model NurseryImage {
+  id              String   @id @default(uuid())
+  nurseryId       String   @map("nursery_id")
+  url             String   @unique
+  storagePath     String   @map("storage_path")
+  fileName        String   @map("file_name")
+  uploadedByEmail String?  @map("uploaded_by_email")
+  createdAt       DateTime @default(now()) @map("created_at")
+  nursery         Nursery  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@index([nurseryId, createdAt])
+  @@map("nursery_images")
 }

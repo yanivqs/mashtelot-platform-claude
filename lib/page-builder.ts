@@ -44,9 +44,9 @@ export async function loadBlockData(nurseryId: string, blocks: Block[]): Promise
       if (b.type === 'products') data.products[b.id] = await getBlockProducts(nurseryId, b);
       if (b.type === 'contentCards') data.cards[b.id] = b.source === 'manual' ? b.cards : await latestPosts(nurseryId, b.limit);
       if (b.type === 'categories') {
-        // ריק = הקטגוריות הראשיות; אחרת — הנבחרות בסדר שנבחר (רק כאלה שיש בהן מוצרים פעילים)
-        const all = new Map(flatten(nav).map((c) => [c.id, c]));
-        data.categories[b.id] = b.categoryIds.length ? b.categoryIds.flatMap((id) => (all.has(id) ? [all.get(id)!] : [])) : nav;
+        // ריק = הקטגוריות הראשיות; אחרת — הנבחרות (רק כאלה שיש בהן מוצרים פעילים), לפי הסדר שנשמר במסך הקטגוריות
+        const selected = new Set(b.categoryIds);
+        data.categories[b.id] = b.categoryIds.length ? flatten(nav).filter((c) => selected.has(c.id)) : nav;
       }
     }),
   );

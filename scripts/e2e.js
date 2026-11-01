@@ -52,6 +52,9 @@ const env = {
   MFA_ENCRYPTION_KEY: Buffer.from('e2e-only-mfa-key-32-bytes-long!!').toString('base64'),
   ROOT_DOMAIN: 'localhost:3100',
   RESEND_API_KEY: '',
+  // אחסון מדומה (e2e/global-setup.ts) — אחרת next start טוען את האחסון האמיתי מ-.env
+  SUPABASE_URL: 'http://127.0.0.1:3199',
+  SUPABASE_SERVICE_ROLE_KEY: 'e2e-only',
   E2E: '1',
 };
 

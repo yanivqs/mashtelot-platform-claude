@@ -166,13 +166,15 @@ export function isPublicKey(key: string): boolean {
 }
 
 export function storageDriver(): Driver {
+  // בדיקות E2E תמיד מקומי — אחרת next start טוען את האחסון האמיתי מ-.env
+  if (process.env.E2E === '1') return localDriver;
   const cfg = supabaseConfig();
   // מפתח ציבורי (publishable/anon) לא עוקף RLS — האחסון הפרטי ייכשל בהודעה לא ברורה; עדיף לעצור מיד
   if (cfg && isPublicKey(cfg.key)) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY מוגדר עם המפתח הציבורי — יש להגדיר את המפתח הסודי (service_role / sb_secret)');
   }
   if (cfg) return supabaseDriver(cfg);
-  if (process.env.NODE_ENV !== 'production' || process.env.E2E === '1') return localDriver;
+  if (process.env.NODE_ENV !== 'production') return localDriver;
   throw new Error('אחסון הקבצים לא מוגדר (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY חסרים)');
 }
 

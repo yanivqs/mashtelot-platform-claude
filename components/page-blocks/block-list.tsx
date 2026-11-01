@@ -186,12 +186,13 @@ function BlockView({ b, nursery, data, level }: { b: Block; nursery: Nursery; da
       return (
         <section className="mx-auto max-w-6xl px-6 py-12">
           <SectionTitle title={b.title} />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {/* נייד: שורה אחת בגלילה אופקית; מחשב: רשת */}
+          <div className="-mx-6 flex gap-3 overflow-x-auto px-6 pb-2 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
             {cats.map((c) => (
               <Link
                 key={c.id}
                 href={`/catalog?category=${encodeURIComponent(c.slug)}`}
-                className="flex min-h-20 items-center justify-center rounded-2xl border border-black/5 bg-white p-4 text-center font-bold text-brand-800 shadow-sm transition hover:border-[var(--accent,#16a34a)] hover:text-[var(--accent,#16a34a)]"
+                className="flex min-h-16 w-32 shrink-0 items-center justify-center rounded-2xl border border-black/5 bg-white p-3 text-center font-bold text-brand-800 shadow-sm transition hover:border-[var(--accent,#16a34a)] hover:text-[var(--accent,#16a34a)] sm:min-h-20 sm:w-auto sm:p-4"
               >
                 {c.name}
               </Link>

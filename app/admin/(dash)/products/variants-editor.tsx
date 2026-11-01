@@ -66,6 +66,7 @@ function VariantImages({ initialUrls }: { initialUrls: string[] }) {
           <ImageUpload
             key={uploaderKey}
             folder="plants"
+            nurseryFolder
             onChange={(url) => {
               if (!url) return;
               setUrls((prev) => (prev.includes(url) ? prev : [...prev, url]));

@@ -310,7 +310,7 @@ function BlockFields({
       return (
         <div className="space-y-3">
           <Text label="כותרת" value={b.title} onChange={(v) => set({ title: v } as Partial<typeof b>)} />
-          <p className="text-xs text-gray-500">בלי סימון — הקטגוריות הראשיות. מוצגות רק קטגוריות שיש בהן מוצרים פעילים.</p>
+          <p className="text-xs text-gray-500">בלי סימון — הקטגוריות הראשיות. מוצגות רק קטגוריות שיש בהן מוצרים פעילים, לפי הסדר שנקבע במסך "הקטגוריות שלי".</p>
           <div className="grid max-h-48 gap-1 overflow-y-auto text-sm sm:grid-cols-2">
             {categories.map((c) => (
               <label key={c.id} className="flex items-center gap-2">

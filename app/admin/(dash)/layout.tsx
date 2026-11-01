@@ -15,6 +15,7 @@ import {
   LogOut,
   Truck,
   Tags,
+  Images,
   Mail,
   ExternalLink,
   KeyRound,
@@ -106,6 +107,7 @@ async function buildFullNurseryNav(nurseryId: string | null): Promise<NavItem[]>
     nav.push({ href: '/admin/products', label: 'המלאי שלי', icon: Package });
     nav.push({ href: '/admin/products/browse', label: 'שיוך מוצרים', icon: PlusSquare });
     nav.push({ href: '/admin/products/categories', label: 'הקטגוריות שלי', icon: Tags });
+    nav.push({ href: '/admin/products/images', label: 'תיקיית תמונות', icon: Images });
     // §6: עדכונים ממתינים מהקטלוג המרכזי (ללא הודעות יזומות — מונה בתפריט בלבד, Q3-א)
     const pending = nurseryId ? await pendingUpdateCount(prisma, nurseryId) : 0;
     nav.push({

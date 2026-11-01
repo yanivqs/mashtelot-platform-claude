@@ -2,6 +2,7 @@
  * נתוני E2E קבועים: משתלה `e2eshop` עם מוצרים, אמצעי תשלום ובעלים. נבנים מחדש בכל ריצה.
  * רץ רק דרך scripts/e2e.js (שמוודא בסיס בדיקות מקומי) — בדיקה כפולה כאן ליתר ביטחון.
  */
+import { createServer } from 'http';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 
@@ -35,6 +36,9 @@ export const FLOAT_SHOP = 'http://e2efloat.localhost:3100';
 /** משתלה לתיקוני הבעלים (שעות, מלאי, קטגוריות, הזמנות) — נפרדת כדי לא להתנגש בבדיקות הסרגל הצף */
 export const E2E_FIX_OWNER = { email: 'fix-owner@e2e.invalid', password: 'e2e-fix-pass-1234' };
 export const FIX_SHOP = 'http://e2efix.localhost:3100';
+/** תיקיית התמונות — משתמשים נפרדים בגלל מגבלת ההתחברויות לאימייל */
+export const E2E_FOLDER_OWNER = { email: 'folder-owner@e2e.invalid', password: 'e2e-folder-pass-123' };
+export const E2E_SUPER7 = { email: 'super7@e2e.invalid', password: 'e2e-super7-pass-123' };
 /** תבנית מפורסמת שנוצרת כאן לבדיקת המוצרים הקבועים (PT-04) */
 export const E2E_SAVED_TEMPLATE = 'תוויות קבועות E2E';
 export const E2E_PREFLIGHT_TEMPLATE = 'שלט ייצור E2E';
@@ -50,6 +54,18 @@ export default async function globalSetup() {
   if (process.env.E2E !== '1' || !/localhost|127\.0\.0\.1/.test(url) || !/_test(\?|$)/.test(url)) {
     throw new Error('E2E must run through `npm run test:e2e` against a local *_test database');
   }
+
+  // אחסון מדומה להעלאת תמונות: מקבל הכול ומחזיר תמונה קטנה; נסגר עם תהליך הבדיקות
+  const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+  createServer((req, res) => {
+    req.resume();
+    req.on('end', () => {
+      res.writeHead(200, { 'Content-Type': req.method === 'GET' ? 'image/png' : 'application/json' });
+      res.end(req.method === 'GET' ? pixel : '{}');
+    });
+  })
+    .listen(3199, '127.0.0.1')
+    .unref();
 
   const db = new PrismaClient({ log: [] });
   try {
@@ -77,7 +93,7 @@ export default async function globalSetup() {
       await db.user.deleteMany({ where: { nurseryId: old.id } });
       await db.nursery.delete({ where: { id: old.id } });
     }
-    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, E2E_OWNER7.email, E2E_LIFE_OWNER.email, E2E_SUPER6.email, E2E_OWNER8.email, E2E_OWNER9.email, E2E_FLOAT_OWNER.email, E2E_FIX_OWNER.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
+    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, E2E_OWNER7.email, E2E_LIFE_OWNER.email, E2E_SUPER6.email, E2E_OWNER8.email, E2E_OWNER9.email, E2E_FLOAT_OWNER.email, E2E_FIX_OWNER.email, E2E_FOLDER_OWNER.email, E2E_SUPER7.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
     // המוצרים נמחקו עם המשתלה; הצמח המרכזי (והגרסאות שלו) נמחק כאן
     await db.plant.deleteMany({ where: { hebrewName: E2E_PLANT } });
     // תבנית הדפוס שבדיקת PT יוצרת (ההזמנות שלה נמחקו עם המשתלה)
@@ -280,6 +296,9 @@ export default async function globalSetup() {
     await db.user.create({
       data: { email: E2E_FIX_OWNER.email, role: 'NURSERY_OWNER', nurseryId: fix.id, passwordHash: await bcrypt.hash(E2E_FIX_OWNER.password, 4) },
     });
+    await db.user.create({
+      data: { email: E2E_FOLDER_OWNER.email, role: 'NURSERY_OWNER', nurseryId: fix.id, passwordHash: await bcrypt.hash(E2E_FOLDER_OWNER.password, 4) },
+    });
 
     const life = await db.nursery.create({ data: { name: 'משתלת מחזור חיים', subdomain: 'e2elife', ownerEmail: E2E_LIFE_OWNER.email, phoneNumber: '03-5551234', city: 'חולון' } });
     await db.user.create({
@@ -287,6 +306,9 @@ export default async function globalSetup() {
     });
     await db.user.create({
       data: { email: E2E_SUPER6.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER6.password, 4) },
+    });
+    await db.user.create({
+      data: { email: E2E_SUPER7.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER7.password, 4) },
     });
     // PT-04: תבנית מפורסמת ופעילה (תווית עם טקסט וגודל)
     await db.printTemplate.create({

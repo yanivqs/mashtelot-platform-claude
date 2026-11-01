@@ -19,6 +19,13 @@ async function resolveNurseryId(): Promise<string> {
   return (await requireNurseryAction({ any: ['plant_catalog', 'supplies'] })).nurseryId;
 }
 
+/** מסכי הניהול וגם החנות: התפריט בכל דפי החנות נבנה מהקטגוריות. */
+function revalidateCategories() {
+  revalidatePath('/admin/products/categories');
+  revalidatePath('/admin/products');
+  revalidatePath('/[tenant]', 'layout');
+}
+
 export interface NurseryCategoryState {
   ok?: boolean;
   error?: string;
@@ -53,8 +60,7 @@ export async function createNurseryCategory(
   const last = await prisma.nurseryCategory.aggregate({ where: { nurseryId, parentId }, _max: { sortOrder: true } });
   const sortOrder = (last._max.sortOrder ?? 0) > 0 ? last._max.sortOrder! + 1 : 0;
   await prisma.nurseryCategory.create({ data: { nurseryId, name, slug, parentId, sortOrder } });
-  revalidatePath('/admin/products/categories');
-  revalidatePath('/admin/products');
+  revalidateCategories();
   return { ok: true };
 }
 
@@ -62,8 +68,7 @@ export async function deleteNurseryCategory(formData: FormData): Promise<void> {
   const nurseryId = await resolveNurseryId();
   const id = String(formData.get('id') || '');
   await prisma.nurseryCategory.deleteMany({ where: { id, nurseryId } });
-  revalidatePath('/admin/products/categories');
-  revalidatePath('/admin/products');
+  revalidateCategories();
 }
 
 /** עריכת שם ו-slug של קטגוריה. שינוי slug מעדכן גם את קישור הודעת הסטיקי אם הפנה לקטגוריה. */
@@ -107,9 +112,8 @@ export async function updateNurseryCategory(
     entityId: id,
     metadata: { from: { name: category.name, slug: category.slug }, to: { name, slug } },
   });
-  revalidatePath('/admin/products/categories');
+  revalidateCategories();
   revalidatePath(`/admin/products/categories/${id}`);
-  revalidatePath('/admin/products');
   return { ok: true };
 }
 
@@ -148,6 +152,5 @@ export async function moveNurseryCategory(formData: FormData): Promise<void> {
   const order = moveTo(siblings, id, target);
 
   await prisma.$transaction(order.map((cid, index) => prisma.nurseryCategory.update({ where: { id: cid }, data: { sortOrder: index } })));
-  revalidatePath('/admin/products/categories');
-  revalidatePath('/admin/products');
+  revalidateCategories();
 }

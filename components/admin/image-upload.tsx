@@ -3,6 +3,9 @@
 import { useRef, useState, useTransition } from 'react';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { uploadImage } from '@/lib/upload-actions';
+import { uploadToFolder } from '@/lib/nursery-image-actions';
+import { shrinkImageIfNeeded } from '@/lib/shrink-image';
+import { FolderPicker } from '@/components/admin/folder-picker';
 
 interface Props {
   /** שם השדה הנסתר שיכיל את ה-URL ויישלח עם הטופס (טפסי FormData) */
@@ -14,12 +17,15 @@ interface Props {
   folder?: 'plants' | 'logos' | 'artwork' | 'misc';
   /** קריאה חוזרת עם ה-URL בכל שינוי (טפסים מבוקרים) */
   onChange?: (url: string) => void;
+  /** תמונת מוצר: העלאה נשמרת גם בתיקיית התמונות של המשתלה, ואפשר לבחור ממנה */
+  nurseryFolder?: boolean;
 }
 
-export function ImageUpload({ name, defaultValue, label, folder = 'misc', onChange }: Props) {
+export function ImageUpload({ name, defaultValue, label, folder = 'misc', onChange, nurseryFolder = false }: Props) {
   const [url, setUrlState] = useState(defaultValue ?? '');
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [picking, setPicking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function setUrl(next: string) {
@@ -29,11 +35,11 @@ export function ImageUpload({ name, defaultValue, label, folder = 'misc', onChan
 
   function handleFile(file: File) {
     setError(null);
-    const fd = new FormData();
-    fd.set('file', file);
-    fd.set('folder', folder);
     startTransition(async () => {
-      const res = await uploadImage(fd);
+      const fd = new FormData();
+      fd.set('file', await shrinkImageIfNeeded(file));
+      fd.set('folder', folder);
+      const res = await (nurseryFolder ? uploadToFolder(fd) : uploadImage(fd));
       if (res.url) setUrl(res.url);
       else setError(res.error ?? 'העלאה נכשלה');
     });
@@ -68,6 +74,16 @@ export function ImageUpload({ name, defaultValue, label, folder = 'misc', onChan
           >
             {url ? 'החלפת תמונה' : 'העלאת תמונה'}
           </button>
+          {nurseryFolder && (
+            <button
+              type="button"
+              onClick={() => setPicking(true)}
+              disabled={pending}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              בחירה מתיקיית התמונות
+            </button>
+          )}
           {url && (
             <button
               type="button"
@@ -77,7 +93,7 @@ export function ImageUpload({ name, defaultValue, label, folder = 'misc', onChan
               <X className="h-3 w-3" /> הסרה
             </button>
           )}
-          <span className="text-[11px] text-gray-400">JPG/PNG/WEBP · עד 5MB</span>
+          <span className="text-[11px] text-gray-400">JPG/PNG/WEBP · תמונות גדולות מוקטנות אוטומטית</span>
         </div>
       </div>
 
@@ -94,6 +110,16 @@ export function ImageUpload({ name, defaultValue, label, folder = 'misc', onChan
       />
 
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {picking && (
+        <FolderPicker
+          onClose={() => setPicking(false)}
+          onPick={(picked) => {
+            setPicking(false);
+            setError(null);
+            setUrl(picked);
+          }}
+        />
+      )}
     </div>
   );
 }

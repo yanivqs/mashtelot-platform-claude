@@ -42,6 +42,7 @@ export function NewProductForm({
           name="customImageUrl"
           label="תמונת המוצר"
           folder="plants"
+          nurseryFolder
           onChange={setImageUrl}
         />
         {!imageUrl && (

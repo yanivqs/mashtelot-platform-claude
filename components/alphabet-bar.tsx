@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { HEBREW_LETTERS, OTHER_LETTER } from '@/lib/alphabet';
+import { ScrollRow } from '@/components/storefront/scroll-row';
 
 /**
- * סרגל סינון לפי אות ראשונה (א-ת). אותיות ללא תוצאות מוצגות מעומעמות ולא לחיצות.
- * רכיב שרת — `hrefFor` נבנה בצד השרת.
+ * סרגל סינון לפי אות ראשונה (א-ת). מוצגות רק אותיות שיש להן תוצאות (ואות שנבחרה בקישור, כדי שאפשר יהיה לבטל אותה).
+ * בנייד: שורה אחת בגלילה אופקית. רכיב שרת — `hrefFor` נבנה בצד השרת.
  */
 export function AlphabetBar({
   available,
@@ -15,49 +16,40 @@ export function AlphabetBar({
   active: string | null;
   hrefFor: (letter: string | null) => string;
 }) {
-  const letters: string[] = [...HEBREW_LETTERS];
-  if (!available || available.has(OTHER_LETTER)) letters.push(OTHER_LETTER);
+  const letters = [...HEBREW_LETTERS, OTHER_LETTER].filter((l) => !available || available.has(l) || l === active);
+  if (letters.length === 0) return null;
 
-  const base = 'flex h-8 min-w-8 items-center justify-center rounded-md px-1.5 text-sm font-medium';
+  const base = 'flex h-8 min-w-8 shrink-0 items-center justify-center rounded-md px-1.5 text-sm font-medium';
 
   return (
-    <nav aria-label="סינון לפי אות" className="flex flex-wrap items-center gap-1">
-      <Link
-        href={hrefFor(null)}
-        rel="nofollow"
-        className={`${base} px-2.5 ${
-          active ? 'text-gray-600 hover:bg-gray-100' : 'bg-[var(--brand,#16a34a)] text-white'
-        }`}
-      >
-        הכל
-      </Link>
-      {letters.map((letter) => {
-        const enabled = !available || available.has(letter);
-        if (letter === active) {
-          return (
+    <nav aria-label="סינון לפי אות">
+      <ScrollRow className="!gap-1">
+        <Link
+          href={hrefFor(null)}
+          rel="nofollow"
+          className={`${base} px-2.5 ${
+            active ? 'text-gray-600 hover:bg-gray-100' : 'bg-[var(--brand,#16a34a)] text-white'
+          }`}
+        >
+          הכל
+        </Link>
+        {letters.map((letter) =>
+          letter === active ? (
             <span key={letter} aria-current="true" className={`${base} bg-[var(--brand,#16a34a)] text-white`}>
               {letter}
             </span>
-          );
-        }
-        if (!enabled) {
-          return (
-            <span key={letter} aria-disabled="true" className={`${base} text-gray-300`}>
+          ) : (
+            <Link
+              key={letter}
+              href={hrefFor(letter)}
+              rel="nofollow"
+              className={`${base} text-gray-700 hover:bg-gray-100`}
+            >
               {letter}
-            </span>
-          );
-        }
-        return (
-          <Link
-            key={letter}
-            href={hrefFor(letter)}
-            rel="nofollow"
-            className={`${base} text-gray-700 hover:bg-gray-100`}
-          >
-            {letter}
-          </Link>
-        );
-      })}
+            </Link>
+          ),
+        )}
+      </ScrollRow>
     </nav>
   );
 }

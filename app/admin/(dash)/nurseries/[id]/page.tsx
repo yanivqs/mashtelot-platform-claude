@@ -42,6 +42,13 @@ export default async function EditNurseryPage(props: { params: Promise<{ id: str
         {nursery.subdomain}
       </p>
 
+      <Link
+        href={`/admin/nurseries/${nursery.id}/images`}
+        className="mb-6 inline-block rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+      >
+        תיקיית התמונות של המשתלה
+      </Link>
+
       <div className="mb-8 rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
         <h2 className="mb-4 font-bold">מודולים משויכים</h2>
         <NurseryModulesForm nurseryId={nursery.id} states={moduleStates} />
