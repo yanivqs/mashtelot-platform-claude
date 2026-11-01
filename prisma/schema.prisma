@@ -364,6 +364,8 @@ model NurseryProduct {
   /// יחידות שמורות להזמנות פתוחות; זמין = stockQuantity - reservedQuantity
   reservedQuantity   Int                      @default(0) @map("reserved_quantity")
   isActive           Boolean                  @default(true) @map("is_active")
+  /// תמיד במלאי — זמין למכירה בלי קשר לכמות (בלי שמירה/הורדת מלאי בהזמנות)
+  alwaysInStock      Boolean                  @default(false) @map("always_in_stock")
   customDescription  String?                  @map("custom_description")
   seoMetaTitle       String?                  @map("seo_meta_title")
   seoMetaDescription String?                  @map("seo_meta_description")
@@ -652,6 +654,8 @@ model OrderItem {
   variantId        String?         @map("variant_id")
   /// Snapshot של שם הווריאנט בזמן ההזמנה
   variantName      String?         @map("variant_name")
+  /// נשמר/ירד מלאי עבור השורה (false = מוצר "תמיד במלאי" בזמן ההזמנה)
+  stockTracked     Boolean         @default(true) @map("stock_tracked")
   nurseryProduct   NurseryProduct  @relation(fields: [nurseryProductId], references: [id])
   variant          ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)

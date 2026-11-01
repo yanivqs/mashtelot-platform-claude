@@ -101,6 +101,7 @@ export async function updateProduct(
         price,
         compareAtPrice: toDecimalString(formData.get('compareAtPrice')),
         isActive: formData.get('isActive') === 'on',
+        alwaysInStock: formData.get('alwaysInStock') === 'on',
         customTitle: (String(formData.get('customTitle') || '').trim() || null),
         customDescription: (String(formData.get('customDescription') || '').trim() || null),
         customImageUrl,
@@ -197,6 +198,7 @@ export async function createCustomProduct(
       compareAtPrice: toDecimalString(formData.get('compareAtPrice')),
       stockQuantity: Number.isFinite(stock) && stock >= 0 ? stock : 0,
       isActive: formData.get('isActive') === 'on',
+      alwaysInStock: formData.get('alwaysInStock') === 'on',
       customDescription: (String(formData.get('customDescription') || '').trim() || null),
       customImageUrl: optionalUrl(formData.get('customImageUrl')),
       seoMetaTitle: (String(formData.get('seoMetaTitle') || '').trim() || null),
@@ -216,4 +218,23 @@ export async function deleteProduct(formData: FormData): Promise<void> {
   await prisma.nurseryProduct.delete({ where: { id } });
   revalidatePath('/admin/products');
   redirect('/admin/products');
+}
+
+/** "תמיד במלאי" ישירות מרשימת המלאי — זמין למכירה בלי קשר לכמות. */
+export async function toggleAlwaysInStock(formData: FormData): Promise<void> {
+  const id = String(formData.get('id') || '');
+  const { nurseryId, actorEmail } = await ownedProduct(id);
+  const p = await prisma.nurseryProduct.findUniqueOrThrow({ where: { id }, select: { alwaysInStock: true } });
+  const alwaysInStock = !p.alwaysInStock;
+  await prisma.nurseryProduct.update({ where: { id }, data: { alwaysInStock } });
+  await recordAudit({
+    nurseryId,
+    actorEmail,
+    action: 'product.update',
+    entityType: 'NurseryProduct',
+    entityId: id,
+    metadata: { alwaysInStockBefore: !alwaysInStock, alwaysInStockAfter: alwaysInStock },
+  });
+  revalidatePath('/admin/products');
+  revalidatePath(`/admin/products/${id}`);
 }

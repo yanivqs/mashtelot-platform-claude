@@ -205,6 +205,13 @@ export function ProductEditor({
           <input name="isActive" type="checkbox" defaultChecked={product.isActive} className="h-5 w-5 rounded border-gray-300" />
           <span className="font-medium text-gray-700">מוצג בחנות</span>
         </label>
+        <label className="flex items-start gap-2 self-end text-sm">
+          <input name="alwaysInStock" type="checkbox" defaultChecked={product.alwaysInStock} className="mt-0.5 h-5 w-5 rounded border-gray-300" />
+          <span>
+            <span className="font-medium text-gray-700">תמיד במלאי</span>
+            <span className="block text-xs text-gray-500">זמין להזמנה בלי קשר לכמות — המלאי לא נבדק ולא יורד</span>
+          </span>
+        </label>
 
         {categoryOptions.length > 0 && (
           <fieldset className="text-sm sm:col-span-2">

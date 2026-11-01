@@ -5,7 +5,7 @@
  */
 import { STORE_VISIBLE } from '@/lib/product-visibility';
 import type { PrismaClient } from '@prisma/client';
-import { availableQuantity } from '@/lib/stock';
+import { sellableQuantity } from '@/lib/stock';
 import { activeVariants, effectivePrice, lineTitle } from '@/lib/variants';
 import { normalizePostcode } from '@/lib/shipping-zones';
 
@@ -137,7 +137,7 @@ export async function reorderLines(
     });
     const variants = product ? activeVariants(product.variants) : [];
     const v = variants.find((x) => x.id === item.variantId) ?? (item.variantId ? undefined : variants.find((x) => x.isDefault));
-    const available = v ? availableQuantity(v) : 0;
+    const available = v && product ? sellableQuantity(v, product) : 0;
     if (!product || !v || available <= 0) {
       skipped.push(name);
       continue;

@@ -172,6 +172,15 @@ test('product name opens the edit page; saved slug, redirects, breadcrumbs; prod
   await expect(page.getByText('נשמר ✓')).toBeVisible();
   await page.goto(`${FIX_SHOP}/product/fresh-basil`);
   await expect(page).toHaveURL(`${FIX_SHOP}/product/basil`);
+  await expect(page.getByText("במלאי (30 יח')")).toBeVisible();
+
+  // "תמיד במלאי" מרשימת המוצרים — בחנות "במלאי" בלי כמות
+  await page.goto(`${ADMIN}/admin/products`);
+  await page.getByLabel('תמיד במלאי: בזיליקום').check();
+  await expect(page.getByLabel('תמיד במלאי: בזיליקום')).toBeChecked();
+  await expect(page.locator('main').getByText('∞')).toBeVisible();
+  await page.goto(`${FIX_SHOP}/product/basil`);
+  await expect(page.getByText('במלאי', { exact: true })).toBeVisible();
 
   // מוצר שממתין לתמונה: מוסתר מהחנות ומסומן באדמין (אותה כניסה — מגבלת ניסיונות התחברות לאימייל)
   const db = new PrismaClient();

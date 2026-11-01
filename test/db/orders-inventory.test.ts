@@ -310,3 +310,42 @@ describe('C-P1-02 manual stock edits', () => {
     expect((await setOnHandStock(prisma, { nurseryId: f.B.nurseryId, productId: p.id, quantity: 9 })).ok).toBe(false);
   });
 });
+
+describe('always in stock (no quantity tracking)', () => {
+  it('sells beyond on_hand without reserving or deducting; confirm/ship/cancel leave stock untouched', async () => {
+    const p = await newProduct(f.A.nurseryId, 0);
+    await prisma.nurseryProduct.update({ where: { id: p.id }, data: { alwaysInStock: true } });
+
+    const { orderId } = await createOrderRecord(prisma, orderInput({ productId: p.id, quantity: 5 }));
+    expect(await stockOf(p.id)).toEqual({ stockQuantity: 0, reservedQuantity: 0 });
+    expect((await prisma.orderItem.findFirstOrThrow({ where: { orderId } })).stockTracked).toBe(false);
+    for (const to of ['CONFIRMED', 'PREPARING', 'SHIPPED'] as const) {
+      expect((await transitionOrder(prisma, { nurseryId: f.A.nurseryId, orderId, to })).ok).toBe(true);
+    }
+    expect(await stockOf(p.id)).toEqual({ stockQuantity: 0, reservedQuantity: 0 });
+    expect(await prisma.stockMovement.count({ where: { orderId } })).toBe(0);
+
+    const second = await createOrderRecord(prisma, orderInput({ productId: p.id, quantity: 3 }));
+    expect((await transitionOrder(prisma, { nurseryId: f.A.nurseryId, orderId: second.orderId, to: 'CANCELLED' })).ok).toBe(true);
+    expect(await stockOf(p.id)).toEqual({ stockQuantity: 0, reservedQuantity: 0 });
+  });
+
+  it('toggling the flag later does not break open orders (each line keeps its snapshot)', async () => {
+    const tracked = await newProduct(f.A.nurseryId, 4);
+    const { orderId: o1 } = await createOrderRecord(prisma, orderInput({ productId: tracked.id, quantity: 2 }));
+    await prisma.nurseryProduct.update({ where: { id: tracked.id }, data: { alwaysInStock: true } });
+    // ההזמנה נשמרה עם מעקב — הביטול משחרר את מה שנשמר
+    expect((await transitionOrder(prisma, { nurseryId: f.A.nurseryId, orderId: o1, to: 'CANCELLED' })).ok).toBe(true);
+    expect(await stockOf(tracked.id)).toEqual({ stockQuantity: 4, reservedQuantity: 0 });
+
+    const untracked = await newProduct(f.A.nurseryId, 1);
+    await prisma.nurseryProduct.update({ where: { id: untracked.id }, data: { alwaysInStock: true } });
+    const { orderId: o2 } = await createOrderRecord(prisma, orderInput({ productId: untracked.id, quantity: 3 }));
+    await prisma.nurseryProduct.update({ where: { id: untracked.id }, data: { alwaysInStock: false } });
+    // נוצרה בלי שמירה — האישור והמשלוח לא מורידים מלאי
+    for (const to of ['CONFIRMED', 'PREPARING', 'SHIPPED'] as const) {
+      expect((await transitionOrder(prisma, { nurseryId: f.A.nurseryId, orderId: o2, to })).ok).toBe(true);
+    }
+    expect(await stockOf(untracked.id)).toEqual({ stockQuantity: 1, reservedQuantity: 0 });
+  });
+});

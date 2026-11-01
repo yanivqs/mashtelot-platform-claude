@@ -1,5 +1,5 @@
 import type { Nursery, Plant, MasterSupply, NurseryProduct, ProductVariant } from '@prisma/client';
-import { availableQuantity } from '@/lib/stock';
+import { availableQuantity, sellableQuantity } from '@/lib/stock';
 import { activeVariants, effectivePrice, priceSummary } from '@/lib/variants';
 
 const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'localhost:3000';
@@ -84,7 +84,7 @@ export function productJsonLd(params: {
   const { nursery, product, url } = params;
   const { title, description, image } = resolveProductContent(product);
   const variants = activeVariants(params.variants ?? []);
-  const inStock = variants.length ? variants.some((v) => availableQuantity(v) > 0) : availableQuantity(product) > 0;
+  const inStock = product.alwaysInStock || (variants.length ? variants.some((v) => sellableQuantity(v, product) > 0) : availableQuantity(product) > 0);
   const availability = inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock';
   const seller = { '@type': 'Organization', name: nursery.name };
 

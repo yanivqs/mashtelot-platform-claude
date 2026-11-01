@@ -1,5 +1,5 @@
 import type { Nursery } from '@prisma/client';
-import { availableQuantity } from '@/lib/stock';
+import { sellableQuantity } from '@/lib/stock';
 import { getProductCategoryPath, type CatalogProduct } from '@/lib/catalog';
 import { Breadcrumbs, categoryCrumbHref } from '@/components/storefront/breadcrumbs';
 import { resolveProductContent, productJsonLd, tenantUrl } from '@/lib/seo';
@@ -41,7 +41,8 @@ export async function ProductView({
       colorHex: v.colorHex,
       price,
       compareAt: compareAt !== null && compareAt > price ? compareAt : null,
-      available: availableQuantity(v),
+      available: sellableQuantity(v, product),
+      unlimited: product.alwaysInStock,
       images: variantImages(v, image),
     };
   });

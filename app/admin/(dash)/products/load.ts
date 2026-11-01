@@ -36,6 +36,7 @@ export async function loadAdminProducts(nurseryId: string, where: Prisma.Nursery
       stockQuantity: p.stockQuantity,
       reservedQuantity: p.reservedQuantity,
       isActive: p.isActive,
+      alwaysInStock: p.alwaysInStock,
       customTitle: p.customTitle,
       customDescription: p.customDescription,
       customImageUrl: p.customImageUrl,

@@ -18,6 +18,12 @@ function productMap(products: ProductForCheckout[]): Map<string, ProductForCheck
 }
 
 describe('buildLineItems', () => {
+  it('always-in-stock product passes with zero stock and is marked untracked', () => {
+    const byId = new Map([['p1', { id: 'p1', title: 't', price: 10, stockQuantity: 0, stockTracked: false }]]);
+    const [line] = buildLineItems([{ productId: 'p1', quantity: 5 }], byId, { isQuote: false });
+    expect(line!.stockTracked).toBe(false);
+  });
+
   const products = productMap([
     { id: 'p1', title: 'עציץ בזיליקום', price: 25, stockQuantity: 3 },
     { id: 'p2', title: 'עציץ נענע', price: 15, stockQuantity: 0 },
@@ -26,7 +32,7 @@ describe('buildLineItems', () => {
   it('resolves cart lines against products, carrying title and price', () => {
     const items = buildLineItems([{ productId: 'p1', quantity: 2 }], products, { isQuote: false });
     expect(items).toEqual([
-      { nurseryProductId: 'p1', variantId: null, variantName: null, productTitle: 'עציץ בזיליקום', quantity: 2, unitPrice: 25 },
+      { nurseryProductId: 'p1', variantId: null, variantName: null, productTitle: 'עציץ בזיליקום', quantity: 2, unitPrice: 25, stockTracked: true },
     ]);
   });
 
@@ -35,7 +41,7 @@ describe('buildLineItems', () => {
       [lineKey('p1', 'v2'), { id: 'p1', variantId: 'v2', variantName: '4 ליטר', title: 'עציץ — 4 ליטר', price: 55, stockQuantity: 3 }],
     ]);
     expect(buildLineItems([{ productId: 'p1', variantId: 'v2', quantity: 1 }], byKey, { isQuote: false })).toEqual([
-      { nurseryProductId: 'p1', variantId: 'v2', variantName: '4 ליטר', productTitle: 'עציץ — 4 ליטר', quantity: 1, unitPrice: 55 },
+      { nurseryProductId: 'p1', variantId: 'v2', variantName: '4 ליטר', productTitle: 'עציץ — 4 ליטר', quantity: 1, unitPrice: 55, stockTracked: true },
     ]);
     expect(() => buildLineItems([{ productId: 'p1', variantId: 'other', quantity: 1 }], byKey, { isQuote: false })).toThrow(CheckoutError);
   });

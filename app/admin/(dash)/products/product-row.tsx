@@ -4,6 +4,8 @@ import type { Plant } from '@prisma/client';
 import { formatPrice } from '@/lib/utils';
 import { SEO_LEVEL_META, type SeoScore } from '@/lib/seo-score';
 import type { EditorVariant } from './variants-editor';
+import { toggleAlwaysInStock } from './actions';
+import { ToggleCheckbox } from '@/components/admin/toggle-checkbox';
 
 export interface RowProduct {
   id: string;
@@ -17,6 +19,8 @@ export interface RowProduct {
   /** יחידות שמורות להזמנות פתוחות */
   reservedQuantity: number;
   isActive: boolean;
+  /** זמין למכירה בלי קשר לכמות */
+  alwaysInStock: boolean;
   customTitle: string | null;
   customDescription: string | null;
   customImageUrl: string | null;
@@ -85,16 +89,24 @@ export function ProductRow({ product, viewUrl }: { product: RowProduct; viewUrl:
           {/* נייד: מחיר, מלאי וסטטוס בשורה מתחת לשם */}
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-gray-600 sm:hidden">
             <span className="font-medium text-gray-900">{formatPrice(product.price)}</span>
-            <span>· {product.stockQuantity} יח׳</span>
+            <span>· {product.alwaysInStock ? 'תמיד במלאי' : `${product.stockQuantity} יח׳`}</span>
             <span className={hidden ? 'text-gray-400' : 'text-green-700'}>· {hidden ? 'מוסתר' : 'פעיל'}</span>
           </p>
+          <ToggleCheckbox
+            action={toggleAlwaysInStock}
+            checked={product.alwaysInStock}
+            label="תמיד במלאי"
+            ariaLabel={`תמיד במלאי: ${product.customTitle || product.title}`}
+          >
+            <input type="hidden" name="id" value={product.id} />
+          </ToggleCheckbox>
         </div>
         <div className="hidden w-24 text-sm text-gray-700 sm:block">
           {formatPrice(product.price)}
           {multi && <span className="block text-xs text-gray-400">{product.variants.length} וריאנטים</span>}
         </div>
         <div className="hidden w-20 text-sm text-gray-700 sm:block">
-          {product.stockQuantity} יח׳
+          {product.alwaysInStock ? <span className="text-brand-700">∞</span> : <>{product.stockQuantity} יח׳</>}
           {product.reservedQuantity > 0 && <span className="text-sky-700"> · {product.reservedQuantity} שמורות</span>}
         </div>
         <div className="hidden w-16 sm:block">

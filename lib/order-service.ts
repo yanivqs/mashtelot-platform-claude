@@ -35,10 +35,13 @@ import {
 import { resolveProductContent } from '@/lib/seo';
 import { catalogRevisionInclude, localizeProduct } from '@/lib/catalog-localize';
 import { activeVariants, effectivePrice, lineTitle } from '@/lib/variants';
-import { availableQuantity } from '@/lib/stock';
+import { sellableQuantity } from '@/lib/stock';
 
 type Tx = Prisma.TransactionClient;
-type Line = { nurseryProductId: string; variantId: string | null; quantity: number; productTitle?: string };
+type Line = { nurseryProductId: string; variantId: string | null; quantity: number; productTitle?: string; stockTracked?: boolean };
+
+/** רק שורות שמנוהל עבורן מלאי (מוצר "תמיד במלאי" — לא נשמר ולא יורד). */
+const tracked = (lines: Line[]) => lines.filter((l) => l.stockTracked !== false);
 
 /** הווריאנט של שורה. שורה ישנה ללא וריאנט (או שהווריאנט נמחק) → וריאנט ברירת המחדל של המוצר. */
 async function lineVariantId(tx: Tx, nurseryId: string, l: Line): Promise<string> {
@@ -71,7 +74,7 @@ async function movement(
 
 /** שמירת מלאי לשורות ההזמנה. נכשל (וכל הטרנזקציה מתבטלת) אם אין מספיק זמין. */
 export async function reserveLines(tx: Tx, nurseryId: string, orderId: string | null, lines: Line[], actorEmail?: string | null) {
-  for (const l of lines) {
+  for (const l of tracked(lines)) {
     const variantId = await lineVariantId(tx, nurseryId, l);
     const n = await tx.$executeRaw`
       UPDATE "product_variants"
@@ -86,7 +89,7 @@ export async function reserveLines(tx: Tx, nurseryId: string, orderId: string | 
 }
 
 async function releaseLines(tx: Tx, nurseryId: string, orderId: string, lines: Line[], reason: 'RELEASE_EXPIRED' | 'RELEASE_CANCELLED', actorEmail?: string | null) {
-  for (const l of lines) {
+  for (const l of tracked(lines)) {
     const variantId = await lineVariantId(tx, nurseryId, l);
     const n = await tx.$executeRaw`
       UPDATE "product_variants"
@@ -99,7 +102,7 @@ async function releaseLines(tx: Tx, nurseryId: string, orderId: string, lines: L
 }
 
 async function commitLines(tx: Tx, nurseryId: string, orderId: string, lines: Line[], actorEmail?: string | null) {
-  for (const l of lines) {
+  for (const l of tracked(lines)) {
     const variantId = await lineVariantId(tx, nurseryId, l);
     const n = await tx.$executeRaw`
       UPDATE "product_variants"
@@ -113,7 +116,7 @@ async function commitLines(tx: Tx, nurseryId: string, orderId: string, lines: Li
 }
 
 async function restoreLines(tx: Tx, nurseryId: string, orderId: string, lines: Line[], actorEmail?: string | null) {
-  for (const l of lines) {
+  for (const l of tracked(lines)) {
     const variantId = await lineVariantId(tx, nurseryId, l);
     await tx.productVariant.updateMany({
       where: { id: variantId, nurseryId },
@@ -233,8 +236,9 @@ export async function createOrderRecord(db: PrismaClient, input: CreateOrderInpu
             variantName: v.name || null,
             title: lineTitle(resolveProductContent(p).title, v.name),
             price: effectivePrice(v, p),
-            // הזמין למכירה = on_hand פחות מה שכבר שמור להזמנות אחרות
-            stockQuantity: availableQuantity(v),
+            // הזמין למכירה = on_hand פחות מה שכבר שמור להזמנות אחרות ("תמיד במלאי" — ללא בדיקה)
+            stockQuantity: sellableQuantity(v, p),
+            stockTracked: !p.alwaysInStock,
           });
         }
         return { ...c, key };

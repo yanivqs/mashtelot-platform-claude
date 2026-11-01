@@ -112,7 +112,7 @@ export default async function AdminOverviewPage(
   const [total, active, outOfStock, orders, seoProducts] = await Promise.all([
     prisma.nurseryProduct.count({ where: { nurseryId: user.nurseryId } }),
     prisma.nurseryProduct.count({ where: { nurseryId: user.nurseryId, isActive: true } }),
-    prisma.nurseryProduct.count({ where: { nurseryId: user.nurseryId, stockQuantity: { lte: 0 } } }),
+    prisma.nurseryProduct.count({ where: { nurseryId: user.nurseryId, stockQuantity: { lte: 0 }, alwaysInStock: false } }),
     prisma.order.count({ where: { nurseryId: user.nurseryId } }),
     prisma.nurseryProduct.findMany({
       where: { nurseryId: user.nurseryId },

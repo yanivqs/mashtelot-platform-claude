@@ -15,6 +15,8 @@ export interface PurchaseVariant {
   /** מחיר לפני הנחה — רק כשגבוה מהמחיר */
   compareAt: number | null;
   available: number;
+  /** תמיד במלאי — בלי הצגת כמות */
+  unlimited?: boolean;
   /** תמונות לתצוגה: של הווריאנט קודם, ואחריהן של המוצר */
   images: string[];
 }
@@ -113,7 +115,7 @@ export function ProductPurchase({
           {v.compareAt !== null && <span className="text-lg text-gray-400 line-through">{formatPrice(v.compareAt)}</span>}
         </div>
         <p className={`mt-1 text-sm ${outOfStock ? 'text-rose-600' : 'text-brand-700'}`}>
-          {outOfStock ? 'אזל מהמלאי' : `במלאי (${v.available} יח')`}
+          {outOfStock ? 'אזל מהמלאי' : v.unlimited ? 'במלאי' : `במלאי (${v.available} יח')`}
         </p>
 
         {choice && twoAxes && (

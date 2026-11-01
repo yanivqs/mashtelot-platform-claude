@@ -28,6 +28,8 @@ export interface ProductForCheckout {
   title: string;
   price: number;
   stockQuantity: number;
+  /** false = מוצר "תמיד במלאי": בלי בדיקת/שמירת מלאי */
+  stockTracked?: boolean;
 }
 
 export interface ResolvedLineItem {
@@ -37,6 +39,7 @@ export interface ResolvedLineItem {
   productTitle: string;
   quantity: number;
   unitPrice: number;
+  stockTracked: boolean;
 }
 
 /**
@@ -51,7 +54,8 @@ export function buildLineItems(
   return cart.map((c) => {
     const product = productsByKey.get(c.key ?? lineKey(c.productId, c.variantId)) ?? productsByKey.get(c.productId);
     if (!product) throw new CheckoutError('אחד המוצרים בעגלה אינו זמין יותר');
-    if (!opts.isQuote && product.stockQuantity < c.quantity) {
+    const stockTracked = product.stockTracked !== false;
+    if (!opts.isQuote && stockTracked && product.stockQuantity < c.quantity) {
       throw new CheckoutError(`אין מספיק מלאי עבור "${product.title}"`);
     }
     return {
@@ -61,6 +65,7 @@ export function buildLineItems(
       productTitle: product.title,
       quantity: c.quantity,
       unitPrice: product.price,
+      stockTracked,
     };
   });
 }

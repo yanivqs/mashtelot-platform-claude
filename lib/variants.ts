@@ -4,7 +4,7 @@
  * מחיר וריאנט אופציונלי: ריק = יורש ממחיר המוצר (החלטת בעלים). מחיר לפני הנחה:
  * לווריאנט עם מחיר משלו — רק שלו; לווריאנט שיורש מחיר — שלו, ואם אין, של המוצר.
  */
-import { availableQuantity } from '@/lib/stock';
+import { sellableQuantity } from '@/lib/stock';
 
 type Num = number | string | { toString(): string } | null | undefined;
 const num = (v: Num): number | null => (v === null || v === undefined || v === '' ? null : Number(v.toString()));
@@ -28,6 +28,8 @@ export interface VariantLike {
 export interface ProductPriceLike {
   price: Num;
   compareAtPrice: Num;
+  /** תמיד במלאי — זמין בלי קשר לכמות */
+  alwaysInStock?: boolean | null;
 }
 
 export function effectivePrice(v: Pick<VariantLike, 'price'>, p: ProductPriceLike): number {
@@ -75,7 +77,7 @@ export function priceSummary(variants: VariantLike[], p: ProductPriceLike): Pric
     min,
     max,
     compareAt: compareAt !== null && compareAt > min ? compareAt : null,
-    inStock: active.some((v) => availableQuantity(v) > 0),
+    inStock: active.some((v) => sellableQuantity(v, p) > 0),
   };
 }
 
