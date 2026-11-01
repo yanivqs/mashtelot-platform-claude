@@ -22,7 +22,7 @@ export async function downloadImage(url: string, referer?: string): Promise<{ by
   for (let attempt = 1; attempt <= 4; attempt++) {
     try {
       const res = await fetch(url, {
-        headers: { 'User-Agent': UA, Accept: 'image/avif,image/webp,image/*,*/*;q=0.8', ...(referer ? { Referer: referer } : {}) },
+        headers: { 'User-Agent': UA, Accept: 'image/jpeg,image/png;q=0.9,image/webp;q=0.5,*/*;q=0.1', ...(referer ? { Referer: referer } : {}) },
         signal: AbortSignal.timeout(30_000),
       });
       if (res.status === 429 || res.status >= 500) {

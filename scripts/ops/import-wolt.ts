@@ -6,6 +6,7 @@
  *
  * - קטגוריה בשם זהה שכבר קיימת במשתלה (מארזים, מוצרי גינון) — משתמשים בה; אחרת נוצרת קטגוריה ראשית
  * - מוצר שכבר קיים באותו שם — מדלגים (הרצה חוזרת בטוחה)
+ * - --refresh-images: רק מעלה מחדש את התמונות של מוצרים שכבר יובאו ומעדכן את הכתובת
  * - תמונות: אחת-אחת, השהיה של 1.5 שניות, ניסיונות חוזרים; נתיב קבוע wolt/<nursery>/<item>
  */
 import { PrismaClient } from '@prisma/client';
@@ -14,6 +15,8 @@ import { downloadImage, requireTargetConfirmation, sleep, uploadToStorage } from
 const args = process.argv.slice(2);
 const arg = (name: string) => args.find((a) => a.startsWith(`--${name}=`))?.split('=')[1];
 const DRY = args.includes('--dry-run');
+/** החלפת התמונות בלבד למוצרים שכבר יובאו (למשל אחרי שינוי פורמט) */
+const REFRESH_IMAGES = args.includes('--refresh-images');
 const SUBDOMAIN = arg('nursery') || 'baitvagan';
 const VENUE = arg('venue') || 'home-garden-nursery-beer-yaakov';
 const DELAY_MS = 1_500;
@@ -74,6 +77,30 @@ async function main() {
   try {
     const nursery = await db.nursery.findUniqueOrThrow({ where: { subdomain: SUBDOMAIN }, select: { id: true, name: true } });
     console.log(`משתלה: ${nursery.name}`);
+
+    if (REFRESH_IMAGES) {
+      const prefix = `/uploads/wolt/${SUBDOMAIN}/`;
+      const products = await db.nurseryProduct.findMany({
+        where: { nurseryId: nursery.id, customImageUrl: { contains: prefix } },
+        select: { id: true, customImageUrl: true },
+      });
+      let refreshed = 0;
+      for (const p of products) {
+        const itemId = p.customImageUrl!.split(prefix)[1]!.split('.')[0]!;
+        const url = items.get(itemId)?.images?.[0]?.url;
+        if (!url || DRY) continue;
+        try {
+          const next = await uploadToStorage(`wolt/${SUBDOMAIN}/${itemId}`, await downloadImage(url, 'https://wolt.com/'));
+          if (next !== p.customImageUrl) await db.nurseryProduct.update({ where: { id: p.id }, data: { customImageUrl: next } });
+          refreshed++;
+        } catch (e) {
+          console.log(`  ✗ ${itemId}: ${e instanceof Error ? e.message : e}`);
+        }
+        await sleep(DELAY_MS);
+      }
+      console.log(`תמונות שרועננו: ${refreshed}/${products.length}`);
+      return;
+    }
 
     // קטגוריות
     const existingCats = await db.nurseryCategory.findMany({ where: { nurseryId: nursery.id } });
