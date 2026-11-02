@@ -67,7 +67,6 @@ test('editor: tabs, drag, duplicate; nursery: calculator, review reasons, job an
   await page.getByLabel(/מחיר ליחידה מתחת למדרגות/).fill('1');
   await page.getByLabel('עלות הקמה להזמנה (₪)').fill('50');
   await page.getByLabel('כמות מינימום', { exact: true }).fill('100');
-  await page.getByText('תמיד דורש הצעת צוות').click(); // ברירת המחדל מסומנת — מבטלים
   await page.getByRole('button', { name: 'הוספת כמות' }).click();
   await page.getByLabel('כמות מוגדרת 1').fill('500');
   await page.getByRole('button', { name: 'הוספת כמות' }).click();
@@ -75,6 +74,13 @@ test('editor: tabs, drag, duplicate; nursery: calculator, review reasons, job an
   await page.getByRole('button', { name: 'הוספת מדרגה' }).click();
   await page.getByLabel('מדרגה 1: מכמות').fill('500');
   await page.getByLabel('מדרגה 1: מחיר').fill('0.8');
+
+  // סימון "תמיד דורש הצעת צוות" מעל מחירון מקבל אזהרה. ברירת המחדל: מחיר מיידי
+  await expect(page.getByTestId('quote-only-warning')).toHaveCount(0);
+  await page.getByText('תמיד דורש הצעת צוות').click();
+  await expect(page.getByTestId('quote-only-warning')).toBeVisible();
+  await page.getByText('תמיד דורש הצעת צוות').click();
+  await expect(page.getByTestId('quote-only-warning')).toHaveCount(0);
 
   await page.getByRole('tab', { name: 'בדיקת קובץ' }).click();
   await page.getByLabel('רוחב המוצר במ״מ').fill('100');
@@ -88,6 +94,14 @@ test('editor: tabs, drag, duplicate; nursery: calculator, review reasons, job an
   await expect(page.getByText('מוצג רק אם חומר = PVC')).toBeVisible();
   await expect(page.getByText(/ייצור 100×50 מ"מ, גלישה 3, 300 DPI/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'יצירת גרסה חדשה (טיוטה)' })).toBeVisible();
+  // הגרסה המפורסמת מציגה את כל מה שהוגדר
+  const published = page.getByTestId('published-version');
+  await expect(published).toContainText('PVC');
+  await expect(published).toContainText('0.5');
+  await expect(published).toContainText(/500, ?1,000/);
+  await expect(published).toContainText('מ-500');
+  await expect(published).toContainText('מחיר מיידי');
+  const editorUrl = page.url();
   await page.getByText('מוצג למשתלות להזמנה').click();
   await page.getByRole('button', { name: 'שמירת פרטי המוצר' }).click();
   await expect(page.getByText('נשמר ✓')).toBeVisible();
@@ -98,32 +112,33 @@ test('editor: tabs, drag, duplicate; nursery: calculator, review reasons, job an
   await page.getByRole('link', { name: new RegExp(E2E_PRINT_TEMPLATE) }).click();
   await expect(page.getByRole('heading', { level: 1, name: E2E_PRINT_TEMPLATE })).toBeVisible();
 
-  const material = page.getByRole('group', { name: 'חומר' });
-  const glue = page.getByRole('group', { name: 'סוג דבק' });
+  const material = page.getByLabel(/^חומר/);
+  const glue = page.getByLabel(/^סוג דבק/);
   const send = page.getByRole('button', { name: /קבלת מחיר והזמנה|שליחה לבדיקה/ });
 
   // הסדר אצל המשתלה זהה לסדר בעורך
   await page.getByLabel('כיתוב נוסף').fill('מבצע');
   const order = await page.evaluate(() => {
     const a = document.querySelector('label[for^="pf-"]')!;
-    const b = document.querySelector('[role="group"][aria-label="חומר"]')!;
+    const b = document.querySelector('[role="group"][aria-label="כמות"]')!;
     return { firstText: a.textContent, fieldComesFirst: Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) };
   });
   expect(order).toEqual({ firstText: 'כיתוב נוסף', fieldComesFirst: true });
 
   // שדה מותנה מופיע רק כשבוחרים PVC, ונעלם כשמבטלים
+  await expect(material.locator('option', { hasText: 'PVC' })).toHaveText(/0\.5/);
   await expect(glue).toHaveCount(0);
-  await material.getByRole('button', { name: /PVC/ }).click();
+  await material.selectOption('opt_2');
   await expect(glue).toBeVisible();
-  await material.getByRole('button', { name: /PVC/ }).click();
+  await material.selectOption('');
   await expect(glue).toHaveCount(0);
-  await material.getByRole('button', { name: /PVC/ }).click();
+  await material.selectOption('opt_2');
 
   // חוסרים חוסמים שליחה
   await expect(page.getByTestId('print-missing')).toContainText('סוג דבק: יש לבחור');
   await expect(page.getByTestId('print-missing')).toContainText('טקסט: שדה חובה');
   await expect(send).toBeDisabled();
-  await glue.getByRole('button', { name: 'קבוע' }).click();
+  await glue.selectOption('opt_1');
   await page.getByRole('textbox', { name: /^טקסט/ }).fill('ורד אדום');
   await expect(send).toBeEnabled();
 
@@ -172,4 +187,18 @@ test('editor: tabs, drag, duplicate; nursery: calculator, review reasons, job an
   await login(page, E2E_SUPER);
   await page.goto(`${ADMIN}/admin/print-orders`);
   await expect(page.getByText(/חומר: PVC · סוג דבק: קבוע · טקסט: ורד אדום/).first()).toBeVisible();
+
+  // גרסה חדשה נפתחת עם כל מה שהוגדר בקודמת
+  await page.goto(editorUrl);
+  await page.getByRole('button', { name: 'יצירת גרסה חדשה (טיוטה)' }).click();
+  await expect(page.getByLabel('שם שדה 2')).toHaveValue('חומר');
+  await expect(page.getByLabel('שם אפשרות 2 בשדה 2')).toHaveValue('PVC');
+  await expect(page.getByTestId('template-field-card').nth(1).getByLabel('תוספת ליחידה לאפשרות 2')).toHaveValue('0.5');
+  await expect(page.getByLabel('שדה תנאי לשדה 3')).toHaveValue(/field_/);
+  await page.getByRole('tab', { name: 'כמויות ותמחור' }).click();
+  await expect(page.getByLabel('כמות מוגדרת 2')).toHaveValue('1000');
+  await expect(page.getByLabel('מדרגה 1: מחיר')).toHaveValue('0.8');
+  await expect(page.getByLabel('עלות הקמה להזמנה (₪)')).toHaveValue('50');
+  await page.getByRole('tab', { name: 'בדיקת קובץ' }).click();
+  await expect(page.getByLabel('רוחב המוצר במ״מ')).toHaveValue('100');
 });

@@ -56,7 +56,9 @@ export async function generateMetadata(props: CatalogPageProps): Promise<Metadat
 }
 
 export default async function CatalogPage(props: CatalogPageProps) {
-  const searchParams = await props.searchParams;
+  const rawParams = await props.searchParams;
+  // סינון א-ב רק בקטלוג הראשי: בקטגוריה ובחיפוש אות שנשארה בכתובת לא חלה
+  const searchParams = rawParams.category || rawParams.q ? { ...rawParams, letter: undefined } : rawParams;
   const params = await props.params;
   const nursery = await getNurseryByTenant(params.tenant);
   if (!nursery) notFound();
@@ -115,11 +117,13 @@ export default async function CatalogPage(props: CatalogPageProps) {
       <div className="mb-6 space-y-5">
         <CatalogSearch basePath="/catalog" current={current} />
         <CategoryRows nav={view.categoryNav} path={view.categoryPath} href={href} />
-        <AlphabetBar
-          available={view.letters}
-          active={view.letter}
-          hrefFor={(letter) => href({ letter })}
-        />
+        {!selectedCategory && !searchParams.q && (
+          <AlphabetBar
+            available={view.letters}
+            active={view.letter}
+            hrefFor={(letter) => href({ letter })}
+          />
+        )}
         <ActiveFilters
           facets={view.facets}
           letter={view.letter}

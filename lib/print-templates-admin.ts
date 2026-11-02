@@ -17,7 +17,7 @@ import { parseProfile } from '@/lib/print-preflight';
  * מקבל את ה-DB כפרמטר (בר-בדיקה). גרסה שפורסמה אינה משתנה (גם trigger ב-DB).
  */
 
-export const DEFAULT_PRICING = { basePrice: 0, tiers: [], setupFee: 0, minQuantity: 1, quoteOnly: true };
+export const DEFAULT_PRICING = { basePrice: 0, tiers: [], setupFee: 0, minQuantity: 1, quoteOnly: false, quantityOptions: [], allowCustomQuantity: true };
 
 export interface TemplateMeta {
   title: string;
@@ -70,7 +70,7 @@ export async function saveDraft(
   input: { fields: unknown; pricing: unknown; production?: unknown; notes?: string | null },
 ): Promise<SaveResult> {
   const fields = parseFields(input.fields);
-  const pricing = parsePricing(input.pricing);
+  const pricing = parsePricing(input.pricing, { draft: true });
   const production = parseProfile(input.production);
   const errors = [...(fields.ok ? [] : fields.errors), ...(pricing.ok ? [] : pricing.errors), ...(production.ok ? [] : production.errors)];
   if (errors.length) return { ok: false, errors };
@@ -123,6 +123,7 @@ export async function createDraftFromLatest(db: PrismaClient, templateId: string
         fields: latest.fields as Prisma.InputJsonValue,
         pricing: latest.pricing as Prisma.InputJsonValue,
         production: latest.production === null ? Prisma.DbNull : (latest.production as Prisma.InputJsonValue),
+        notes: latest.notes,
         createdBy: actor,
       },
     });

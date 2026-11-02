@@ -99,19 +99,20 @@ export function TemplateFields({
               break;
             case 'select': {
               const cur = String(values[f.key] ?? '');
-              // לחיצה חוזרת מבטלת את הבחירה, אלא אם השדה חובה
-              const pick = (v: string) => onChange(f.key, cur === v && !f.required ? '' : v);
+              const chosen = f.options?.find((o) => o.value === cur);
               control = (
                 <>
-                  <div role="group" aria-label={f.label} className="flex flex-wrap gap-2">
+                  <select id={id} value={cur} onChange={(e) => onChange(f.key, e.target.value)} className={`${input} bg-white`}>
+                    <option value="">בחרו...</option>
                     {f.options?.map((o) => (
-                      <span key={o.value} className="inline-flex items-center">
-                        <Chip on={cur === o.value} onClick={() => pick(o.value)} label={o.label} hint={priceHint(o)} />
-                        {o.help && <HelpTip text={o.help} label={o.label} />}
-                      </span>
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                        {priceHint(o) ? ` (${priceHint(o)})` : ''}
+                      </option>
                     ))}
-                    {f.allowCustom && <Chip on={cur === CUSTOM_VALUE} onClick={() => pick(CUSTOM_VALUE)} label="התאמה אישית" />}
-                  </div>
+                    {f.allowCustom && <option value={CUSTOM_VALUE}>התאמה אישית</option>}
+                  </select>
+                  {chosen?.help && <p className="mt-1 text-xs text-gray-600">{chosen.help}</p>}
                   {cur === CUSTOM_VALUE && customInput}
                 </>
               );
@@ -154,7 +155,7 @@ export function TemplateFields({
                 </div>
               );
           }
-          const grouped = f.type === 'select' || f.type === 'multiselect';
+          const grouped = f.type === 'multiselect';
           return (
             <div key={f.key} className="text-sm">
               <div className="mb-1.5">

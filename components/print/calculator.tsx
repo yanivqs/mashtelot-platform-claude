@@ -124,8 +124,8 @@ export function PrintCalculator({ product: t, prefill }: { product: CalculatorPr
   return (
     <div className="grid items-start gap-6 pb-16 lg:grid-cols-[minmax(0,1fr)_300px] lg:pb-0">
       <div className="space-y-6 rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-        <QuantityPicker options={t.pricing.quantityOptions} allowCustom={t.pricing.allowCustomQuantity} min={t.pricing.minQuantity} unitLabel={t.unitLabel} quantity={qty} onChange={setQty} />
         <TemplateFields fields={t.fields} values={values} errors={fieldErrors} onChange={(k, v) => setValues((p) => ({ ...p, [k]: v }))} />
+        <QuantityPicker options={t.pricing.quantityOptions} allowCustom={t.pricing.allowCustomQuantity} min={t.pricing.minQuantity} unitLabel={t.unitLabel} quantity={qty} onChange={setQty} />
 
         <div className="space-y-2 border-t border-gray-100 pt-5 text-sm">
           <p className="font-medium text-gray-700">

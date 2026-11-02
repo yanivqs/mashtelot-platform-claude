@@ -30,6 +30,13 @@ test('mobile catalog: categories stay on one scrollable row and only existing le
     await expect(active).toBeInViewport();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
+    // סינון א-ב רק בקטלוג הראשי: לא בקטגוריה ולא בחיפוש, ואות שנשארה בכתובת לא חלה בהם
+    const letters = page.getByRole('navigation', { name: 'סינון לפי אות' });
+    await expect(letters).toHaveCount(0);
+    await page.goto(`${FIX_SHOP}/catalog?q=${encodeURIComponent('אות סופית')}&letter=${encodeURIComponent('ת')}`);
+    await expect(letters).toHaveCount(0);
+    await expect(page.getByText('ןןן אות סופית').first()).toBeVisible();
+
     await page.goto(`${FIX_SHOP}/catalog`);
     const bar = page.getByRole('navigation', { name: 'סינון לפי אות' });
     await expect(bar.getByRole('link', { name: 'נ', exact: true })).toBeVisible();

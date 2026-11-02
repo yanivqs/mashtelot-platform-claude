@@ -19,7 +19,7 @@ test('review path: design request → spec rejected → similar order → approv
   await page.goto(`${ADMIN}/admin/print-shop`);
   await page.getByRole('link', { name: new RegExp(E2E_SAVED_TEMPLATE) }).click();
   await page.getByLabel('טקסט').fill(TEXT);
-  await page.getByRole('group', { name: 'גודל' }).getByRole('button', { name: /קטן/ }).click();
+  await page.getByLabel(/^גודל/).selectOption('s');
   await page.getByLabel('כמות').fill('10');
   await expect(page.getByTestId('print-missing')).toContainText('יש להעלות קובץ');
   await page.getByText('אין לי קובץ, אני צריך גם עיצוב').click();
@@ -49,7 +49,7 @@ test('review path: design request → spec rejected → similar order → approv
   await expect(jobs).toContainText('הערת בית הדפוס: נא להגדיל את המדבקה');
   await jobs.getByRole('link', { name: 'הזמנה דומה' }).click();
   await expect(page.getByLabel('טקסט')).toHaveValue(TEXT);
-  await page.getByRole('group', { name: 'גודל' }).getByRole('button', { name: /גדול/ }).click();
+  await page.getByLabel(/^גודל/).selectOption('l');
   await page.getByText('אין לי קובץ, אני צריך גם עיצוב').click();
   await page.getByRole('button', { name: 'שליחה לבדיקה' }).click();
   await expect(page.getByTestId('print-confirmation')).toBeVisible();
