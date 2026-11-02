@@ -77,9 +77,9 @@ test('editor: tabs, drag, duplicate; nursery: calculator, review reasons, job an
 
   // סימון "תמיד דורש הצעת צוות" מעל מחירון מקבל אזהרה. ברירת המחדל: מחיר מיידי
   await expect(page.getByTestId('quote-only-warning')).toHaveCount(0);
-  await page.getByText('תמיד דורש הצעת צוות').click();
+  await page.getByText('תמיד דורש הצעת צוות', { exact: true }).click();
   await expect(page.getByTestId('quote-only-warning')).toBeVisible();
-  await page.getByText('תמיד דורש הצעת צוות').click();
+  await page.getByText('תמיד דורש הצעת צוות', { exact: true }).click();
   await expect(page.getByTestId('quote-only-warning')).toHaveCount(0);
 
   await page.getByRole('tab', { name: 'בדיקת קובץ' }).click();
