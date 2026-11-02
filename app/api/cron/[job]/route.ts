@@ -2,6 +2,8 @@ import { timingSafeEqual } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { sendEmail } from '@/lib/email';
 import { cleanupJob, emailsJob, JOB_NAMES, releaseReservationsJob, runJob, type JobName } from '@/lib/jobs';
+import { removeOrphanDraftFiles } from '@/lib/print-jobs';
+import { storageDriver } from '@/lib/print-storage';
 
 /**
  * משימות רקע (§21) — מופעלות ב-Vercel Cron (vercel.json). Vercel שולח `Authorization: Bearer $CRON_SECRET`.
@@ -26,7 +28,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ job: string }> 
 
   const name = job as JobName;
   const r = await runJob<Record<string, number>>(prisma, name, () =>
-    name === 'reservations' ? releaseReservationsJob(prisma) : name === 'emails' ? emailsJob(prisma, sendEmail) : cleanupJob(prisma),
+    name === 'reservations'
+      ? releaseReservationsJob(prisma)
+      : name === 'emails'
+        ? emailsJob(prisma, sendEmail)
+        : cleanupJob(prisma).then(async (r) => ({ ...r, printDraftFiles: await removeOrphanDraftFiles(prisma, (key) => storageDriver().remove(key)) })),
   );
   return Response.json(r, { status: r.ok ? 200 : 500 });
 }

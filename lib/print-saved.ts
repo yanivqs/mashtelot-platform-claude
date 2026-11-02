@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
-import { describeValues, parseFields, parsePricing, quotePrint, validateValues, type CleanValues, type PrintQuote, type RawValues } from '@/lib/print-template';
+import { describeValues, parseFields, parsePricing, quotePrint, validateValues, type CleanValues, type PrintQuote, type RawValues, type TemplateField } from '@/lib/print-template';
+import { priceSnapshot } from '@/lib/print-jobs';
 
 /**
  * מוצר דפוס קבוע (PT-04, נספח א.6): המשתלה מגישה מפרט (גרסת תבנית + ערכים) → בית הדפוס מאשר
@@ -95,11 +96,21 @@ export async function reviewSpec(
   });
 }
 
-export type ReorderResult = { ok: true; orderId: string; quote: PrintQuote } | { ok: false; error: string };
+export type ReorderResult = { ok: true; orderId: string; quote: PrintQuote } | { ok: false; error: string; changed?: boolean };
 
 /**
- * הזמנה ממוצר קבוע: רק מהגרסה המאושרת, רק כמות והערות משתנות. התמחור לפי גרסת התבנית
- * שאושרה במפרט (המחיר שאושר אינו משתנה בדיעבד); הפריט שומר Snapshot וקישור לגרסת המפרט.
+ * האם המפרט השמור עדיין תקף בגרסה המפורסמת: הערכים עוברים ולידציה, והתיאור שלהם זהה למה שאושר.
+ * שינוי תווית או הסרת אפשרות — המוצר השתנה, והמשתלה צריכה לבדוק את הפרטים בעבודה חדשה.
+ */
+export function specStillValid(fields: TemplateField[], stored: { raw?: CleanValues; display?: Array<{ label: string; value: string }> } | null): CleanValues | null {
+  const checked = validateValues(fields, (stored?.raw ?? {}) as RawValues);
+  if (!checked.ok) return null;
+  return JSON.stringify(describeValues(fields, checked.values)) === JSON.stringify(stored?.display ?? []) ? checked.values : null;
+}
+
+/**
+ * הזמנה חוזרת: מהמפרט המאושר, רק כמות והערות משתנות. המחיר לפי הגרסה המפורסמת הנוכחית (החלטת בעלים:
+ * המשתלה רואה את המחיר המעודכן לפני השליחה). הפריט שומר Snapshot וקישור לגרסת המפרט.
  */
 export async function orderSaved(
   db: PrismaClient,
@@ -107,15 +118,17 @@ export async function orderSaved(
 ): Promise<ReorderResult> {
   const p = await db.printSavedProduct.findFirst({
     where: { id: args.savedProductId, nurseryId: args.nurseryId, isArchived: false },
-    include: { activeRevision: { include: { templateVersion: { include: { template: true } } } } },
+    include: { activeRevision: true, template: { include: { versions: { where: { status: 'PUBLISHED' } } } } },
   });
   const rev = p?.activeRevision;
   if (!p || !rev || rev.status !== 'APPROVED') return { ok: false, error: 'למוצר אין מפרט מאושר' };
-  if (!rev.templateVersion.template.isActive) return { ok: false, error: 'מוצר הדפוס הזה אינו זמין כרגע — פנו לבית הדפוס' };
-  const fields = parseFields(rev.templateVersion.fields);
-  const pricing = parsePricing(rev.templateVersion.pricing);
+  const pub = p.template.versions[0];
+  if (!p.template.isActive || !pub) return { ok: false, error: 'מוצר הדפוס הזה אינו זמין כרגע — פנו לבית הדפוס' };
+  const fields = parseFields(pub.fields);
+  const pricing = parsePricing(pub.pricing);
   if (!fields.ok || !pricing.ok) return { ok: false, error: 'הגדרת המוצר אינה תקינה — פנו לבית הדפוס' };
-  const raw = ((rev.values as { raw?: CleanValues } | null)?.raw ?? {}) as CleanValues;
+  const raw = specStillValid(fields.value, rev.values as { raw?: CleanValues; display?: Array<{ label: string; value: string }> } | null);
+  if (!raw) return { ok: false, changed: true, error: 'המוצר השתנה מאז ההזמנה האחרונה — בדקו את הפרטים בהזמנה דומה' };
   const priced = quotePrint(pricing.value, fields.value, raw, args.quantity);
   if (!priced.ok) return { ok: false, error: priced.error };
   const q = priced.quote;
@@ -125,23 +138,19 @@ export async function orderSaved(
       nurseryId: args.nurseryId,
       orderedById: args.userId,
       status: q.quoteOnly ? 'QUOTE_REQUESTED' : 'NEW',
+      quoteStatus: q.quoteOnly ? 'NEW' : null,
+      reviewReasons: q.reasons,
       totalAmount: q.total.toFixed(2),
       notes: args.notes?.trim().slice(0, 2000) || null,
       items: {
         create: {
-          templateVersionId: rev.templateVersionId,
+          templateVersionId: pub.id,
           savedRevisionId: rev.id,
-          title: `${rev.templateVersion.template.title} — ${p.name}`,
+          title: p.name,
           quantity: q.quantity,
-          unitPrice: q.unitPrice.toFixed(2),
+          unitPrice: q.unitPrice.toFixed(4),
           values: rev.values as Prisma.InputJsonValue,
-          priceBreakdown: {
-            breakdown: q.breakdown,
-            setupFee: q.setupFee,
-            quoteOnly: q.quoteOnly,
-            version: rev.templateVersion.version,
-            specRevision: rev.revision,
-          } as unknown as Prisma.InputJsonValue,
+          priceBreakdown: priceSnapshot(q, pub.version, { specRevision: rev.revision }),
         },
       },
     },

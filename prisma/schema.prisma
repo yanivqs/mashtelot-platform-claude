@@ -775,6 +775,15 @@ model PrintOrder {
   /// מה אושר בעת השחרור: גרסאות מפרט וגרפיקה, קובץ הייצור וחתימתו — אינו משתנה
   releaseSnapshot  Json?                 @map("release_snapshot")
   productionNote   String?               @map("production_note")
+  /// המשתלה סימנה שאין לה קובץ וצריך גם עיצוב
+  needsDesign      Boolean               @default(false) @map("needs_design")
+  /// הסיבות למעבר לבדיקת צוות (ריק במחיר מיידי)
+  reviewReasons    String[]              @default([]) @map("review_reasons")
+  /// מחזור הצעת מחיר; "פג תוקף" מחושב מ-quoteValidUntil. ריק בהזמנה במחיר מיידי
+  quoteStatus      PrintQuoteStatus?     @map("quote_status")
+  quoteValidUntil  DateTime?             @map("quote_valid_until")
+  /// הערות פנימיות של בית הדפוס — לא מוצגות למשתלה
+  adminNotes       String?               @map("admin_notes")
   productionFile   PrintFile?            @relation("ProductionFile", fields: [productionFileId], references: [id], onDelete: NoAction)
   createdAt        DateTime              @default(now()) @map("created_at")
   updatedAt        DateTime              @updatedAt @map("updated_at")
@@ -792,7 +801,7 @@ model PrintOrderItem {
   /// מוצר דפוס ישן (לפני התבניות); ריק בפריט מתבנית
   printProductId    String?               @map("print_product_id")
   quantity          Int
-  unitPrice         Decimal               @map("unit_price") @db.Decimal(10, 2)
+  unitPrice         Decimal               @map("unit_price") @db.Decimal(10, 4)
   customText        String?               @map("custom_text")
   options           Json?
   /// PT-07: Snapshot — גרסת התבנית, שם המוצר, הערכים שנבדקו בשרת ופירוט המחיר בעת ההזמנה
@@ -1101,6 +1110,9 @@ model CatalogSyncDecision {
 model PrintTemplate {
   id              String                 @id @default(uuid())
   title           String
+  /// כתובת דף המוצר: /admin/print-shop/{slug}
+  slug            String?                @unique
+  galleryImages   String[]               @default([]) @map("gallery_images")
   description     String?
   category        String?
   /// תמונת דוגמה של המוצר (החלטת בעלים: ללא הדמיית ערכים)
@@ -1117,6 +1129,14 @@ model PrintTemplate {
   savedProducts   PrintSavedProduct[]
 
   @@map("print_templates")
+}
+
+enum PrintQuoteStatus {
+  NEW
+  IN_PROGRESS
+  SENT
+  APPROVED
+  REJECTED
 }
 
 enum PrintTemplateStatus {
@@ -1230,9 +1250,20 @@ model PrintFile {
   artworkOf    PrintArtworkVersion[] @relation("ArtworkFile")
   proofOf      PrintArtworkVersion[] @relation("ProofFile")
   productionOf PrintOrder[]          @relation("ProductionFile")
+  thumbnail    PrintFileThumbnail?
 
   @@index([nurseryId])
   @@map("print_files")
+}
+
+/// תמונה קטנה של קובץ דפוס ל"העבודות שלי". JPEG שנוצר בדפדפן בהעלאה ונבדק בשרת.
+model PrintFileThumbnail {
+  fileId    String    @id @map("file_id")
+  bytes     Bytes
+  createdAt DateTime  @default(now()) @map("created_at")
+  file      PrintFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@map("print_file_thumbnails")
 }
 
 /// PT-05: גרפיקה של מוצר קבוע או של הזמנה חד-פעמית — בגרסאות.

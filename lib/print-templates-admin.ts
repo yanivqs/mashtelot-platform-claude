@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import {
   describeValues,
@@ -20,6 +21,8 @@ export const DEFAULT_PRICING = { basePrice: 0, tiers: [], setupFee: 0, minQuanti
 
 export interface TemplateMeta {
   title: string;
+  slug?: string | null;
+  galleryImages?: string[];
   description: string | null;
   category: string | null;
   imageUrl: string | null;
@@ -29,10 +32,20 @@ export interface TemplateMeta {
   isActive: boolean;
 }
 
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
+
+/** כתובת ברירת מחדל: אותיות לטיניות מהשם אם יש, אחרת "product"; סיומת אקראית מונעת התנגשות. */
+export function suggestSlug(title: string): string {
+  const base = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+  return `${base || 'product'}-${randomBytes(3).toString('hex')}`;
+}
+
 export function validateMeta(m: TemplateMeta): string | null {
   if (!m.title.trim() || m.title.length > 120) return 'יש לתת שם למוצר (עד 120 תווים)';
   if (m.leadTimeDays !== null && (!Number.isInteger(m.leadTimeDays) || m.leadTimeDays < 0 || m.leadTimeDays > 365)) return 'זמן הפקה לא תקין';
   if (m.imageUrl && !/^https:\/\//.test(m.imageUrl)) return 'כתובת תמונה לא תקינה';
+  if (m.slug && !SLUG_RE.test(m.slug)) return 'כתובת המוצר: אותיות אנגליות קטנות, מספרים ומקפים בלבד';
+  if (m.galleryImages?.some((u) => !/^https:\/\//.test(u))) return 'כתובת תמונה בגלריה לא תקינה';
   return null;
 }
 
@@ -40,6 +53,7 @@ export async function createTemplate(db: PrismaClient, meta: TemplateMeta, actor
   return db.printTemplate.create({
     data: {
       ...meta,
+      slug: meta.slug || suggestSlug(meta.title),
       isActive: false,
       versions: { create: { version: 1, status: 'DRAFT', fields: [], pricing: DEFAULT_PRICING, createdBy: actor } },
     },
@@ -166,7 +180,7 @@ export async function createTemplateOrder(
           templateVersionId: v.id,
           title: v.template.title,
           quantity: q.quantity,
-          unitPrice: q.unitPrice.toFixed(2),
+          unitPrice: q.unitPrice.toFixed(4),
           values: {
             raw: checked.values,
             display: describeValues(fields.value, checked.values),

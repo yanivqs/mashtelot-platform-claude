@@ -94,7 +94,7 @@ describe('PT-04 saved products', () => {
     await expect(prisma.printSavedRevision.update({ where: { id: r.id }, data: { status: 'SUPERSEDED' } })).rejects.toThrow(/invalid spec status/);
   });
 
-  it('approved spec keeps its price after the template is repriced; change requests must use the published version', async () => {
+  it('reorder uses the current published price; a changed product asks to re-check; change requests must use the published version', async () => {
     const v1 = await published(2);
     const s = await submitSpec(prisma, { nurseryId: f.A.nurseryId, actorEmail: null, templateVersionId: v1.id, values: { text: 'מחיר', size: 's' }, name: 'מחיר' });
     const id = (s as { savedProductId: string }).savedProductId;
@@ -105,7 +105,7 @@ describe('PT-04 saved products', () => {
     await publishDraft(prisma, v1.templateId, null);
 
     const o = await orderSaved(prisma, { nurseryId: f.A.nurseryId, userId: null, savedProductId: id, quantity: 10 });
-    expect(o.ok && o.quote.unitPrice).toBe(2);
+    expect(o.ok && o.quote.unitPrice).toBe(5);
     expect((await submitSpec(prisma, { nurseryId: f.A.nurseryId, actorEmail: null, templateVersionId: v1.id, values: { text: 'x', size: 's' }, savedProductId: id })).ok).toBe(false);
   });
 
