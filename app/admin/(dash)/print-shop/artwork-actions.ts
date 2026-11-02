@@ -9,6 +9,7 @@ import { newStorageKey, signUploadTicket, storageDriver, verifyUploadTicket, typ
 import { addArtworkVersion, attachProof, decideArtwork, ownsSubject, profileFor, registerFile, type Subject } from '@/lib/print-artwork';
 import { setProductionFile } from '@/lib/print-production';
 import { saveThumbnail } from '@/lib/print-jobs';
+import { addImportedArtwork } from '@/lib/print-import';
 import { parseProfile, type PreflightResult } from '@/lib/print-preflight';
 
 export interface UploadStart {
@@ -159,6 +160,15 @@ export async function finishUpload(input: { ticket: string; originalName: string
   }
 
   const thumbnailSaved = t.kind === 'ARTWORK' ? await saveThumbnail(prisma, reg.fileId, input.thumbnail) : false;
+
+  if (t.target.importedJobId) {
+    const r = await addImportedArtwork(prisma, { savedProductId: t.target.importedJobId, fileId: reg.fileId, actorEmail });
+    if (!r.ok) return { error: r.error };
+    await recordAudit({ nurseryId: t.nurseryId, actorEmail, action: 'print.job_import_file', entityType: 'PrintSavedProduct', entityId: t.target.importedJobId, metadata: { fileId: reg.fileId } });
+    revalidatePath('/admin/print-jobs');
+    revalidateAll();
+    return { ok: true };
+  }
 
   if (draftVersionId) {
     const f = await prisma.printFile.findUniqueOrThrow({ where: { id: reg.fileId } });

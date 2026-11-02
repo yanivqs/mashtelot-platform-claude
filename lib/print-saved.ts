@@ -128,8 +128,8 @@ export async function orderSaved(
   });
   const rev = p?.activeRevision;
   if (!p || !rev || rev.status !== 'APPROVED') return { ok: false, error: 'למוצר אין מפרט מאושר' };
-  const pub = p.template.versions[0];
-  if (!p.template.isActive || !pub) return { ok: false, error: 'מוצר הדפוס הזה אינו זמין כרגע — פנו לבית הדפוס' };
+  const pub = p.template?.versions[0];
+  if (!p.template?.isActive || !pub) return { ok: false, error: 'מוצר הדפוס הזה אינו זמין כרגע — פנו לבית הדפוס' };
   const fields = parseFields(pub.fields);
   const pricing = parsePricing(pub.pricing);
   if (!fields.ok || !pricing.ok) return { ok: false, error: 'הגדרת המוצר אינה תקינה — פנו לבית הדפוס' };

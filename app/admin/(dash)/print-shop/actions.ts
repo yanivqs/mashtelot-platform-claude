@@ -6,6 +6,7 @@ import { nurseryActionScope } from '@/lib/nursery-scope';
 import { recordAudit } from '@/lib/audit';
 import { archiveSaved, orderSaved } from '@/lib/print-saved';
 import { createJobOrder, decideQuote, renameJob } from '@/lib/print-jobs';
+import { reorderImportedJob } from '@/lib/print-import';
 
 // ---------- הזמנה מתבנית (PT-02/03/07) ----------
 
@@ -112,6 +113,24 @@ export async function reorderSavedAction(input: { savedProductId: string; quanti
   revalidatePath('/admin/print-shop/jobs');
   revalidatePath('/admin/print-orders');
   return { ok: true, total: res.quote.total, quoteOnly: res.quote.quoteOnly };
+}
+
+/** הזמנה חוזרת של עבודה קודמת בלי מוצר מהקטלוג: בקשת הצעת מחיר. */
+export async function reorderImportedAction(input: { savedProductId: string; quantity: number; notes?: string }): Promise<{ ok?: boolean; error?: string }> {
+  const scope = await nurseryActionScope({ all: ['print_shop'] });
+  if (!scope.ok) return { error: scope.error };
+  const res = await reorderImportedJob(prisma, {
+    nurseryId: scope.nurseryId,
+    userId: scope.user.id,
+    savedProductId: String(input.savedProductId ?? ''),
+    quantity: Number(input.quantity),
+    notes: typeof input.notes === 'string' ? input.notes : null,
+  });
+  if (!res.ok) return { error: res.error };
+  await recordAudit({ nurseryId: scope.nurseryId, actorEmail: scope.user.email, action: 'print.quote_requested', entityType: 'PrintOrder', entityId: res.orderId, metadata: { savedProductId: input.savedProductId, quantity: input.quantity, imported: true } });
+  revalidatePath('/admin/print-shop/jobs');
+  revalidatePath('/admin/print-orders');
+  return { ok: true };
 }
 
 export async function archiveSavedAction(formData: FormData): Promise<void> {

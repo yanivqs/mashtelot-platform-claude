@@ -8,13 +8,17 @@ import { ArtworkPanel, type ArtworkVersionVM } from '@/components/print/artwork-
 import { QuantityPicker } from '@/components/print/template-fields';
 import { quotePrint, type CleanValues, type TemplateField, type TemplatePricing } from '@/lib/print-template';
 import { formatPrice } from '@/lib/utils';
-import { archiveSavedAction, decideQuoteAction, renameJobAction, reorderSavedAction } from '../actions';
+import { archiveSavedAction, decideQuoteAction, renameJobAction, reorderImportedAction, reorderSavedAction } from '../actions';
 
 export interface JobVM {
   id: string;
   name: string;
   productTitle: string;
   productHref: string;
+  /** עבודה קודמת שנוספה בידי בית הדפוס */
+  imported: boolean;
+  /** בלי מוצר מהקטלוג: הזמנה חוזרת עוברת להצעת מחיר */
+  freeReorder: boolean;
   canOrderSimilar: boolean;
   image: string | null;
   fileName: string | null;
@@ -164,6 +168,60 @@ function Reorder({ job, onClose }: { job: JobVM; onClose: () => void }) {
   );
 }
 
+function FreeReorder({ job, onClose }: { job: JobVM; onClose: () => void }) {
+  const router = useRouter();
+  const [qty, setQty] = useState(String(job.lastQuantity ?? 1));
+  const [notes, setNotes] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [pending, start] = useTransition();
+  if (sent) {
+    return (
+      <div className="mt-3 rounded-lg bg-green-50 p-3 text-sm text-green-800">
+        הבקשה נשלחה לבית הדפוס ✓ המחיר יופיע כאן אחרי שתישלח הצעה.{' '}
+        <button type="button" onClick={onClose} className="font-medium underline">
+          סגירה
+        </button>
+      </div>
+    );
+  }
+  return (
+    <form
+      className="mt-3 space-y-3 rounded-lg border border-gray-100 bg-gray-50 p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError(null);
+        start(async () => {
+          const r = await reorderImportedAction({ savedProductId: job.id, quantity: Number(qty), notes });
+          if (r.ok) {
+            setSent(true);
+            router.refresh();
+          } else setError(r.error ?? 'שגיאה');
+        });
+      }}
+    >
+      <p className="text-sm text-gray-700">העבודה הזו לא במחירון, לכן בית הדפוס ישלח הצעת מחיר לאישורכם.</p>
+      <label className="block max-w-48 text-sm">
+        <span className="mb-1 block font-medium text-gray-700">כמות</span>
+        <input type="number" min="1" step="1" value={qty} onChange={(e) => setQty(e.target.value)} className={input} />
+      </label>
+      <label className="block text-sm">
+        <span className="mb-1 block font-medium text-gray-700">הערות לבית הדפוס</span>
+        <input value={notes} onChange={(e) => setNotes(e.target.value)} className={input} />
+      </label>
+      <div className="flex flex-wrap items-center gap-3">
+        <button disabled={pending} className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60">
+          {pending ? 'שולח...' : 'שליחה לבקשת מחיר'}
+        </button>
+        <button type="button" onClick={onClose} className="text-sm text-gray-600">
+          ביטול
+        </button>
+        {error && <span className="text-sm text-red-600">{error}</span>}
+      </div>
+    </form>
+  );
+}
+
 function QuoteDecision({ quote }: { quote: NonNullable<JobVM['quote']> }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -207,6 +265,7 @@ function JobCard({ job }: { job: JobVM }) {
               <Rename job={job} />
             </div>
             <span className="flex shrink-0 flex-wrap gap-1.5">
+              {job.imported && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">הודפס בעבר</span>}
               {job.production && <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-800">{job.production}</span>}
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">{job.status}</span>
             </span>
@@ -244,6 +303,7 @@ function JobCard({ job }: { job: JobVM }) {
       {job.quote && <QuoteDecision quote={job.quote} />}
 
       {reordering && job.reorder && <Reorder job={job} onClose={() => setReordering(false)} />}
+      {reordering && job.freeReorder && <FreeReorder job={job} onClose={() => setReordering(false)} />}
 
       {artworkOpen && (
         <div className="mt-3">
@@ -253,7 +313,7 @@ function JobCard({ job }: { job: JobVM }) {
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
-        {job.reorder ? (
+        {job.reorder || job.freeReorder ? (
           <button type="button" onClick={() => setReordering((o) => !o)} aria-expanded={reordering} className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
             הזמן שוב
           </button>

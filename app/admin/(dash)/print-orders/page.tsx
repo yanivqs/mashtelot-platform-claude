@@ -22,6 +22,7 @@ export default async function PrintOrdersPage() {
 
   const [orders, productCount] = await Promise.all([
     prisma.printOrder.findMany({
+      where: { imported: false },
       include: {
         nursery: { select: { name: true } },
         orderedBy: { select: { email: true } },
