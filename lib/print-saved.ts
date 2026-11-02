@@ -91,6 +91,12 @@ export async function reviewSpec(
         await tx.printSavedRevision.update({ where: { id: prev }, data: { status: 'SUPERSEDED' } });
       }
       await tx.printSavedProduct.update({ where: { id: rev.savedProductId }, data: { activeRevisionId: rev.id } });
+    } else {
+      // מפרט שנדחה סוגר את בקשת הצעת המחיר שנוצרה ממנו, כדי שלא תישאר פתוחה בתור
+      await tx.printOrder.updateMany({
+        where: { status: 'QUOTE_REQUESTED', items: { some: { savedRevisionId: rev.id } } },
+        data: { status: 'CANCELLED', quoteStatus: 'REJECTED' },
+      });
     }
     return { ok: true as const };
   });

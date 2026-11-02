@@ -57,7 +57,7 @@ export function ArtworkPanel({
     <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium">גרפיקה</span>
-        <PrintFileUpload label={latest ? 'העלאת גרסה חדשה' : 'העלאת קובץ גרפיקה'} start={() => startArtworkUpload(subject)} onDone={() => router.refresh()} />
+        <PrintFileUpload label={latest ? 'העלאת גרסה חדשה' : 'העלאת קובץ גרפיקה'} withThumbnail start={() => startArtworkUpload(subject)} onDone={() => router.refresh()} />
       </div>
       {latest && latest.status !== 'APPROVED' && latest.status !== 'PROOF_SENT' && latest.status !== 'REJECTED' && (
         <p className="text-xs text-gray-500">העלאת גרסה חדשה מבטלת אישור קודם — כל גרסה מאושרת בנפרד.</p>

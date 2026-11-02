@@ -195,6 +195,17 @@ describe('quote cycle', () => {
   });
 });
 
+describe('rejecting a spec', () => {
+  it('closes the open quote request made from it', async () => {
+    const v = await published();
+    const r = await createJobOrder(prisma, { ...base(), templateVersionId: v.id, values: { paper: 'special' }, quantity: 500, needsDesign: true });
+    if (!r.ok) throw new Error('order failed');
+    const rev = await prisma.printSavedRevision.findFirstOrThrow({ where: { savedProductId: r.savedProductId } });
+    expect((await reviewSpec(prisma, { revisionId: rev.id, approve: false, note: 'נא לתקן', actorEmail: null })).ok).toBe(true);
+    expect(await prisma.printOrder.findUniqueOrThrow({ where: { id: r.orderId } })).toMatchObject({ status: 'CANCELLED', quoteStatus: 'REJECTED' });
+  });
+});
+
 describe('job housekeeping', () => {
   it('rename is limited to the owner nursery', async () => {
     const v = await published();

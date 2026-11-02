@@ -4,7 +4,7 @@ import { useActionState } from 'react';
 import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useRouter } from 'next/navigation';
 import { PrintFileUpload } from '@/components/print/file-upload';
-import { phoneDecision, startProofUpload, type DecisionState } from '../print-shop/artwork-actions';
+import { phoneDecision, startDesignUpload, startProofUpload, type DecisionState } from '../print-shop/artwork-actions';
 
 export function ProofUpload({ versionId }: { versionId: string }) {
   const router = useRouter();
@@ -28,4 +28,10 @@ export function PhoneDecision({ versionId }: { versionId: string }) {
       {state.error && <span className="w-full text-sm text-red-600">{state.error}</span>}
     </form>
   );
+}
+
+/** בית הדפוס מעלה את העיצוב בשם המשתלה; משם ממשיכים להגהה כרגיל. */
+export function DesignUpload({ savedProductId }: { savedProductId: string }) {
+  const router = useRouter();
+  return <PrintFileUpload label="העלאת עיצוב" withThumbnail start={() => startDesignUpload(savedProductId)} onDone={() => router.refresh()} />;
 }

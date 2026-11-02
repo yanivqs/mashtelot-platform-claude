@@ -2,7 +2,8 @@
 
 import { useRef, useState } from 'react';
 import { Loader2, Upload } from 'lucide-react';
-import { finishUpload, type UploadStart } from '@/app/admin/(dash)/print-shop/artwork-actions';
+import { finishUpload, type UploadedFile, type UploadStart } from '@/app/admin/(dash)/print-shop/artwork-actions';
+import { makeThumbnail } from '@/lib/print-thumbnail';
 
 const MAX = 50 * 1024 * 1024;
 
@@ -14,10 +15,13 @@ export function PrintFileUpload({
   label,
   start,
   onDone,
+  withThumbnail = false,
 }: {
   label: string;
   start: () => Promise<UploadStart>;
-  onDone?: () => void;
+  onDone?: (file?: UploadedFile) => void;
+  /** גרפיקה: יוצר תמונה קטנה ל"העבודות שלי" */
+  withThumbnail?: boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -34,10 +38,11 @@ export function PrintFileUpload({
       if (!s.ok || !s.target || !s.ticket) throw new Error(s.error ?? 'ההעלאה נכשלה');
       const put = await fetch(s.target.url, { method: s.target.method, headers: { 'Content-Type': 'application/octet-stream', ...s.target.headers }, body: file });
       if (!put.ok) throw new Error(`ההעלאה נכשלה (${put.status})`);
-      const f = await finishUpload({ ticket: s.ticket, originalName: file.name });
+      const thumbnail = withThumbnail ? await makeThumbnail(file) : null;
+      const f = await finishUpload({ ticket: s.ticket, originalName: file.name, thumbnail });
       if (!f.ok) throw new Error(f.error ?? 'ההעלאה נכשלה');
       setDone(true);
-      onDone?.();
+      onDone?.(f.file);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'ההעלאה נכשלה');
     } finally {
@@ -60,7 +65,7 @@ export function PrintFileUpload({
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
         {busy ? 'מעלה...' : label}
       </button>
-      <span className="text-xs text-gray-400">PDF, PNG, JPG, TIFF, EPS · עד 50MB</span>
+      <span className="text-xs text-gray-600">PDF, PNG, JPG, TIFF, EPS · עד 50MB</span>
       {done && <span className="text-xs text-green-700">הועלה ✓</span>}
       {error && <span className="w-full text-xs text-red-600">{error}</span>}
     </div>

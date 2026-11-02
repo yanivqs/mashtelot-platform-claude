@@ -4,7 +4,7 @@ import type { PreflightResult } from '@/lib/print-preflight';
 import { prisma } from '@/lib/prisma';
 import { signDownloadUrl } from '@/lib/print-storage';
 import { ARTWORK_STATUS } from '@/lib/print-artwork-status';
-import { PhoneDecision, ProofUpload } from './forms';
+import { DesignUpload, PhoneDecision, ProofUpload } from './forms';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +29,16 @@ export default async function PrintArtworkPage() {
       },
     },
   });
+  // עבודות שביקשו עיצוב ועדיין אין להן קובץ
+  const awaitingDesign = await prisma.printSavedProduct.findMany({
+    where: {
+      isArchived: false,
+      artworks: { none: {} },
+      revisions: { some: { orderItems: { some: { printOrder: { needsDesign: true, status: { not: 'CANCELLED' } } } } } },
+    },
+    orderBy: { createdAt: 'asc' },
+    include: { nursery: { select: { name: true } }, activeRevision: { select: { values: true } }, revisions: { orderBy: { revision: 'desc' }, take: 1, select: { values: true } } },
+  });
   const rows = await Promise.all(
     versions.map(async (v) => ({ v, fileUrl: await signDownloadUrl(v.fileId), proofUrl: v.proofFileId ? await signDownloadUrl(v.proofFileId) : null })),
   );
@@ -42,12 +52,31 @@ export default async function PrintArtworkPage() {
           מתייחס לגרסה הזו בלבד; גרסה חדשה מבטלת אותו.
         </p>
       </div>
+      {awaitingDesign.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="font-bold">ממתינות לעיצוב ({awaitingDesign.length})</h2>
+          {awaitingDesign.map((j) => {
+            const display = ((j.activeRevision?.values ?? j.revisions[0]?.values) as { display?: Array<{ label: string; value: string }> } | null)?.display ?? [];
+            return (
+              <div key={j.id} className="rounded-xl border border-sky-100 bg-white p-4 shadow-sm" data-testid="awaiting-design">
+                <p className="font-medium">
+                  {j.nursery.name} · {j.name}
+                </p>
+                {display.length > 0 && <p className="mt-0.5 text-xs text-gray-600">{display.map((d) => `${d.label}: ${d.value}`).join(' · ')}</p>}
+                <div className="mt-2">
+                  <DesignUpload savedProductId={j.id} />
+                </div>
+              </div>
+            );
+          })}
+        </section>
+      )}
       {rows.length === 0 ? (
         <p className="rounded-xl border border-dashed border-gray-200 bg-white p-8 text-center text-sm text-gray-500">אין קבצים ממתינים. ✓</p>
       ) : (
         rows.map(({ v, fileUrl, proofUrl }) => {
           const subject = v.artwork.savedProduct
-            ? `מוצר קבוע: ${v.artwork.savedProduct.name}`
+            ? `עבודה: ${v.artwork.savedProduct.name}`
             : `הזמנה ${v.artwork.printOrder ? dateFmt.format(v.artwork.printOrder.createdAt) : ''} — ${v.artwork.printOrder?.items[0]?.title ?? ''}`;
           return (
             <section key={v.id} className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">

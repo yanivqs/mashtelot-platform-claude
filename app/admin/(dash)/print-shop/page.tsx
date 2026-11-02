@@ -1,107 +1,47 @@
-import { itemDisplay } from '@/lib/print-templates-admin';
+import Link from 'next/link';
+import { ArrowLeft, FolderOpen } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryPage } from '@/lib/nursery-scope';
 import { formatPrice } from '@/lib/utils';
 import { parsePriceTiers } from '@/lib/print-pricing';
-import { PrintOrderForm, type PrintProductVM } from './order-form';
-import { TemplateCatalog, type TemplateVM } from './template-order';
-import { SavedProducts, type SavedVM } from './saved-products';
-import type { CleanValues } from '@/lib/print-template';
-import { artworkInclude, artworkVersionsVM } from '@/lib/print-artwork-view';
-import { ArtworkPanel } from '@/components/print/artwork-panel';
-import { PRODUCTION_LABELS, type ProductionStatus } from '@/lib/print-release';
 import { parseFields, parsePricing } from '@/lib/print-template';
+import { PrintOrderForm, type PrintProductVM } from './order-form';
 
 export const dynamic = 'force-dynamic';
 
-const STATUS_LABEL: Record<string, string> = {
-  QUOTE_REQUESTED: 'ממתינה להצעת מחיר',
-  NEW: 'התקבלה',
-  IN_PRODUCTION: 'בהפקה',
-  SHIPPED: 'נשלחה',
-  DELIVERED: 'נמסרה',
-  CANCELLED: 'בוטלה',
-};
-
+/** קטלוג בית הדפוס של המשתלה. כל מוצר נפתח בדף משלו עם מחשבון. */
 export default async function PrintShopPage() {
   const { nurseryId } = await requireNurseryPage({ all: ['print_shop'] });
 
-  const [templates, products, options, orders] = await Promise.all([
-    // PT-02: מוצרים מתבניות — הגרסה המפורסמת של כל תבנית פעילה
+  const [templates, products, options, jobCount] = await Promise.all([
     prisma.printTemplateVersion.findMany({
       where: { status: 'PUBLISHED', template: { isActive: true } },
       include: { template: true },
       orderBy: [{ template: { sortOrder: 'asc' } }, { template: { createdAt: 'asc' } }],
     }),
-    prisma.printProduct.findMany({
-      where: { isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { basePrice: 'asc' }],
-    }),
+    // מוצרים ישנים: הטופס הישן מוצג רק כל עוד יש כאלה פעילים
+    prisma.printProduct.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: 'asc' }, { basePrice: 'asc' }] }),
     prisma.printGlobalOption.findMany({ orderBy: { optionName: 'asc' } }),
-    nurseryId
-      ? prisma.printOrder.findMany({
-          where: { nurseryId },
-          include: { items: { include: { printProduct: { select: { title: true } } } }, artworks: { include: artworkInclude } },
-          orderBy: { createdAt: 'desc' },
-        })
-      : Promise.resolve([]),
+    prisma.printSavedProduct.count({ where: { nurseryId, isArchived: false } }),
   ]);
 
-  const templateVm: TemplateVM[] = templates.flatMap((v) => {
-    const fields = parseFields(v.fields);
+  const cards = templates.flatMap((v) => {
     const pricing = parsePricing(v.pricing);
-    if (!fields.ok || !pricing.ok) return [];
-    return [{
-      versionId: v.id,
-      title: v.template.title,
-      description: v.template.description,
-      imageUrl: v.template.imageUrl,
-      unitLabel: v.template.unitLabel,
-      leadTimeDays: v.template.leadTimeDays,
-      fields: fields.value,
-      pricing: pricing.value,
-    }];
+    if (!parseFields(v.fields).ok || !pricing.ok) return [];
+    const p = pricing.value;
+    const prices = [...(p.basePrice > 0 ? [p.basePrice] : []), ...p.tiers.map((x) => x.unitPrice)];
+    return [
+      {
+        id: v.id,
+        href: `/admin/print-shop/${v.template.slug ?? v.template.id}`,
+        title: v.template.title,
+        description: v.template.description,
+        imageUrl: v.template.imageUrl,
+        leadTimeDays: v.template.leadTimeDays,
+        priceLabel: p.quoteOnly || prices.length === 0 ? 'בהצעת מחיר' : `החל מ-${formatPrice(Math.min(...prices))} ליחידה`,
+      },
+    ];
   });
-
-  // PT-04: המוצרים הקבועים של המשתלה — מפרט מאושר, בקשה אחרונה, וטופס שינוי לפי הגרסה המפורסמת
-  const saved = await prisma.printSavedProduct.findMany({
-    where: { nurseryId, isArchived: false },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      template: { include: { versions: { where: { status: 'PUBLISHED' } } } },
-      activeRevision: { include: { templateVersion: true } },
-      revisions: { orderBy: { revision: 'desc' }, take: 1 },
-      artworks: { include: artworkInclude },
-    },
-  });
-  const savedVm: SavedVM[] = await Promise.all(saved.map(async (s) => {
-    const a = s.activeRevision;
-    const af = a ? parseFields(a.templateVersion.fields) : null;
-    const ap = a ? parsePricing(a.templateVersion.pricing) : null;
-    const av = (a?.values ?? {}) as { raw?: CleanValues; display?: Array<{ label: string; value: string }> };
-    const latest = s.revisions[0];
-    const pub = s.template.isActive ? s.template.versions[0] : undefined;
-    const pf = pub ? parseFields(pub.fields) : null;
-    const prefillFrom = (latest?.values ?? a?.values ?? {}) as { raw?: CleanValues };
-    return {
-      id: s.id,
-      name: s.name,
-      templateTitle: s.template.title,
-      active: a && af?.ok && ap?.ok ? { revision: a.revision, display: av.display ?? [], raw: av.raw ?? {}, fields: af.value, pricing: ap.value } : null,
-      latest: latest && (latest.status === 'SUBMITTED' || latest.status === 'REJECTED') ? { revision: latest.revision, status: latest.status, note: latest.reviewNote } : null,
-      change: pub && pf?.ok ? { templateVersionId: pub.id, fields: pf.value, prefill: prefillFrom.raw ?? {} } : null,
-      artwork: await artworkVersionsVM(s.artworks[0]?.versions ?? []),
-    };
-  }));
-
-  // PT-05: גרפיקה להזמנה חד-פעמית מתבנית (במוצר קבוע הגרפיקה שייכת למוצר)
-  const orderArtwork = new Map(
-    await Promise.all(
-      orders
-        .filter((o) => o.items.some((i) => i.templateVersionId && !i.savedRevisionId))
-        .map(async (o) => [o.id, await artworkVersionsVM(o.artworks[0]?.versions ?? [])] as const),
-    ),
-  );
 
   const vm: PrintProductVM[] = products.map((p) => ({
     id: p.id,
@@ -120,70 +60,45 @@ export default async function PrintShopPage() {
   }));
 
   return (
-    <div className="max-w-3xl">
-      <h1 className="mb-1 text-2xl font-bold">בית דפוס (הזמנות B2B)</h1>
-      <p className="mb-6 text-sm text-gray-500">
-        הזמנת שלטים, תוויות ופריטי מיתוג לחנות מבית הדפוס של הפלטפורמה.
-      </p>
+    <div className="max-w-5xl">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">בית דפוס</h1>
+          <p className="mt-1 text-sm text-gray-600">שלטים, תוויות ופריטי מיתוג. בוחרים מוצר, מקבלים מחיר ומזמינים.</p>
+        </div>
+        <Link href="/admin/print-shop/jobs" className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-800">
+          <FolderOpen className="h-4 w-4" />
+          העבודות שלי{jobCount > 0 ? ` (${jobCount})` : ''}
+        </Link>
+      </div>
 
-      {savedVm.length > 0 && (
-        <section className="mb-8">
-          <h2 className="mb-3 text-lg font-bold">המוצרים הקבועים שלי</h2>
-          <SavedProducts items={savedVm} />
+      {cards.length > 0 ? (
+        <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {cards.map((c) => (
+            <Link key={c.id} href={c.href} className="group flex flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm hover:border-brand-300">
+              {c.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={c.imageUrl} alt="" className="h-40 w-full object-cover" />
+              ) : (
+                <div className="h-40 w-full bg-gray-100" />
+              )}
+              <div className="flex flex-1 flex-col p-4">
+                <h2 className="font-bold">{c.title}</h2>
+                {c.description && <p className="mt-1 line-clamp-2 text-sm text-gray-600">{c.description}</p>}
+                <p className="mt-2 text-sm font-medium text-gray-900">{c.priceLabel}</p>
+                {c.leadTimeDays ? <p className="text-xs text-gray-600">זמן הפקה {c.leadTimeDays} ימים</p> : null}
+                <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-700">
+                  להזמנה <ArrowLeft className="h-4 w-4" />
+                </span>
+              </div>
+            </Link>
+          ))}
         </section>
-      )}
-
-      {templateVm.length > 0 && (
-        <section className="mb-8">
-          <h2 className="mb-3 text-lg font-bold">מוצרי דפוס</h2>
-          <TemplateCatalog templates={templateVm} />
-        </section>
+      ) : (
+        vm.length === 0 && <p className="rounded-xl border border-dashed border-gray-200 bg-white p-8 text-center text-sm text-gray-600">אין כרגע מוצרי דפוס להזמנה.</p>
       )}
 
       {vm.length > 0 && <PrintOrderForm products={vm} options={options.map((o) => ({ id: o.id, optionName: o.optionName, extraPrice: o.extraPrice.toString() }))} />}
-
-      {orders.length > 0 && (
-        <section className="mt-10">
-          <h2 className="mb-3 font-bold text-gray-900">ההזמנות שלי</h2>
-          <div className="space-y-2">
-            {orders.map((o) => (
-              <div key={o.id} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">
-                    {o.createdAt.toLocaleDateString('he-IL')}
-                  </span>
-                  <span className="flex gap-1.5">
-                    {o.items.some((i) => i.templateVersionId) && o.status !== 'QUOTE_REQUESTED' && (
-                      <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
-                        ייצור: {PRODUCTION_LABELS[o.productionStatus as ProductionStatus]}
-                      </span>
-                    )}
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                      {STATUS_LABEL[o.status] ?? o.status}
-                    </span>
-                  </span>
-                </div>
-                <ul className="mt-2 text-sm text-gray-600">
-                  {o.items.map((it) => (
-                    <li key={it.id}>
-                      {itemDisplay(it).title} × {it.quantity}
-                      {itemDisplay(it).details.length > 0 && (
-                        <span className="block text-xs text-gray-500">{itemDisplay(it).details.join(' · ')}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-1 text-sm font-medium">{formatPrice(o.totalAmount.toString())}</p>
-                {orderArtwork.has(o.id) && (
-                  <div className="mt-3">
-                    <ArtworkPanel subject={{ printOrderId: o.id }} versions={orderArtwork.get(o.id)!} />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

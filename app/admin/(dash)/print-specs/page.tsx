@@ -23,9 +23,9 @@ export default async function PrintSpecsPage() {
   return (
     <div className="max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">אישורי מפרט — מוצרים קבועים</h1>
+        <h1 className="text-2xl font-bold">אישורי מפרט: עבודות</h1>
         <p className="mt-1 text-sm text-gray-500">
-          אחרי אישור המפרט ננעל, והמשתלה מזמינה ממנו שוב עם כמות והערות בלבד. בקשת שינוי מוצגת מול המפרט המאושר.
+          הזמנות שעברו לבדיקת צוות ממתינות כאן לאישור. אחרי אישור המפרט ננעל, והמשתלה מזמינה ממנו שוב עם כמות והערות בלבד.
         </p>
       </div>
 
@@ -43,7 +43,7 @@ export default async function PrintSpecsPage() {
                   {r.savedProduct.nursery.name} · {r.savedProduct.name}
                 </h2>
                 <span className="text-xs text-gray-500">
-                  {r.templateVersion.template.title} (גרסה {r.templateVersion.version}) · {active ? `בקשת שינוי — מפרט ${r.revision}` : 'מוצר חדש'} ·{' '}
+                  {r.templateVersion.template.title} (גרסה {r.templateVersion.version}) · {active ? `בקשת שינוי — מפרט ${r.revision}` : 'עבודה חדשה'} ·{' '}
                   {dateFmt.format(r.submittedAt)} · {r.submittedBy ?? ''}
                 </span>
               </div>

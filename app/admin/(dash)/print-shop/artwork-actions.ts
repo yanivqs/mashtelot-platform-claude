@@ -8,6 +8,8 @@ import { recordAudit } from '@/lib/audit';
 import { newStorageKey, signUploadTicket, storageDriver, verifyUploadTicket, type UploadTarget } from '@/lib/print-storage';
 import { addArtworkVersion, attachProof, decideArtwork, ownsSubject, profileFor, registerFile, type Subject } from '@/lib/print-artwork';
 import { setProductionFile } from '@/lib/print-production';
+import { saveThumbnail } from '@/lib/print-jobs';
+import { parseProfile, type PreflightResult } from '@/lib/print-preflight';
 
 export interface UploadStart {
   ok?: boolean;
@@ -16,8 +18,20 @@ export interface UploadStart {
   ticket?: string;
 }
 
+/** קובץ שהועלה במחשבון, לפני שיש הזמנה */
+export interface UploadedFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  widthPx: number | null;
+  heightPx: number | null;
+  critical: string[];
+  thumbnailUrl: string | null;
+}
+
 function revalidateAll() {
   revalidatePath('/admin/print-shop');
+  revalidatePath('/admin/print-shop/jobs');
   revalidatePath('/admin/print-artwork');
 }
 
@@ -35,6 +49,35 @@ export async function startArtworkUpload(input: { savedProductId?: string | null
   if (!subject || !(await ownsSubject(prisma, scope.nurseryId, subject))) return { error: 'לא נמצא' };
   const key = newStorageKey(scope.nurseryId, 'ARTWORK');
   const ticket = await signUploadTicket({ key, nurseryId: scope.nurseryId, kind: 'ARTWORK', target: subject });
+  try {
+    return { ok: true, target: await storageDriver().uploadTarget(key, ticket), ticket };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'האחסון אינו זמין' };
+  }
+}
+
+/** מחשבון: קישור העלאה חתום לקובץ לפני שיש הזמנה. הקובץ משויך בשליחה, ואם לא — נמחק אחרי 7 ימים. */
+export async function startDraftArtworkUpload(input: { templateVersionId: string }): Promise<UploadStart> {
+  const scope = await nurseryActionScope({ all: ['print_shop'] });
+  if (!scope.ok) return { error: scope.error };
+  const v = await prisma.printTemplateVersion.findUnique({ where: { id: String(input.templateVersionId) }, select: { id: true, status: true } });
+  if (!v || v.status !== 'PUBLISHED') return { error: 'המוצר אינו זמין — רעננו את הדף' };
+  const key = newStorageKey(scope.nurseryId, 'ARTWORK');
+  const ticket = await signUploadTicket({ key, nurseryId: scope.nurseryId, kind: 'ARTWORK', target: { draftVersionId: v.id } });
+  try {
+    return { ok: true, target: await storageDriver().uploadTarget(key, ticket), ticket };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'האחסון אינו זמין' };
+  }
+}
+
+/** בית הדפוס: העלאת העיצוב בשם המשתלה, לעבודה שביקשה עיצוב. משם ההגהה ממשיכה כרגיל. */
+export async function startDesignUpload(savedProductId: string): Promise<UploadStart> {
+  await requireUser(['SUPER_ADMIN']);
+  const job = await prisma.printSavedProduct.findUnique({ where: { id: String(savedProductId) }, select: { id: true, nurseryId: true } });
+  if (!job) return { error: 'העבודה לא נמצאה' };
+  const key = newStorageKey(job.nurseryId, 'ARTWORK');
+  const ticket = await signUploadTicket({ key, nurseryId: job.nurseryId, kind: 'ARTWORK', target: { savedProductId: job.id, byPrintHouse: 'true' } });
   try {
     return { ok: true, target: await storageDriver().uploadTarget(key, ticket), ticket };
   } catch (e) {
@@ -75,12 +118,14 @@ export async function startProductionUpload(orderId: string): Promise<UploadStar
  * סיום העלאה: הכרטיס נבדק, הקובץ נקרא מהאחסון ונבדק לפי התוכן; קובץ לא תקין נמחק.
  * גרפיקה — רק בעל המשתלה של הכרטיס; הגהה — רק בית הדפוס.
  */
-export async function finishUpload(input: { ticket: string; originalName: string }): Promise<{ ok?: boolean; error?: string }> {
+export async function finishUpload(input: { ticket: string; originalName: string; thumbnail?: string | null }): Promise<{ ok?: boolean; error?: string; file?: UploadedFile }> {
   const t = await verifyUploadTicket(String(input.ticket ?? ''));
   if (!t) return { error: 'תוקף ההעלאה פג — נסו שוב' };
 
   let actorEmail: string | null = null;
-  if (t.kind === 'ARTWORK') {
+  const byPrintHouse = t.kind === 'ARTWORK' && t.target.byPrintHouse === 'true';
+  const draftVersionId = t.kind === 'ARTWORK' ? t.target.draftVersionId : undefined;
+  if (t.kind === 'ARTWORK' && !byPrintHouse) {
     const scope = await nurseryActionScope({ all: ['print_shop'] });
     if (!scope.ok || scope.nurseryId !== t.nurseryId) return { error: 'אין הרשאה' };
     actorEmail = scope.user.email;
@@ -93,7 +138,12 @@ export async function finishUpload(input: { ticket: string; originalName: string
   const bytes = await driver.read(t.key);
   // בדיקת קובץ בסיסית מול פרופיל הייצור (גרפיקה וקובץ ייצור; לא להגהה)
   const subject = t.kind === 'PRODUCTION' ? toSubject({ printOrderId: t.target.productionOrderId }) : t.kind === 'ARTWORK' ? toSubject(t.target) : null;
-  const profile = subject ? await profileFor(prisma, subject) : undefined;
+  let profile = subject ? await profileFor(prisma, subject) : undefined;
+  if (draftVersionId) {
+    const v = await prisma.printTemplateVersion.findUnique({ where: { id: draftVersionId }, select: { production: true } });
+    const parsed = parseProfile(v?.production);
+    profile = parsed.ok ? parsed.value : null;
+  }
   const reg = await registerFile(prisma, {
     nurseryId: t.nurseryId,
     kind: t.kind,
@@ -106,6 +156,24 @@ export async function finishUpload(input: { ticket: string; originalName: string
   if (!reg.ok) {
     if (bytes) await driver.remove(t.key);
     return { error: reg.error };
+  }
+
+  const thumbnailSaved = t.kind === 'ARTWORK' ? await saveThumbnail(prisma, reg.fileId, input.thumbnail) : false;
+
+  if (draftVersionId) {
+    const f = await prisma.printFile.findUniqueOrThrow({ where: { id: reg.fileId } });
+    return {
+      ok: true,
+      file: {
+        id: f.id,
+        name: f.originalName,
+        mimeType: f.mimeType,
+        widthPx: f.widthPx,
+        heightPx: f.heightPx,
+        critical: (f.preflight as PreflightResult | null)?.critical ?? [],
+        thumbnailUrl: thumbnailSaved ? `/api/print-files/${f.id}/thumbnail` : null,
+      },
+    };
   }
 
   if (t.kind === 'ARTWORK') {

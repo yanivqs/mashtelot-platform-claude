@@ -23,6 +23,7 @@ export interface TemplateMeta {
   title: string;
   slug?: string | null;
   galleryImages?: string[];
+  sortOrder?: number;
   description: string | null;
   category: string | null;
   imageUrl: string | null;

@@ -36,6 +36,24 @@ export default async function PrintTemplatePage(props: { params: Promise<{ id: s
   const publishedPricing = published ? parsePricing(published.pricing) : null;
   const profileParsed = published ? parseProfile(published.production) : null;
   const publishedProfile = profileParsed?.ok ? profileParsed.value : null;
+  const metaForm = (
+    <MetaForm
+      meta={{
+        id: t.id,
+        title: t.title,
+        slug: t.slug,
+        galleryImages: t.galleryImages,
+        sortOrder: t.sortOrder,
+        description: t.description,
+        category: t.category,
+        imageUrl: t.imageUrl,
+        unitLabel: t.unitLabel,
+        leadTimeDays: t.leadTimeDays,
+        requiresArtwork: t.requiresArtwork,
+        isActive: t.isActive,
+      }}
+    />
+  );
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -46,25 +64,8 @@ export default async function PrintTemplatePage(props: { params: Promise<{ id: s
         <h1 className="mt-1 text-2xl font-bold">{t.title}</h1>
       </div>
 
-      <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 font-bold">פרטי המוצר</h2>
-        <MetaForm
-          meta={{
-            id: t.id,
-            title: t.title,
-            description: t.description,
-            category: t.category,
-            imageUrl: t.imageUrl,
-            unitLabel: t.unitLabel,
-            leadTimeDays: t.leadTimeDays,
-            requiresArtwork: t.requiresArtwork,
-            isActive: t.isActive,
-          }}
-        />
-      </section>
-
-      <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-        {draft ? (
+      {draft ? (
+        <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
           <DraftEditor
             templateId={t.id}
             version={draft.version}
@@ -72,19 +73,26 @@ export default async function PrintTemplatePage(props: { params: Promise<{ id: s
             initialPricing={{ ...DEFAULT_PRICING, ...((draft.pricing ?? {}) as object) } as PricingValues}
             initialProduction={(draft.production as { widthMm?: number; heightMm?: number; bleedMm?: number; minDpi?: number } | null) ?? null}
             notes={draft.notes}
+            general={metaForm}
           />
-        ) : (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-gray-600">אין טיוטה. כדי לשנות את המוצר — צרו גרסה חדשה מתוך האחרונה.</p>
+        </section>
+      ) : (
+        <>
+          <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h2 className="mb-3 font-bold">פרטי המוצר</h2>
+            {metaForm}
+          </section>
+          <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+            <p className="text-sm text-gray-600">אין טיוטה. כדי לשנות שדות או מחירים, צרו גרסה חדשה מתוך האחרונה.</p>
             <form action={newDraftAction}>
               <input type="hidden" name="id" value={t.id} />
               <button className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
                 יצירת גרסה חדשה (טיוטה)
               </button>
             </form>
-          </div>
-        )}
-      </section>
+          </section>
+        </>
+      )}
 
       {published && publishedFields?.ok && publishedPricing?.ok && (
         <section className="rounded-xl border border-green-100 bg-white p-5 shadow-sm">
@@ -93,7 +101,7 @@ export default async function PrintTemplatePage(props: { params: Promise<{ id: s
             פורסמה {published.publishedAt ? dateFmt.format(published.publishedAt) : ''} ע״י {published.publishedBy ?? '—'} ·{' '}
             {publishedPricing.value.quoteOnly
               ? 'הצעת מחיר בלבד'
-              : `${formatPrice(publishedPricing.value.basePrice)} ליחידה · מינימום ${publishedPricing.value.minQuantity}`}
+              : `${publishedPricing.value.basePrice > 0 ? `${formatPrice(publishedPricing.value.basePrice)} ליחידה · ` : ''}מינימום ${publishedPricing.value.minQuantity}`}
             {publishedProfile ? ` · ייצור ${publishedProfile.widthMm}×${publishedProfile.heightMm} מ"מ, גלישה ${publishedProfile.bleedMm}, ${publishedProfile.minDpi} DPI` : ' · ללא פרופיל ייצור'}
           </p>
           <ul className="space-y-1 text-sm">

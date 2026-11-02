@@ -4,7 +4,8 @@ import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatPrice } from '@/lib/utils';
 import Link from 'next/link';
-import { PrintStatusSelect, QuotePriceForm } from './controls';
+import { PrintStatusSelect, QuotePanel } from './controls';
+import { isQuoteExpired } from '@/lib/print-jobs';
 import { ProductionPanel, type ProductionVM } from './production-panel';
 import { gateFor } from '@/lib/print-production';
 import { nextStatuses, type ProductionStatus } from '@/lib/print-release';
@@ -24,7 +25,7 @@ export default async function PrintOrdersPage() {
       include: {
         nursery: { select: { name: true } },
         orderedBy: { select: { email: true } },
-        items: { include: { printProduct: { select: { title: true } } } },
+        items: { include: { printProduct: { select: { title: true } }, savedRevision: { select: { id: true, status: true, savedProductId: true } } } },
         productionFile: true,
       },
       orderBy: { createdAt: 'desc' },
@@ -40,12 +41,24 @@ export default async function PrintOrdersPage() {
     if (!gate) continue;
     const snap = o.releaseSnapshot as Snapshot | null;
     const status = o.productionStatus as ProductionStatus;
+    const revision = o.items.find((i) => i.savedRevision)?.savedRevision;
+    // הזמנה חוזרת: קובץ הייצור מההזמנה הקודמת של אותה עבודה
+    const previous =
+      revision && !o.productionFileId && !o.releasedAt
+        ? await prisma.printOrder.findFirst({
+            where: { id: { not: o.id }, nurseryId: o.nurseryId, productionFileId: { not: null }, items: { some: { savedRevision: { savedProductId: revision.savedProductId } } } },
+            orderBy: { createdAt: 'desc' },
+            select: { productionFile: { select: { id: true, originalName: true } } },
+          })
+        : null;
     production.set(o.id, {
       orderId: o.id,
       status,
       released: Boolean(o.releasedAt),
       gate,
       needsSpecApproval: !o.specApprovedAt && o.items.some((i) => i.templateVersionId && !i.savedRevisionId),
+      pendingSpecRevisionId: revision?.status === 'SUBMITTED' ? revision.id : null,
+      reusableFile: previous?.productionFile ? { id: previous.productionFile.id, name: previous.productionFile.originalName } : null,
       productionFile: o.productionFile
         ? {
             name: o.productionFile.originalName,
@@ -104,11 +117,7 @@ export default async function PrintOrdersPage() {
                     {formatPrice(o.totalAmount.toString())}
                   </p>
                   <div className="mt-1">
-                    {o.status === 'QUOTE_REQUESTED' ? (
-                      <QuotePriceForm id={o.id} />
-                    ) : (
-                      <PrintStatusSelect id={o.id} status={o.status} />
-                    )}
+                    {o.status !== 'QUOTE_REQUESTED' && <PrintStatusSelect id={o.id} status={o.status} />}
                   </div>
                 </div>
               </div>
@@ -125,6 +134,22 @@ export default async function PrintOrdersPage() {
                   </li>
                 ))}
               </ul>
+              {o.status === 'QUOTE_REQUESTED' && (
+                <div className="mt-3">
+                  <QuotePanel
+                    q={{
+                      id: o.id,
+                      status: o.quoteStatus,
+                      expired: isQuoteExpired(o),
+                      total: Number(o.totalAmount),
+                      validUntil: o.quoteValidUntil ? o.quoteValidUntil.toISOString().slice(0, 10) : null,
+                      adminNotes: o.adminNotes,
+                      reasons: o.reviewReasons,
+                      needsDesign: o.needsDesign,
+                    }}
+                  />
+                </div>
+              )}
               {production.has(o.id) && (
                 <div className="mt-3">
                   <ProductionPanel p={production.get(o.id)!} />

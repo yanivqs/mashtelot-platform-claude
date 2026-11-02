@@ -7,7 +7,8 @@ import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
 import { parsePriceTiers } from '@/lib/print-pricing';
 import { recordAudit } from '@/lib/audit';
-import { approveOrderSpec, moveProduction, releaseOrder } from '@/lib/print-production';
+import { setProductionFile, approveOrderSpec, moveProduction, releaseOrder } from '@/lib/print-production';
+import { sendQuote, updateQuote } from '@/lib/print-jobs';
 import type { ProductionStatus } from '@/lib/print-release';
 
 const PRODUCTION_STATUSES: ProductionStatus[] = ['PENDING', 'RELEASED', 'IN_PRODUCTION', 'QC', 'COMPLETED', 'BLOCKED'];
@@ -185,38 +186,46 @@ export interface QuoteState {
   error?: string;
 }
 
-/** קביעת מחיר לבקשת הצעת מחיר: ההזמנה עוברת ל"התקבלה" במחיר שנקבע; מתועד ב-Audit. */
-export async function setQuotePrice(_prev: QuoteState, formData: FormData): Promise<QuoteState> {
+/**
+ * ניהול בקשה: סימון "בטיפול", שליחת הצעה (המשתלה מאשרת או דוחה מ"העבודות שלי"), דחייה, או הערות פנימיות.
+ * הכול מותנה בכך שהבקשה עדיין ממתינה, ומתועד ב-Audit.
+ */
+export async function quoteAction(_prev: QuoteState, formData: FormData): Promise<QuoteState> {
   const user = await requireUser(['SUPER_ADMIN']);
   const id = String(formData.get('id') || '');
+  const intent = String(formData.get('intent') || '');
+  const adminNotes = String(formData.get('adminNotes') ?? '');
+  const day = String(formData.get('validUntil') || '');
+  const validUntil = /^\d{4}-\d{2}-\d{2}$/.test(day) ? new Date(`${day}T23:59:59+02:00`) : null;
   const total = Number(String(formData.get('total') || ''));
-  if (!Number.isFinite(total) || total <= 0) return { error: 'יש להזין סכום גדול מ-0' };
-
-  const order = await prisma.printOrder.findUnique({ where: { id }, include: { items: true } });
-  if (!order || order.status !== 'QUOTE_REQUESTED') return { error: 'ההזמנה אינה ממתינה להצעת מחיר' };
-  const units = order.items.reduce((s, i) => s + i.quantity, 0) || 1;
-
-  // מותנה בסטטוס — שתי קביעות מקבילות לא יחולו פעמיים
-  const res = await prisma.$transaction(async (tx) => {
-    const r = await tx.printOrder.updateMany({
-      where: { id, status: 'QUOTE_REQUESTED' },
-      data: { status: 'NEW', totalAmount: total.toFixed(2) },
-    });
-    if (r.count !== 1) return false;
-    for (const it of order.items) {
-      await tx.printOrderItem.update({ where: { id: it.id }, data: { unitPrice: (total / units).toFixed(2) } });
-    }
-    return true;
-  });
-  if (!res) return { error: 'ההזמנה עודכנה במקביל — רעננו' };
+  const res =
+    intent === 'send'
+      ? await sendQuote(prisma, { orderId: id, total, validUntil, adminNotes })
+      : intent === 'progress' || intent === 'reject' || intent === 'notes'
+        ? await updateQuote(prisma, { orderId: id, intent, adminNotes })
+        : { ok: false, error: 'פעולה לא מוכרת' };
+  if (!res.ok) return { error: res.error };
   await recordAudit({
-    nurseryId: order.nurseryId,
+    nurseryId: 'nurseryId' in res ? res.nurseryId : undefined,
     actorEmail: user.email,
-    action: 'print.quote_priced',
+    action: `print.quote_${intent}`,
     entityType: 'PrintOrder',
     entityId: id,
-    metadata: { total },
+    metadata: intent === 'send' ? { total, validUntil: day || null } : undefined,
   });
+  revalidatePrint();
+  revalidatePath('/admin/print-shop/jobs');
+  return { ok: true };
+}
+
+/** הזמנה חוזרת: שימוש בקובץ הייצור מההזמנה הקודמת של אותה עבודה. */
+export async function reuseProductionFileAction(_prev: ProductionState, formData: FormData): Promise<ProductionState> {
+  const user = await requireUser(['SUPER_ADMIN']);
+  const id = String(formData.get('id') || '');
+  const fileId = String(formData.get('fileId') || '');
+  const r = await setProductionFile(prisma, id, fileId);
+  if (!r.ok) return { error: r.error };
+  await auditOrder(id, user.email, 'print.production_file_reused', { fileId });
   revalidatePrint();
   return { ok: true };
 }

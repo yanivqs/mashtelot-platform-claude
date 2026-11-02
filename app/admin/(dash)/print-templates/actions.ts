@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
 import { recordAudit } from '@/lib/audit';
@@ -24,8 +25,19 @@ export interface TemplateFormState {
 function readMeta(formData: FormData): TemplateMeta {
   const s = (k: string) => String(formData.get(k) || '').trim() || null;
   const lead = s('leadTimeDays');
+  let galleryImages: string[] | undefined;
+  try {
+    const g = JSON.parse(String(formData.get('galleryImages') ?? 'null'));
+    if (Array.isArray(g)) galleryImages = g.map(String);
+  } catch {
+    galleryImages = undefined;
+  }
+  const sort = s('sortOrder');
   return {
     title: String(formData.get('title') || '').trim(),
+    slug: s('slug')?.toLowerCase() ?? undefined,
+    galleryImages,
+    sortOrder: sort === null ? undefined : Math.max(0, Math.trunc(Number(sort)) || 0),
     description: s('description'),
     category: s('category'),
     imageUrl: s('imageUrl'),
@@ -63,7 +75,12 @@ export async function updateTemplateMetaAction(_prev: TemplateFormState, formDat
     const published = await prisma.printTemplateVersion.count({ where: { templateId: id, status: 'PUBLISHED' } });
     if (!published) return { error: 'אי אפשר להציג למשתלות מוצר בלי גרסה מפורסמת — פרסמו קודם את הטיוטה' };
   }
-  await prisma.printTemplate.update({ where: { id }, data: meta });
+  try {
+    await prisma.printTemplate.update({ where: { id }, data: meta });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') return { error: 'כתובת המוצר כבר בשימוש — בחרו כתובת אחרת' };
+    throw e;
+  }
   await recordAudit({ actorEmail: user.email, action: 'print.template_updated', entityType: 'PrintTemplate', entityId: id, metadata: { isActive: meta.isActive } });
   revalidate(id);
   return { ok: true, message: 'נשמר ✓' };

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useActionState } from 'react';
 import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useRouter } from 'next/navigation';
@@ -10,7 +11,8 @@ import { PreflightNotes } from '@/components/print/preflight-notes';
 import type { PreflightResult } from '@/lib/print-preflight';
 import { startProductionUpload } from '../print-shop/artwork-actions';
 import { PRODUCTION_LABELS, type GateCheck, type ProductionStatus } from '@/lib/print-release';
-import { approveSpecAction, moveProductionAction, releaseAction, type ProductionState } from './actions';
+import { approveSpecAction, moveProductionAction, releaseAction, reuseProductionFileAction, type ProductionState } from './actions';
+import { reviewSpecAction, type ReviewState } from '../print-specs/actions';
 
 const initial: ProductionState = {};
 
@@ -29,6 +31,10 @@ export interface ProductionVM {
   released: boolean;
   gate: { ok: boolean; checks: GateCheck[] };
   needsSpecApproval: boolean;
+  /** מפרט של עבודה שממתין לאישור (הזמנה שעברה בדיקת צוות) */
+  pendingSpecRevisionId: string | null;
+  /** הזמנה חוזרת: קובץ הייצור מההזמנה הקודמת */
+  reusableFile: { id: string; name: string } | null;
   productionFile: { name: string; url: string; sha256: string; preflight: PreflightResult | null } | null;
   snapshot: null | { at: string; by: string | null; artworks: string[]; fileSha: string };
   note: string | null;
@@ -51,6 +57,8 @@ export function ProductionPanel({ p }: { p: ProductionVM }) {
   const [relState, relAction] = useActionState(releaseAction, initial);
   const [moveState, moveAction] = useActionState(moveProductionAction, initial);
   const keepMove = useKeepFormValues(moveState);
+  const [reviewState, reviewAction] = useActionState(reviewSpecAction, {} as ReviewState);
+  const [reuseState, reuseAction] = useActionState(reuseProductionFileAction, initial);
 
   return (
     <div className="space-y-3 rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm">
@@ -80,8 +88,27 @@ export function ProductionPanel({ p }: { p: ProductionVM }) {
                 <Btn label="אישור מפרט ההזמנה" cls="border border-gray-300 bg-white text-gray-800" />
               </form>
             )}
+            {p.pendingSpecRevisionId && (
+              <form action={reviewAction}>
+                <input type="hidden" name="revisionId" value={p.pendingSpecRevisionId} />
+                <input type="hidden" name="decision" value="approve" />
+                <Btn label="אישור המפרט" cls="border border-gray-300 bg-white text-gray-800" />
+              </form>
+            )}
+            {p.reusableFile && (
+              <form action={reuseAction}>
+                <input type="hidden" name="id" value={p.orderId} />
+                <input type="hidden" name="fileId" value={p.reusableFile.id} />
+                <Btn label={`שימוש בקובץ הקודם: ${p.reusableFile.name}`} cls="border border-gray-300 bg-white text-gray-800" />
+              </form>
+            )}
             <PrintFileUpload label={p.productionFile ? 'החלפת קובץ ייצור' : 'העלאת קובץ ייצור'} start={() => startProductionUpload(p.orderId)} onDone={() => router.refresh()} />
           </div>
+          {p.pendingSpecRevisionId && (
+            <p className="text-xs text-gray-600">
+              לדחייה עם הערה למשתלה: <Link href="/admin/print-specs" className="underline">אישורי מפרט</Link>
+            </p>
+          )}
           {p.productionFile && (
             <p className="text-xs text-gray-500">
               קובץ ייצור:{' '}
@@ -130,7 +157,7 @@ export function ProductionPanel({ p }: { p: ProductionVM }) {
         </form>
       )}
 
-      {[specState.error, moveState.error].filter(Boolean).map((e) => (
+      {[specState.error, moveState.error, reviewState.error, reuseState.error].filter(Boolean).map((e) => (
         <p key={e} className="text-xs text-red-600">{e}</p>
       ))}
       {relState.error && (

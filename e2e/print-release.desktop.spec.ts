@@ -100,6 +100,6 @@ test('release gate in the UI: checklist, spec approval, production file, release
 
   // בעל המשתלה רואה את מצב הייצור
   await login(page, E2E_OWNER4);
-  await page.goto(`${ADMIN}/admin/print-shop`);
+  await page.goto(`${ADMIN}/admin/print-shop/jobs`);
   await expect(page.getByText('ייצור: שוחרר לייצור').first()).toBeVisible();
 });
