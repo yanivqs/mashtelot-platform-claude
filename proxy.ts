@@ -29,9 +29,9 @@ export function proxy(request: NextRequest) {
   if (target.kind === 'none') return NextResponse.next();
 
   if (target.kind === 'root') {
-    // הדומיין הראשי: רק דף הנחיתה. נתיב אחר (למשל /demo-nursery/catalog) היה מגיש את החנות
+    // הדומיין הראשי: רק דף הנחיתה והצהרת הנגישות. נתיב אחר (למשל /demo-nursery/catalog) היה מגיש את החנות
     // גם תחת הדומיין הראשי — תוכן כפול (C-P1-05, אפיון §14.04) — ולכן מוחזר 404.
-    if (url.pathname === '/') return NextResponse.next();
+    if (url.pathname === '/' || url.pathname === '/accessibility') return NextResponse.next();
     const notFound = url.clone();
     notFound.pathname = '/__no_tenant__';
     return NextResponse.rewrite(notFound);

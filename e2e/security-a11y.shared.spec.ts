@@ -43,6 +43,14 @@ test('security headers and statement link', async ({ page, request }) => {
   await expect(page.getByRole('heading', { name: 'הצהרת נגישות' })).toBeVisible();
 });
 
+test('platform home links to a working accessibility statement; other root paths stay 404', async ({ page }) => {
+  await page.goto(`${ADMIN}/`);
+  await page.getByRole('contentinfo').getByRole('link', { name: 'הצהרת נגישות' }).click();
+  await expect(page).toHaveURL(`${ADMIN}/accessibility`);
+  await expect(page.getByRole('heading', { name: 'הצהרת נגישות' })).toBeVisible();
+  expect((await page.goto(`${ADMIN}/catalog`))!.status()).toBe(404);
+});
+
 test('keyboard: the first Tab reveals the skip link, which moves focus to the content', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium');
   await page.goto(`${FIX_SHOP}/catalog`);

@@ -77,7 +77,7 @@ export default async function ContactPage(props: { params: Promise<{ tenant: str
                   href={wazeUrl(address)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 align-middle text-sky-700 hover:underline"
+                  className="inline-flex items-center gap-1 align-middle text-sky-700 underline"
                 >
                   <WazeIcon className="h-4 w-4" />
                   ניווט ב-Waze
@@ -89,7 +89,7 @@ export default async function ContactPage(props: { params: Promise<{ tenant: str
                       href={nursery.mapLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-brand-700 hover:underline"
+                      className="text-brand-700 underline"
                     >
                       פתח במפות
                     </a>
