@@ -13,7 +13,7 @@ test('phone: calculator with a price bar, and a readable job card without sidewa
   await page.goto(`${ADMIN}/admin/print-shop`);
   await page.getByRole('link', { name: new RegExp(E2E_SAVED_TEMPLATE) }).click();
   await page.getByLabel('טקסט').fill('בדיקת נייד עם שם עבודה ארוך');
-  await page.getByRole('group', { name: 'גודל' }).getByRole('button', { name: /קטן/ }).click();
+  await page.getByLabel(/^גודל/).selectOption('s');
   await page.getByLabel('כמות').fill('10');
   await page.getByLabel('העלאת קובץ').setInputFiles({ name: 'mobile.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7\n% mobile\n') });
   await expect(page.getByTestId('print-file')).toBeVisible();

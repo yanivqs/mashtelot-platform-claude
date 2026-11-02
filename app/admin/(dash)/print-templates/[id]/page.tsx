@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { parseFields, parsePricing, FIELD_TYPE_LABELS, type ShowIf, type TemplateField } from '@/lib/print-template';
+import { parseFields, parsePricing, FIELD_TYPE_LABELS, SIZE_KEY, type ShowIf, type TemplateField } from '@/lib/print-template';
 import { formatPrice } from '@/lib/utils';
 import { DEFAULT_PRICING } from '@/lib/print-templates-admin';
 import { parseProfile } from '@/lib/print-preflight';
@@ -95,27 +95,84 @@ export default async function PrintTemplatePage(props: { params: Promise<{ id: s
       )}
 
       {published && publishedFields?.ok && publishedPricing?.ok && (
-        <section className="rounded-xl border border-green-100 bg-white p-5 shadow-sm">
+        <section className="rounded-xl border border-green-100 bg-white p-5 shadow-sm" data-testid="published-version">
           <h2 className="mb-2 font-bold">גרסה {published.version} — מפורסמת (נעולה)</h2>
-          <p className="mb-3 text-xs text-gray-500">
-            פורסמה {published.publishedAt ? dateFmt.format(published.publishedAt) : ''} ע״י {published.publishedBy ?? '—'} ·{' '}
-            {publishedPricing.value.quoteOnly
-              ? 'הצעת מחיר בלבד'
-              : `${publishedPricing.value.basePrice > 0 ? `${formatPrice(publishedPricing.value.basePrice)} ליחידה · ` : ''}מינימום ${publishedPricing.value.minQuantity}`}
-            {publishedProfile ? ` · ייצור ${publishedProfile.widthMm}×${publishedProfile.heightMm} מ"מ, גלישה ${publishedProfile.bleedMm}, ${publishedProfile.minDpi} DPI` : ' · ללא פרופיל ייצור'}
+          <p className="mb-3 text-xs text-gray-600">
+            פורסמה {published.publishedAt ? dateFmt.format(published.publishedAt) : ''} ע״י {published.publishedBy ?? '—'}
+            {published.notes ? ` · ${published.notes}` : ''}
           </p>
-          <ul className="space-y-1 text-sm">
+
+          <h3 className="mb-1 text-sm font-bold">שדות</h3>
+          {publishedFields.value.length === 0 && <p className="text-sm text-gray-600">אין שדות.</p>}
+          <ul className="space-y-2 text-sm">
             {publishedFields.value.map((f) => (
               <li key={f.key}>
                 <span className="font-medium">{f.label}</span>{' '}
-                <span className="text-gray-500">
+                <span className="text-gray-600">
                   ({FIELD_TYPE_LABELS[f.type]}
                   {f.required ? ', חובה' : ''}
+                  {f.allowCustom ? ', אפשר התאמה אישית' : ''}
+                  {f.key === SIZE_KEY ? ', שדה המידה' : ''}
+                  {f.maxLength ? `, עד ${f.maxLength} תווים` : ''}
+                  {f.min !== undefined ? `, מינימום ${f.min}` : ''}
+                  {f.max !== undefined ? `, מקסימום ${f.max}` : ''}
                   {f.showIf ? `, ${conditionText(publishedFields.value, f.showIf)}` : ''})
                 </span>
+                {f.help && <span className="block text-xs text-gray-600">הסבר: {f.help}</span>}
+                {f.options && f.options.length > 0 && (
+                  <ul className="mt-1 list-inside list-disc text-xs text-gray-700">
+                    {f.options.map((o) => (
+                      <li key={o.value}>
+                        {o.label}
+                        {o.priceDelta ? ` · ${formatPrice(o.priceDelta)} ליחידה` : ''}
+                        {o.fixedAdd ? ` · ${formatPrice(o.fixedAdd)} קבוע` : ''}
+                        {o.percentAdd ? ` · ${o.percentAdd}%` : ''}
+                        {o.requiresQuote ? ' · דורש הצעה' : ''}
+                        {o.help ? ` · ${o.help}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>
+
+          <h3 className="mb-1 mt-4 text-sm font-bold">כמויות ותמחור</h3>
+          <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="inline text-gray-600">מחיר: </dt>
+              <dd className="inline font-medium">{publishedPricing.value.quoteOnly ? 'תמיד דורש הצעת צוות' : 'מחיר מיידי'}</dd>
+            </div>
+            <div>
+              <dt className="inline text-gray-600">עלות הקמה: </dt>
+              <dd className="inline font-medium">{formatPrice(publishedPricing.value.setupFee)}</dd>
+            </div>
+            <div>
+              <dt className="inline text-gray-600">כמות מינימום: </dt>
+              <dd className="inline font-medium">{publishedPricing.value.minQuantity.toLocaleString('he-IL')}</dd>
+            </div>
+            <div>
+              <dt className="inline text-gray-600">כמויות מוגדרות: </dt>
+              <dd className="inline font-medium">{publishedPricing.value.quantityOptions.map((q) => q.toLocaleString('he-IL')).join(', ') || '—'}</dd>
+            </div>
+            <div>
+              <dt className="inline text-gray-600">כמות חופשית: </dt>
+              <dd className="inline font-medium">{publishedPricing.value.allowCustomQuantity ? 'מותרת' : 'לא מותרת'}</dd>
+            </div>
+            <div>
+              <dt className="inline text-gray-600">מחיר ליחידה מתחת למדרגות: </dt>
+              <dd className="inline font-medium">{publishedPricing.value.basePrice > 0 ? formatPrice(publishedPricing.value.basePrice) : '—'}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="inline text-gray-600">מדרגות מחיר: </dt>
+              <dd className="inline font-medium">{publishedPricing.value.tiers.map((t) => `מ-${t.minQty.toLocaleString('he-IL')}: ${formatPrice(t.unitPrice)}`).join(' · ') || '—'}</dd>
+            </div>
+          </dl>
+
+          <h3 className="mb-1 mt-4 text-sm font-bold">בדיקת קובץ</h3>
+          <p className="text-sm">
+            {publishedProfile ? `ייצור ${publishedProfile.widthMm}×${publishedProfile.heightMm} מ"מ, גלישה ${publishedProfile.bleedMm}, ${publishedProfile.minDpi} DPI` : 'ללא פרופיל ייצור'}
+          </p>
         </section>
       )}
 

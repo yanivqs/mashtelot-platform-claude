@@ -182,7 +182,8 @@ export function parseFields(json: unknown): Result<TemplateField[]> {
   return errors.length ? { ok: false, errors } : { ok: true, value: out };
 }
 
-export function parsePricing(json: unknown): Result<TemplatePricing> {
+/** draft: טיוטה נשמרת גם לפני שהוגדר מחיר. בפרסום הבדיקה מלאה. */
+export function parsePricing(json: unknown, opts: { draft?: boolean } = {}): Result<TemplatePricing> {
   const r = (json && typeof json === 'object' ? json : {}) as Record<string, unknown>;
   const errors: string[] = [];
   const basePrice = num(r.basePrice) ?? 0;
@@ -192,7 +193,7 @@ export function parsePricing(json: unknown): Result<TemplatePricing> {
   if (Number.isNaN(basePrice) || basePrice < 0) errors.push('מחיר בסיס לא תקין');
   const tiers = parsePriceTiers(r.tiers);
   // בלי מחיר בסיס — כמות שלא מגיעה לאף מדרגה עוברת לבדיקת צוות ("אין מחירון לכמות זו")
-  if (!quoteOnly && basePrice <= 0 && tiers.length === 0) errors.push('יש להגדיר מחיר בסיס או מדרגות מחיר (או לסמן "הצעת מחיר בלבד")');
+  if (!opts.draft && !quoteOnly && basePrice <= 0 && tiers.length === 0) errors.push('יש להגדיר מחיר בסיס או מדרגות מחיר (או לסמן "הצעת מחיר בלבד")');
   if (Number.isNaN(setupFee) || setupFee < 0) errors.push('עלות הקמה לא תקינה');
   if (!Number.isInteger(minQuantity) || minQuantity < 1) errors.push('כמות מינימום חייבת להיות מספר שלם 1 ומעלה');
   const quantityOptions = Array.isArray(r.quantityOptions) ? [...new Set(r.quantityOptions.map(Number))] : [];

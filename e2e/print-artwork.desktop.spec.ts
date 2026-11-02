@@ -29,7 +29,7 @@ async function openCalculator(page: Page, text: string) {
   await page.goto(`${ADMIN}/admin/print-shop`);
   await page.getByRole('link', { name: new RegExp(E2E_SAVED_TEMPLATE) }).click();
   await page.getByLabel('טקסט').fill(text);
-  await page.getByRole('group', { name: 'גודל' }).getByRole('button', { name: /קטן/ }).click();
+  await page.getByLabel(/^גודל/).selectOption('s');
   await page.getByLabel('כמות').fill('10');
 }
 

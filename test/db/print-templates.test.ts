@@ -42,6 +42,50 @@ async function publishedTemplate(pricing: object = PRICING) {
   return prisma.printTemplateVersion.findFirstOrThrow({ where: { templateId: t.id, status: 'PUBLISHED' } });
 }
 
+describe('a new draft inherits everything from the published version', () => {
+  it('round trip of every field, option and price setting through save, publish and new draft', async () => {
+    const fields = [
+      { key: 'paper', label: 'נייר', type: 'select', required: true, help: 'הסבר לשדה', allowCustom: true, options: [
+        { value: 'opt_1', label: 'כרומו', priceDelta: 0.1, fixedAdd: 30, percentAdd: 10, requiresQuote: true, help: 'הסבר לאפשרות' },
+      ] },
+      { key: 'size', label: 'מידה', type: 'multiselect', required: false, options: [{ value: 'opt_1', label: 'A4', priceDelta: 0 }], showIf: { field: 'paper', equals: 'opt_1' } },
+      { key: 'note', label: 'טקסט', type: 'text', required: false, maxLength: 30 },
+      { key: 'width', label: 'רוחב', type: 'number', required: false, min: 1, max: 9 },
+    ];
+    const pricing = { basePrice: 1, tiers: [{ minQty: 500, unitPrice: 0.8 }], setupFee: 50, minQuantity: 100, quoteOnly: false, quantityOptions: [500, 1000], allowCustomQuantity: false };
+    const production = { widthMm: 100, heightMm: 50, bleedMm: 3, minDpi: 300 };
+    const t = await createTemplate(prisma, { title: 'הלוך ושוב', description: null, category: null, imageUrl: null, unitLabel: null, leadTimeDays: null, isActive: false }, null);
+    templateIds.push(t.id);
+    expect(await saveDraft(prisma, t.id, { fields, pricing, production, notes: 'הערת גרסה' })).toEqual({ ok: true });
+    await publishDraft(prisma, t.id, null);
+    await createDraftFromLatest(prisma, t.id, null);
+    const draft = await prisma.printTemplateVersion.findFirstOrThrow({ where: { templateId: t.id, status: 'DRAFT' } });
+    const saved = draft.fields as Array<Record<string, unknown>>;
+    expect(saved[0]).toMatchObject({ help: 'הסבר לשדה', allowCustom: true, required: true });
+    expect((saved[0]!.options as unknown[])[0]).toEqual(fields[0]!.options![0]);
+    expect(saved[1]!.showIf).toEqual({ field: 'paper', equals: 'opt_1' });
+    expect(saved[2]!.maxLength).toBe(30);
+    expect(saved[3]).toMatchObject({ min: 1, max: 9 });
+    expect(draft.pricing).toEqual(pricing);
+    expect(draft.production).toEqual(production);
+    expect(draft.notes).toBe('הערת גרסה');
+  });
+
+  it('a draft can be saved before prices exist; publishing it is refused', async () => {
+    const t = await createTemplate(prisma, { title: 'בלי מחיר', description: null, category: null, imageUrl: null, unitLabel: null, leadTimeDays: null, isActive: false }, null);
+    templateIds.push(t.id);
+    expect(await saveDraft(prisma, t.id, { fields: [], pricing: { basePrice: 0, tiers: [], setupFee: 0, minQuantity: 1, quoteOnly: false } })).toEqual({ ok: true });
+    expect((await publishDraft(prisma, t.id, null)).ok).toBe(false);
+  });
+
+  it('a new product is not quote-only by default', async () => {
+    const t = await createTemplate(prisma, { title: 'ברירת מחדל', description: null, category: null, imageUrl: null, unitLabel: null, leadTimeDays: null, isActive: false }, null);
+    templateIds.push(t.id);
+    const v = await prisma.printTemplateVersion.findFirstOrThrow({ where: { templateId: t.id } });
+    expect((v.pricing as { quoteOnly: boolean }).quoteOnly).toBe(false);
+  });
+});
+
 describe('PT-02 versions', () => {
   it('draft validation errors are returned and nothing is saved', async () => {
     const t = await createTemplate(prisma, { title: 'שגוי', description: null, category: null, imageUrl: null, unitLabel: null, leadTimeDays: null, isActive: false }, null);

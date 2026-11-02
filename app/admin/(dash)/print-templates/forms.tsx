@@ -638,6 +638,12 @@ export function DraftEditor({
             </label>
           </div>
 
+          {pricing.quoteOnly && (tiers.length > 0 || Number(pricing.basePrice) > 0) && (
+            <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900" data-testid="quote-only-warning">
+              מסומן &quot;תמיד דורש הצעת צוות&quot;: המשתלות לא יקבלו מחיר מיידי, גם אם הוגדרו כאן מחירים. כדי לתת מחיר מיידי, בטלו את הסימון.
+            </p>
+          )}
+
           <div>
             <p className="mb-1 text-xs font-medium text-gray-700">כמויות מוגדרות (כפתורים בהזמנה). כמות אחרת עוברת לבדיקת צוות.</p>
             <div className="flex flex-wrap items-center gap-2">
