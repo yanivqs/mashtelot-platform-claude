@@ -9,16 +9,16 @@ import { isSafeLink, normalizeAnnouncement } from '@/lib/theme';
 import type { Prisma } from '@prisma/client';
 
 /** הקשר המשתלה של המשתמש המחובר בלבד + אכיפת המודול (C-P1-01). */
-async function resolveNurseryId(): Promise<string> {
-  return (await requireNurseryAction({ all: ['promotions'] })).nurseryId;
+async function resolveNurseryId(part: 'announcement' | 'coupons' | 'popups'): Promise<string> {
+  return (await requireNurseryAction({ all: [part] })).nurseryId;
 }
 
 async function assertOwnsCoupon(id: string): Promise<void> {
-  await assertOwnedBy(prisma, 'coupon', id, await resolveNurseryId());
+  await assertOwnedBy(prisma, 'coupon', id, await resolveNurseryId('coupons'));
 }
 
 async function assertOwnsPromotion(id: string): Promise<void> {
-  await assertOwnedBy(prisma, 'promotion', id, await resolveNurseryId());
+  await assertOwnedBy(prisma, 'promotion', id, await resolveNurseryId('popups'));
 }
 
 export interface MarketingState {
@@ -30,7 +30,7 @@ export async function createCoupon(
   _prev: MarketingState,
   formData: FormData,
 ): Promise<MarketingState> {
-  const nurseryId = await resolveNurseryId();
+  const nurseryId = await resolveNurseryId('coupons');
   const code = String(formData.get('code') || '').trim().toUpperCase();
   const pct = Number(String(formData.get('discountPct') || ''));
   const startsAtRaw = String(formData.get('startsAt') || '').trim();
@@ -107,7 +107,7 @@ export async function createPromotion(
   _prev: MarketingState,
   formData: FormData,
 ): Promise<MarketingState> {
-  const nurseryId = await resolveNurseryId();
+  const nurseryId = await resolveNurseryId('popups');
   const title = String(formData.get('title') || '').trim();
   const popupText = String(formData.get('popupText') || '').trim();
 
@@ -144,7 +144,7 @@ export async function deletePromotion(formData: FormData): Promise<void> {
  * קישור — רק לנתיב באתר או https.
  */
 export async function saveAnnouncement(_prev: MarketingState, formData: FormData): Promise<MarketingState> {
-  const nurseryId = await resolveNurseryId();
+  const nurseryId = await resolveNurseryId('announcement');
   const text = String(formData.get('text') || '').trim();
   const href = String(formData.get('href') || '').trim();
   const enabled = formData.get('enabled') === 'on';

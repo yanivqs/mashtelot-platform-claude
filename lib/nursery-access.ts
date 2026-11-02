@@ -21,6 +21,7 @@ export type AccessDenial =
   | 'PLATFORM_ROLE'
   | 'NO_NURSERY'
   | 'NURSERY_SUSPENDED'
+  | 'ACCOUNT_BLOCKED'
   | 'MODULE_DISABLED'
   | 'ROLE_FORBIDDEN';
 
@@ -29,6 +30,7 @@ export const DENIAL_MESSAGES: Record<AccessDenial, string> = {
   PLATFORM_ROLE: 'מסך זה מיועד לבעל המשתלה. ניהול משתלות מתבצע במסך "משתלות".',
   NO_NURSERY: 'לחשבון זה אין משתלה משויכת',
   NURSERY_SUSPENDED: 'המשתלה מושעית. לפרטים פנו לצוות הפלטפורמה.',
+  ACCOUNT_BLOCKED: 'הגישה לניהול המשתלה מוגבלת. לפרטים פנו למנהל הפלטפורמה.',
   MODULE_DISABLED: 'היכולת אינה פעילה במשתלה זו',
   ROLE_FORBIDDEN: 'אין לך הרשאה למסך זה. לשינוי הרשאות פנו לבעל המשתלה.',
 };
@@ -60,6 +62,8 @@ export interface AccessSubject {
   nurseryActive: boolean | null;
   /** משתמש צוות שהושבת בידי בעל המשתלה */
   disabled?: boolean;
+  /** עבר מועד החיוב או שהחשבון הושהה: הכניסה מותרת, הניהול חסום. החנות נשארת פתוחה */
+  accountBlocked?: boolean;
 }
 
 export interface ModuleRequirement {
@@ -85,6 +89,7 @@ export function decideNurseryAccess(
   if (subject.disabled) return { ok: false, reason: 'NOT_AUTHENTICATED' };
   if (!subject.nurseryId || subject.nurseryActive === null) return { ok: false, reason: 'NO_NURSERY' };
   if (!subject.nurseryActive) return { ok: false, reason: 'NURSERY_SUSPENDED' };
+  if (subject.accountBlocked) return { ok: false, reason: 'ACCOUNT_BLOCKED' };
   if (!roleAllowsArea(subject.role, req.area ?? 'general')) return { ok: false, reason: 'ROLE_FORBIDDEN' };
   if (req.all?.some((m) => !enabledModules.has(m))) return { ok: false, reason: 'MODULE_DISABLED' };
   if (req.any?.length && !req.any.some((m) => enabledModules.has(m))) {

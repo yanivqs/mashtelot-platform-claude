@@ -3,12 +3,13 @@
 import { useActionState, useState, useTransition } from 'react';
 import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
-import { Trash2, AlertCircle, Sparkles, Loader2 } from 'lucide-react';
+import { AlertCircle, Copy, Sparkles, Loader2 } from 'lucide-react';
 import { ImageUpload } from '@/components/admin/image-upload';
 import { SpecTable } from '@/components/storefront/spec-table';
 import { SEO_LEVEL_META } from '@/lib/seo-score';
 import { normalizeProductSlug } from '@/lib/utils';
-import { updateProduct, deleteProduct, suggestProductSlug, type ProductFormState } from './actions';
+import { updateProduct, duplicateProductAction, suggestProductSlug, type ProductFormState } from './actions';
+import { DeleteProductButton } from './delete-button';
 import { VariantsEditor } from './variants-editor';
 import type { CategoryOption, RowProduct } from './product-row';
 
@@ -273,13 +274,16 @@ export function ProductEditor({
         </details>
       )}
 
-      <form action={deleteProduct} className="pt-1">
-        <input type="hidden" name="id" value={product.id} />
-        <button className="inline-flex items-center gap-1.5 text-sm text-red-600 hover:text-red-800">
-          <Trash2 className="h-4 w-4" />
-          הסרת המוצר מהחנות
-        </button>
-      </form>
+      <div className="flex flex-wrap items-center gap-4 pt-1">
+        <form action={duplicateProductAction}>
+          <input type="hidden" name="id" value={product.id} />
+          <button className="inline-flex items-center gap-1.5 text-sm text-gray-700 hover:text-gray-900">
+            <Copy className="h-4 w-4" />
+            שכפול המוצר
+          </button>
+        </form>
+        <DeleteProductButton id={product.id} title={product.customTitle || product.title} withLabel />
+      </div>
     </div>
   );
 }

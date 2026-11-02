@@ -6,6 +6,7 @@ import { getSessionUser } from '@/lib/auth';
 import {
   MODULE_KEYS,
   defaultConfigFor,
+  isBaseModule,
   type ModuleKey,
 } from '@/lib/modules';
 
@@ -23,7 +24,8 @@ export const getNurseryModuleMap = cache(
     for (const key of MODULE_KEYS) {
       const row = byKey.get(key);
       map.set(key, {
-        enabled: row?.isEnabled ?? false,
+        // מערכת הבסיס תמיד פעילה
+        enabled: isBaseModule(key) || (row?.isEnabled ?? false),
         config: {
           ...defaultConfigFor(key),
           ...((row?.config as Record<string, unknown> | null) ?? {}),

@@ -14,7 +14,7 @@ export interface TeamState {
 }
 
 /** בעל המשתלה בלבד (תחום owner). */
-const ownerScope = () => nurseryActionScope({ area: 'owner' });
+const ownerScope = () => nurseryActionScope({ area: 'owner', all: ['team'] });
 
 export async function addMemberAction(_prev: TeamState, fd: FormData): Promise<TeamState> {
   const scope = await ownerScope();

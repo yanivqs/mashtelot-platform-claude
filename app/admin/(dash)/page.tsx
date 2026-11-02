@@ -7,6 +7,8 @@ import { lineTitle } from '@/lib/variants';
 import { catalogRevisionInclude, localizeProduct } from '@/lib/catalog-localize';
 import { pendingUpdateCount } from '@/lib/catalog-sync-admin';
 import { getEnabledModuleKeys } from '@/lib/module-access';
+import { isNurseryBlocked } from '@/lib/nursery-account';
+import { redirect } from 'next/navigation';
 
 /** §8.04: סף מלאי נמוך לווריאנט (ברירת מחדל) */
 const LOW_STOCK_THRESHOLD = 5;
@@ -68,6 +70,9 @@ export default async function AdminOverviewPage(
     );
   }
 
+  // חשבון חסום: רק הודעה ופרטי קשר
+  if (await isNurseryBlocked(user.nurseryId)) redirect('/admin/account-blocked');
+
   // R06: כותב תוכן — במקום נתוני החנות, קישורים למסכי התוכן בלבד
   if (user.role === 'NURSERY_WRITER' && user.nurseryId) {
     const enabled = await getEnabledModuleKeys(user.nurseryId);
@@ -110,12 +115,12 @@ export default async function AdminOverviewPage(
   }
 
   const [total, active, outOfStock, orders, seoProducts] = await Promise.all([
-    prisma.nurseryProduct.count({ where: { nurseryId: user.nurseryId } }),
+    prisma.nurseryProduct.count({ where: { nurseryId: user.nurseryId, deletedAt: null } }),
     prisma.nurseryProduct.count({ where: { nurseryId: user.nurseryId, isActive: true } }),
-    prisma.nurseryProduct.count({ where: { nurseryId: user.nurseryId, stockQuantity: { lte: 0 }, alwaysInStock: false } }),
+    prisma.nurseryProduct.count({ where: { nurseryId: user.nurseryId, deletedAt: null, stockQuantity: { lte: 0 }, alwaysInStock: false } }),
     prisma.order.count({ where: { nurseryId: user.nurseryId } }),
     prisma.nurseryProduct.findMany({
-      where: { nurseryId: user.nurseryId },
+      where: { nurseryId: user.nurseryId, deletedAt: null },
       select: {
         customTitle: true,
         customDescription: true,

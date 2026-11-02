@@ -66,6 +66,8 @@ export interface CheckoutShippingZone {
 }
 
 export interface CheckoutOptions {
+  /** שדה קוד קופון מוצג רק כשמודול הקופונים פעיל */
+  couponsEnabled: boolean;
   paymentMethods: EnabledPaymentMethod[];
   deliveryMethods: DeliveryChoice[];
   deliveryNote: string | null;
@@ -122,6 +124,7 @@ export async function getCheckoutOptions(tenant: string): Promise<CheckoutOption
     }),
   ]);
   return {
+    couponsEnabled: await isModuleEnabled(nursery.id, 'coupons'),
     paymentMethods,
     deliveryMethods: availableDeliveryMethods(nursery),
     deliveryNote: nursery.deliveryNote,

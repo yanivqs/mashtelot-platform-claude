@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 /** צוות המשתלה (R06-01/02) — בעל המשתלה בלבד. */
 export default async function TeamPage() {
-  const { nurseryId } = await requireNurseryPage({ area: 'owner' });
+  const { nurseryId } = await requireNurseryPage({ area: 'owner', all: ['team'] });
   const team = await listTeam(prisma, nurseryId);
   const active = team.filter((m) => !m.disabledAt).length;
 

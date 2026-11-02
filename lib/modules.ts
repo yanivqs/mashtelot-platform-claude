@@ -1,136 +1,89 @@
 /**
  * רישום המודולים של הפלטפורמה (ללא תלות בשרת — בטוח לייבוא מרכיבי לקוח).
- * שיוך מודול למשתלה נשמר בטבלת `nursery_modules`. מודול ללא רשומה = כבוי.
- * מודולים חדשים מתווספים כאן ומקבלים אוטומטית שיוך/gating.
+ *
+ * מערכת הבסיס תמיד פעילה ומתומחרת כחבילה אחת (החלטת בעלים 2026-11-02). תוספות נדלקות לכל משתלה
+ * במסך "חשבונות משתלות", ונשמרות בטבלת `nursery_modules`. תוספת בלי רשומה = כבויה.
  */
 
-export const MODULE_KEYS = [
-  'plant_catalog',
-  'supplies',
-  'orders',
-  'promotions',
-  'print_shop',
+/** מפתחות שקוד הפלטפורמה בודק ושתמיד פעילים: מערכת הבסיס */
+export const BASE_MODULE_KEYS = ['plant_catalog', 'supplies', 'orders', 'print_shop', 'sales', 'social'] as const;
+
+export const ADDON_MODULE_KEYS = [
+  'announcement',
+  'coupons',
+  'popups',
+  'payment_options',
+  'delivery_options',
   'static_pages',
   'blog',
-  'social',
-  'design',
-  'sales',
   'shipping',
-  'customer_accounts',
-  'loyalty',
   'crm',
+  'loyalty',
   'page_builder',
+  'team',
+  'design',
+  'customer_accounts',
 ] as const;
 
-export type ModuleKey = (typeof MODULE_KEYS)[number];
+export const MODULE_KEYS = [...BASE_MODULE_KEYS, ...ADDON_MODULE_KEYS] as const;
 
-export interface ModuleDef {
-  key: ModuleKey;
+export type BaseModuleKey = (typeof BASE_MODULE_KEYS)[number];
+export type AddonModuleKey = (typeof ADDON_MODULE_KEYS)[number];
+export type ModuleKey = BaseModuleKey | AddonModuleKey;
+
+export function isBaseModule(key: string): key is BaseModuleKey {
+  return (BASE_MODULE_KEYS as readonly string[]).includes(key);
+}
+
+/** מה כלול במערכת הבסיס, לפי סדר התפריט */
+export const BASE_PARTS = [
+  'המלאי שלי',
+  'שיוך מוצרים',
+  'הקטגוריות שלי',
+  'הזמנות',
+  'הפניות SEO',
+  'הגדרות משתלה (ללא אפשרויות תשלום ומשלוח)',
+  'בית דפוס',
+  'יומן פעילות',
+  'עדכונים מהקטלוג',
+] as const;
+
+export interface AddonDef {
+  key: AddonModuleKey;
   label: string;
   description: string;
-  /** פריטי ניווט שהמודול פותח בפורטל של בעל המשתלה */
-  ownerNav?: { href: string; label: string; icon: string }[];
+  group: 'שיווק' | 'הגדרות המשתלה' | 'תוכן' | 'לקוחות' | 'ניהול' | 'נוספים';
+  /** מודול שנדרש כדי שהתוספת תעבוד */
+  requires?: AddonModuleKey;
   /** תצורת ברירת מחדל בעת הפעלת המודול */
   defaultConfig?: Record<string, unknown>;
 }
 
-export const MODULES: ModuleDef[] = [
-  {
-    key: 'plant_catalog',
-    label: 'קטלוג צמחים',
-    description: 'הוספת צמחים מהקטלוג הבוטני המרכזי לחנות, ותצוגתם בחנות.',
-    ownerNav: [
-      { href: '/admin/products', label: 'המלאי שלי', icon: 'Package' },
-      { href: '/admin/products/browse', label: 'הוספת מוצרים', icon: 'PlusSquare' },
-    ],
-  },
-  {
-    key: 'supplies',
-    label: 'מוצרים וציוד',
-    description: 'הוספת ציוד וחומרים (אדמה, עציצים, דשנים) לחנות.',
-  },
-  {
-    key: 'orders',
-    label: 'הזמנות',
-    description: 'קבלת הזמנות אונליין וניהולן בפורטל.',
-    ownerNav: [{ href: '/admin/orders', label: 'הזמנות', icon: 'ShoppingBag' }],
-  },
-  {
-    key: 'promotions',
-    label: 'מבצעים וקופונים',
-    description: 'קופונים והנחות + פופ-אפ שיווקי בחנות.',
-    ownerNav: [{ href: '/admin/marketing', label: 'שיווק', icon: 'Megaphone' }],
-  },
-  {
-    key: 'print_shop',
-    label: 'בית דפוס',
-    description: 'הזמנת שילוט, תגים וחומרי מיתוג מבית הדפוס של הפלטפורמה.',
-    ownerNav: [{ href: '/admin/print-shop', label: 'בית דפוס', icon: 'Printer' }],
-  },
-  {
-    key: 'static_pages',
-    label: 'עמודים סטטיים',
-    description: 'עמודי תוכן (אודות, תקנון, משלוחים) בחנות.',
-    ownerNav: [{ href: '/admin/pages', label: 'עמודים', icon: 'FileText' }],
-  },
-  {
-    key: 'blog',
-    label: 'בלוג',
-    description: 'מאמרים ותוכן שיווקי לקידום אורגני.',
-    ownerNav: [{ href: '/admin/blog', label: 'בלוג', icon: 'Newspaper' }],
-  },
-  {
-    key: 'social',
-    label: 'רשתות חברתיות',
-    description: 'הצגת קישורי רשתות חברתיות בחנות (פוטר ועמוד יצירת קשר).',
-  },
-  {
-    key: 'design',
-    label: 'שליטה בעיצוב',
-    description: 'מאפשר לבעל המשתלה לערוך את חלקי העיצוב המסומנים למטה.',
-    defaultConfig: { colors: true, hero: true, carousel: true, popup: false, sticky: true },
-  },
-  {
-    key: 'sales',
-    label: 'אפשרויות מכירה',
-    description: 'הצעת מחיר בלבד או הזמנה אונליין עם תשלום.',
-    defaultConfig: { mode: 'ONLINE' },
-  },
-  {
-    key: 'shipping',
-    label: 'אזורי משלוח',
-    description: 'הגדרת אזורי משלוח לפי ערים, עם עלות ורף למשלוח חינם.',
-    ownerNav: [{ href: '/admin/shipping', label: 'משלוחים', icon: 'Truck' }],
-  },
-  {
-    key: 'customer_accounts',
-    label: 'חשבונות לקוח',
-    description: 'שדרוג: לקוחות נרשמים ומתחברים בחנות עם קוד במייל, ורואים את ההזמנות והפרטים שלהם.',
-  },
-  {
-    key: 'loyalty',
-    label: 'מועדון לקוחות',
-    description: 'שדרוג (דורש חשבונות לקוח): "הזמן שוב" מהזמנות קודמות, וצבירה ומימוש נקודות.',
-    ownerNav: [{ href: '/admin/loyalty', label: 'מועדון לקוחות', icon: 'Gift' }],
-  },
-  {
-    key: 'crm',
-    label: 'לקוחות (CRM)',
-    description: 'שדרוג: רשימת לקוחות (רשומים ואורחים), תגיות, הערות, קבוצות, סינון ויצוא למי שהסכים לדיוור.',
-    ownerNav: [{ href: '/admin/customers', label: 'לקוחות', icon: 'Users' }],
-  },
-  {
-    key: 'page_builder',
-    label: 'בונה עמודים',
-    description: 'שדרוג: בניית דף הבית ועמודי התוכן מבלוקים מאושרים — טיוטה, תצוגה מקדימה, תזמון והיסטוריה.',
-    ownerNav: [{ href: '/admin/page-builder', label: 'עיצוב דף הבית', icon: 'LayoutTemplate' }],
-  },
+export const ADDONS: AddonDef[] = [
+  { key: 'announcement', group: 'שיווק', label: 'הודעת סטיקי', description: 'הודעה קבועה בראש החנות.' },
+  { key: 'coupons', group: 'שיווק', label: 'קופונים', description: 'קודי הנחה בקופה.' },
+  { key: 'popups', group: 'שיווק', label: 'פופאפים', description: 'פופאפ שיווקי בחנות.' },
+  { key: 'payment_options', group: 'הגדרות המשתלה', label: 'אפשרויות תשלום', description: 'בעל המשתלה עורך את אמצעי התשלום בקופה.' },
+  { key: 'delivery_options', group: 'הגדרות המשתלה', label: 'אפשרויות משלוח', description: 'בעל המשתלה קובע איסוף עצמי ומשלוחים בקופה.' },
+  { key: 'static_pages', group: 'תוכן', label: 'עמודים', description: 'עמודי תוכן (אודות, תקנון וכו׳) בחנות.' },
+  { key: 'blog', group: 'תוכן', label: 'בלוג', description: 'מאמרים ותוכן שיווקי לקידום אורגני.' },
+  { key: 'page_builder', group: 'תוכן', label: 'עיצוב דף הבית', description: 'בניית דף הבית מבלוקים: טיוטה, תצוגה מקדימה, תזמון והיסטוריה.' },
+  { key: 'shipping', group: 'לקוחות', label: 'משלוחים', description: 'אזורי משלוח לפי ערים, עם עלות ורף למשלוח חינם.' },
+  { key: 'crm', group: 'לקוחות', label: 'לקוחות', description: 'רשימת לקוחות, תגיות, הערות, קבוצות, סינון ויצוא.' },
+  { key: 'loyalty', group: 'לקוחות', label: 'מועדון לקוחות', description: 'צבירה ומימוש נקודות, ו"הזמן שוב" מהזמנות קודמות.', requires: 'customer_accounts' },
+  { key: 'team', group: 'ניהול', label: 'צוות', description: 'הוספת עובדים וכותבי תוכן למשתלה.' },
+  { key: 'customer_accounts', group: 'נוספים', label: 'חשבונות לקוח', description: 'לקוחות נרשמים ומתחברים בחנות עם קוד במייל ורואים את ההזמנות שלהם.' },
+  { key: 'design', group: 'נוספים', label: 'שליטה בעיצוב', description: 'בעל המשתלה עורך את חלקי העיצוב המסומנים (צבעים, Hero ועוד).', defaultConfig: { colors: true, hero: true, carousel: true, popup: false, sticky: true } },
 ];
 
-export function getModuleDef(key: string): ModuleDef | undefined {
-  return MODULES.find((m) => m.key === key);
+export const ADDON_GROUPS: AddonDef['group'][] = ['שיווק', 'הגדרות המשתלה', 'תוכן', 'לקוחות', 'ניהול', 'נוספים'];
+
+export function getAddonDef(key: string): AddonDef | undefined {
+  return ADDONS.find((m) => m.key === key);
 }
 
+const BASE_DEFAULTS: Partial<Record<ModuleKey, Record<string, unknown>>> = { sales: { mode: 'ONLINE' } };
+
 export function defaultConfigFor(key: ModuleKey): Record<string, unknown> {
-  return { ...(getModuleDef(key)?.defaultConfig ?? {}) };
+  return { ...(BASE_DEFAULTS[key] ?? getAddonDef(key)?.defaultConfig ?? {}) };
 }

@@ -18,7 +18,7 @@ const productInclude = {
 /** מוצרי המשתלה בתצוגת האדמין (רשימת המלאי ודף העריכה). */
 export async function loadAdminProducts(nurseryId: string, where: Prisma.NurseryProductWhereInput = {}): Promise<RowProduct[]> {
   const products = await prisma.nurseryProduct.findMany({
-    where: { ...where, nurseryId },
+    where: { ...where, nurseryId, deletedAt: null },
     include: productInclude,
     orderBy: { createdAt: 'desc' },
   });

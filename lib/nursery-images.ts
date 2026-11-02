@@ -145,7 +145,7 @@ export async function assignImageToProduct(
 /** מוצרי המשתלה לבחירה בשיוך: קודם אלה שממתינים לתמונה, ואז לפי שם. */
 export async function listProductsForAssign(nurseryId: string) {
   const rows = await prisma.nurseryProduct.findMany({
-    where: { nurseryId },
+    where: { nurseryId, deletedAt: null },
     select: { ...titleFields, customImageUrl: true, imageRequired: true },
   });
   return rows

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { canOperate } from '@/lib/nursery-lifecycle';
 import { getSessionUser } from '@/lib/auth';
 import { getEnabledModuleKeys } from '@/lib/module-access';
+import { isNurseryBlocked } from '@/lib/nursery-account';
 import type { ModuleKey } from '@/lib/modules';
 import {
   DENIAL_MESSAGES,
@@ -35,6 +36,7 @@ async function evaluate(req: ModuleRequirement) {
           nurseryId: user.nurseryId,
           nurseryActive: user.nursery ? canOperate(user.nursery.status) : null,
           disabled: Boolean(user.disabledAt),
+          accountBlocked: await isNurseryBlocked(user.nurseryId),
         }
       : null,
     enabled,
@@ -47,6 +49,7 @@ async function evaluate(req: ModuleRequirement) {
 export async function requireNurseryPage(req: ModuleRequirement = {}): Promise<NurseryScope> {
   const { user, decision } = await evaluate(req);
   if (!user) redirect('/admin/login');
+  if (!decision.ok && decision.reason === 'ACCOUNT_BLOCKED') redirect('/admin/account-blocked');
   if (!decision.ok) redirect(`/admin?notice=${decision.reason}`);
   return { user, nurseryId: decision.nurseryId };
 }

@@ -92,6 +92,7 @@ export default async function TenantLayout(props: LayoutProps) {
 
   const promotion = await getActivePromotion(nursery.id);
   const theme = getNurseryTheme(nursery);
+  const announcement = (await isModuleEnabled(nursery.id, 'announcement')) ? theme.announcement : { ...theme.announcement, enabled: false };
   const showSocial = await isModuleEnabled(nursery.id, 'social');
   // R06-03: קישור לחשבון — קבוע (בלי לקרוא עוגיות, כדי לא לבטל את המטמון של דפי החנות)
   const showAccount = await isModuleEnabled(nursery.id, 'customer_accounts');
@@ -120,11 +121,11 @@ export default async function TenantLayout(props: LayoutProps) {
         >
           דילוג לתוכן
         </a>
-        <AnnouncementBar announcement={theme.announcement} basePath="" />
+        <AnnouncementBar announcement={announcement} basePath="" />
         <SiteHeader
           nursery={nursery}
           mobileStyle={theme.headerStyle}
-          belowAnnouncement={theme.announcement.enabled}
+          belowAnnouncement={announcement.enabled}
           basePath=""
           sticky={theme.stickyHeader}
           navPages={navPages}
