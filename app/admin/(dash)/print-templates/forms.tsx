@@ -183,6 +183,8 @@ interface EditOption {
   priceDelta: string;
   fixedAdd: string;
   percentAdd: string;
+  minQuantity: string;
+  minCharge: string;
   requiresQuote: boolean;
 }
 interface EditField {
@@ -215,7 +217,7 @@ const blankField = (key: string): EditField => ({
   showIfEquals: '',
 });
 
-const blankOption = (value: string): EditOption => ({ value, label: '', help: '', priceDelta: '0', fixedAdd: '0', percentAdd: '0', requiresQuote: false });
+const blankOption = (value: string): EditOption => ({ value, label: '', help: '', priceDelta: '0', fixedAdd: '0', percentAdd: '0', minQuantity: '', minCharge: '', requiresQuote: false });
 
 /** מפתח פנימי שלא קיים: המנהל לא מקליד מפתחות. */
 const nextKey = (prefix: string, taken: string[]) => {
@@ -249,6 +251,8 @@ function toEdit(raw: unknown[]): EditField[] {
               priceDelta: String(oo.priceDelta ?? 0),
               fixedAdd: String(oo.fixedAdd ?? 0),
               percentAdd: String(oo.percentAdd ?? 0),
+              minQuantity: oo.minQuantity === undefined ? '' : String(oo.minQuantity),
+              minCharge: oo.minCharge === undefined ? '' : String(oo.minCharge),
               requiresQuote: oo.requiresQuote === true,
             };
           })
@@ -278,6 +282,8 @@ function toJson(fields: EditField[]) {
             priceDelta: Number(o.priceDelta || 0),
             ...(Number(o.fixedAdd) ? { fixedAdd: Number(o.fixedAdd) } : {}),
             ...(Number(o.percentAdd) ? { percentAdd: Number(o.percentAdd) } : {}),
+            ...(Number(o.minQuantity) ? { minQuantity: Number(o.minQuantity) } : {}),
+            ...(Number(o.minCharge) ? { minCharge: Number(o.minCharge) } : {}),
             ...(o.requiresQuote ? { requiresQuote: true } : {}),
             ...(o.help.trim() ? { help: o.help.trim() } : {}),
           })),
@@ -528,7 +534,7 @@ export function DraftEditor({
                     {f.options.map((o, k) => {
                       const setOpt = (patch: Partial<EditOption>) => update(i, { options: f.options.map((x, m) => (m === k ? { ...x, ...patch } : x)) });
                       return (
-                        <div key={o.value} className="grid items-end gap-2 rounded-lg bg-white p-2 sm:grid-cols-[1.4fr_1.4fr_repeat(3,5rem)_auto_auto]">
+                        <div key={o.value} className="grid items-end gap-2 rounded-lg bg-white p-2 sm:grid-cols-[1.4fr_1.4fr_repeat(5,4.5rem)_auto_auto]">
                           <label className="text-xs">
                             <span className="mb-0.5 block text-gray-600">שם</span>
                             <input value={o.label} placeholder="למשל: כרומו" aria-label={`שם אפשרות ${k + 1} בשדה ${i + 1}`} onChange={(e) => setOpt({ label: e.target.value })} className={field} />
@@ -548,6 +554,14 @@ export function DraftEditor({
                           <label className="text-xs">
                             <span className="mb-0.5 block text-gray-600">אחוזים %</span>
                             <input value={o.percentAdd} type="number" step="0.1" aria-label={`תוספת אחוזים לאפשרות ${k + 1}`} onChange={(e) => setOpt({ percentAdd: e.target.value })} className={field} />
+                          </label>
+                          <label className="text-xs">
+                            <span className="mb-0.5 block text-gray-600">מכמות</span>
+                            <input value={o.minQuantity} type="number" min="0" step="1" aria-label={`כמות מינימום לאפשרות ${k + 1}`} onChange={(e) => setOpt({ minQuantity: e.target.value })} className={field} />
+                          </label>
+                          <label className="text-xs">
+                            <span className="mb-0.5 block text-gray-600">מינ׳ ₪</span>
+                            <input value={o.minCharge} type="number" step="0.01" min="0" aria-label={`מחיר מינימום לאפשרות ${k + 1}`} onChange={(e) => setOpt({ minCharge: e.target.value })} className={field} />
                           </label>
                           <label className="flex items-center gap-1 pb-2 text-xs">
                             <input type="checkbox" checked={o.requiresQuote} aria-label={`אפשרות ${k + 1} דורשת הצעה`} onChange={(e) => setOpt({ requiresQuote: e.target.checked })} />

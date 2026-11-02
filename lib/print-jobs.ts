@@ -130,6 +130,7 @@ export function priceSnapshot(q: PrintQuote, version: number, extra: Record<stri
     setupFee: q.setupFee,
     fixedAdds: q.fixedAdds,
     percent: q.percent,
+    minCharges: q.minCharges,
     perUnit: q.perUnit,
     quoteOnly: q.quoteOnly,
     version,

@@ -32,6 +32,10 @@ export interface FieldOption {
   /** בחירה באפשרות מעבירה לבדיקת צוות */
   requiresQuote?: boolean;
   help?: string;
+  /** האפשרות זמינה רק מכמות זו ומעלה */
+  minQuantity?: number;
+  /** מחיר מינימום לאפשרות בהזמנה (₪): אם התוספת שלה נמוכה ממנו, הסכום משלים אליו */
+  minCharge?: number;
 }
 
 /** ערך "התאמה אישית" בשדה בחירה; הטקסט נשמר ב-`{key}__custom` */
@@ -153,6 +157,12 @@ export function parseFields(json: unknown): Result<TemplateField[]> {
         if (fixedAdd && !Number.isNaN(fixedAdd)) option.fixedAdd = fixedAdd;
         if (percentAdd && !Number.isNaN(percentAdd)) option.percentAdd = percentAdd;
         if (oo.requiresQuote === true) option.requiresQuote = true;
+        const minQty = num(oo.minQuantity) ?? 0;
+        const minCharge = num(oo.minCharge) ?? 0;
+        if (Number.isNaN(minQty) || minQty < 0 || !Number.isInteger(minQty)) errors.push(`${at}: כמות מינימום לא תקינה באפשרות "${value}"`);
+        else if (minQty > 0) option.minQuantity = minQty;
+        if (Number.isNaN(minCharge) || minCharge < 0) errors.push(`${at}: מחיר מינימום לא תקין באפשרות "${value}"`);
+        else if (minCharge > 0) option.minCharge = minCharge;
         const ohelp = String(oo.help ?? '').trim();
         if (ohelp) option.help = ohelp.slice(0, 200);
         options.push(option);
@@ -317,6 +327,8 @@ export interface PrintQuote {
   fixedAdds: number;
   /** סכום תוספות האחוזים שנבחרו */
   percent: number;
+  /** השלמות למחיר המינימום של אפשרויות שנבחרו (כלולות ב-total) */
+  minCharges: Array<{ label: string; amount: number }>;
   total: number;
   breakdown: PriceLine[];
 }
@@ -361,8 +373,16 @@ export function reviewReasons(pricing: TemplatePricing, fields: TemplateField[],
   return reasons;
 }
 
+/** אפשרויות שנבחרו אבל הכמות נמוכה מהמינימום שלהן. */
+export function optionMinimumErrors(fields: TemplateField[], values: CleanValues, quantity: number): string[] {
+  return chosenOptions(fields, values)
+    .filter(({ option }) => option.minQuantity && quantity < option.minQuantity)
+    .map(({ field, option }) => `${field.label}: ${option.label} זמין מכמות ${option.minQuantity!.toLocaleString('he-IL')}`);
+}
+
 /**
- * חישוב מחיר בשרת (5.2): total = round((הקמה + קבועות + (מדרגה + תוספות ליחידה) × כמות) × (1 + אחוזים/100)).
+ * חישוב מחיר בשרת (5.2): total = round((הקמה + קבועות + (מדרגה + תוספות ליחידה) × כמות) × (1 + אחוזים/100) + השלמות למינימום).
+ * התוספת של אפשרות היא הקבועה שלה, התוספת ליחידה × כמות וחלקה באחוזים; אם היא נמוכה ממחיר המינימום — משלימים אליו.
  * מעוגל לשקל שלם. סיבה כלשהי לבדיקת צוות — אין מחיר.
  */
 export function quotePrint(
@@ -375,9 +395,11 @@ export function quotePrint(
   if (!Number.isInteger(quantity) || quantity < 1) return { ok: false, error: 'כמות לא תקינה' };
   if (quantity < pricing.minQuantity) return { ok: false, error: `כמות מינימלית: ${pricing.minQuantity}` };
   if (!pricing.allowCustomQuantity && !pricing.quantityOptions.includes(quantity)) return { ok: false, error: 'יש לבחור כמות מהרשימה' };
+  const belowMinimum = optionMinimumErrors(fields, values, quantity);
+  if (belowMinimum.length) return { ok: false, error: belowMinimum.join(' · ') };
   const reasons = reviewReasons(pricing, fields, values, quantity, ctx);
   if (reasons.length) {
-    return { ok: true, quote: { quoteOnly: true, reasons, quantity, unitPrice: 0, perUnit: 0, setupFee: 0, fixedAdds: 0, percent: 0, total: 0, breakdown: [] } };
+    return { ok: true, quote: { quoteOnly: true, reasons, quantity, unitPrice: 0, perUnit: 0, setupFee: 0, fixedAdds: 0, percent: 0, minCharges: [], total: 0, breakdown: [] } };
   }
   const breakdown: PriceLine[] = [{ label: 'מחיר ליחידה', amount: unitPriceFor(pricing.basePrice, pricing.tiers, quantity) }];
   let fixedAdds = 0;
@@ -388,10 +410,18 @@ export function quotePrint(
     percent += option.percentAdd ?? 0;
   }
   const unitPrice = round4(Math.max(0, breakdown.reduce((s, l) => s + l.amount, 0)));
-  const total = Math.max(0, Math.round((pricing.setupFee + fixedAdds + unitPrice * quantity) * (1 + percent / 100)));
+  const subtotal = pricing.setupFee + fixedAdds + unitPrice * quantity;
+  const minCharges: Array<{ label: string; amount: number }> = [];
+  for (const { field, option } of chosenOptions(fields, values)) {
+    if (!option.minCharge) continue;
+    const contribution = (option.fixedAdd ?? 0) + option.priceDelta * quantity + (subtotal * (option.percentAdd ?? 0)) / 100;
+    if (contribution < option.minCharge) minCharges.push({ label: `${field.label}: ${option.label}`, amount: round4(option.minCharge - contribution) });
+  }
+  const topUp = minCharges.reduce((s, m) => s + m.amount, 0);
+  const total = Math.max(0, Math.round(subtotal * (1 + percent / 100) + topUp));
   return {
     ok: true,
-    quote: { quoteOnly: false, reasons: [], quantity, unitPrice, perUnit: round4(total / quantity), setupFee: pricing.setupFee, fixedAdds, percent, total, breakdown },
+    quote: { quoteOnly: false, reasons: [], quantity, unitPrice, perUnit: round4(total / quantity), setupFee: pricing.setupFee, fixedAdds, percent, minCharges, total, breakdown },
   };
 }
 
@@ -413,6 +443,8 @@ export function missingForSubmit(
       const err = checked.errors[f.key];
       if (err) missing.push(`${f.label}: ${err}`);
     }
+  } else if (Number.isInteger(quantity) && quantity > 0) {
+    missing.push(...optionMinimumErrors(fields, checked.values, quantity));
   }
   if (file.required && !file.hasFile && !file.needsDesign) missing.push('יש להעלות קובץ, או לסמן שצריך גם עיצוב');
   return missing;

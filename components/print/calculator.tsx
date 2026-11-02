@@ -190,6 +190,11 @@ export function PrintCalculator({ product: t, prefill }: { product: CalculatorPr
           <div data-testid="print-price">
             <p className="text-2xl font-bold">{priceLine}</p>
             <p className="text-sm text-gray-600">{formatPrice(quote.perUnit)} ליחידה</p>
+            {quote.minCharges.map((m) => (
+              <p key={m.label} className="mt-1 text-xs text-gray-700" data-testid="min-charge">
+                כולל השלמה למחיר מינימום, {m.label}: {formatPrice(m.amount)}
+              </p>
+            ))}
             <p className="mt-1 text-xs text-gray-600">המחיר הסופי מחושב בשרת בעת השליחה. המחירים מוצגים כפי שהוגדרו בבית הדפוס.</p>
           </div>
         ) : (

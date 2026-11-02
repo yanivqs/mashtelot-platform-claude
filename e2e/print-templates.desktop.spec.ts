@@ -30,6 +30,7 @@ test('editor: tabs, drag, duplicate; nursery: calculator, review reasons, job an
   await page.getByLabel('שם אפשרות 1 בשדה 1').fill('נייר');
   await page.getByLabel('שם אפשרות 2 בשדה 1').fill('PVC');
   await cards.nth(0).getByLabel('תוספת ליחידה לאפשרות 2').fill('0.5');
+  await cards.nth(0).getByLabel('מחיר מינימום לאפשרות 2').fill('300');
 
   // שדה 2: סוג דבק, חובה, מוצג רק אם חומר = PVC
   await addField.click();
@@ -65,7 +66,7 @@ test('editor: tabs, drag, duplicate; nursery: calculator, review reasons, job an
   await page.getByRole('tab', { name: 'כמויות ותמחור' }).click();
   await page.getByLabel(/מחיר ליחידה מתחת למדרגות/).fill('1');
   await page.getByLabel('עלות הקמה להזמנה (₪)').fill('50');
-  await page.getByLabel('כמות מינימום').fill('100');
+  await page.getByLabel('כמות מינימום', { exact: true }).fill('100');
   await page.getByText('תמיד דורש הצעת צוות').click(); // ברירת המחדל מסומנת — מבטלים
   await page.getByRole('button', { name: 'הוספת כמות' }).click();
   await page.getByLabel('כמות מוגדרת 1').fill('500');
@@ -126,8 +127,9 @@ test('editor: tabs, drag, duplicate; nursery: calculator, review reasons, job an
   await page.getByRole('textbox', { name: /^טקסט/ }).fill('ורד אדום');
   await expect(send).toBeEnabled();
 
-  // (0.8 מדרגת 500 + 0.5 PVC) × 500 + הקמה 50 = 700
-  await expect(page.getByTestId('print-price')).toContainText('700');
+  // (0.8 מדרגת 500 + 0.5 PVC) × 500 + הקמה 50 = 700, ועוד השלמה של 50 למינימום 300 של PVC = 750
+  await expect(page.getByTestId('print-price')).toContainText('750');
+  await expect(page.getByTestId('min-charge')).toContainText('PVC');
 
   // כמות שלא ברשימה עוברת לבדיקת צוות, בלי מחיר
   await page.getByLabel('כמות אחרת').fill('750');
@@ -135,10 +137,10 @@ test('editor: tabs, drag, duplicate; nursery: calculator, review reasons, job an
   await expect(page.getByTestId('print-price')).toHaveCount(0);
 
   await page.getByRole('group', { name: 'כמות' }).getByRole('button', { name: '500' }).click();
-  await expect(page.getByTestId('print-price')).toContainText('700');
+  await expect(page.getByTestId('print-price')).toContainText('750');
   await send.click();
   await expect(page.getByTestId('print-confirmation')).toContainText('ההזמנה התקבלה');
-  await expect(page.getByTestId('print-confirmation')).toContainText('700');
+  await expect(page.getByTestId('print-confirmation')).toContainText('750');
 
   // העבודות שלי: שם, תאריך, תיאור, כמות, מחיר
   await page.getByRole('link', { name: 'לעבודות שלי' }).click();
@@ -147,7 +149,7 @@ test('editor: tabs, drag, duplicate; nursery: calculator, review reasons, job an
   await expect(job).toContainText('טקסט: ורד אדום');
   await expect(job).toContainText(/הזמנה אחרונה:/);
   await expect(job).toContainText(/כמות:\s*500/);
-  await expect(job).toContainText(/מחיר אחרון:.*700/);
+  await expect(job).toContainText(/מחיר אחרון:.*750/);
 
   // הזמנה חוזרת: מחיר מעודכן מול האחרון. 1.3 × 1000 + 50 = 1350
   await job.getByRole('button', { name: 'הזמן שוב' }).click();

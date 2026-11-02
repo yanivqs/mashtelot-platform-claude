@@ -33,6 +33,8 @@ function priceHint(o: FieldOption): string {
   if (o.priceDelta) parts.push(`${o.priceDelta > 0 ? '+' : ''}${formatPrice(o.priceDelta)} ליח׳`);
   if (o.fixedAdd) parts.push(`${o.fixedAdd > 0 ? '+' : ''}${formatPrice(o.fixedAdd)}`);
   if (o.percentAdd) parts.push(`${o.percentAdd > 0 ? '+' : ''}${o.percentAdd}%`);
+  if (o.minCharge) parts.push(`מינימום ${formatPrice(o.minCharge)}`);
+  if (o.minQuantity) parts.push(`מכמות ${o.minQuantity.toLocaleString('he-IL')}`);
   return parts.join(' · ');
 }
 

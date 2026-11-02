@@ -117,6 +117,52 @@ describe('spec acceptance: pricing and review', () => {
   });
 });
 
+describe('option minimums', () => {
+  const opts = (r: ReturnType<typeof parseFields>) => {
+    if (!r.ok) throw new Error(r.errors.join(';'));
+    return r.value;
+  };
+  const f = opts(parseFields([
+    { key: 'finish', label: 'גימור', type: 'select', options: [
+      { value: 'lam', label: 'למינציה', priceDelta: 0.5, minCharge: 50 },
+      { value: 'fix', label: 'קבוע', fixedAdd: 20, minCharge: 50 },
+      { value: 'pct', label: 'אחוזים', percentAdd: 10, minCharge: 50 },
+      { value: 'uv', label: 'UV', priceDelta: 0.1, minQuantity: 500 },
+    ] },
+  ]));
+  const p = { basePrice: 0.3, tiers: [], setupFee: 0, minQuantity: 1, quoteOnly: false, quantityOptions: [], allowCustomQuantity: true };
+
+  it('tops the option up to its minimum price, and only when it falls short', () => {
+    const low = quotePrint(p, f, { finish: 'lam' }, 50); // 15 + 25 → השלמה של 25
+    expect(low.ok && low.quote).toMatchObject({ total: 65, minCharges: [{ label: 'גימור: למינציה', amount: 25 }] });
+    const exact = quotePrint(p, f, { finish: 'lam' }, 100); // 30 + 50: בדיוק המינימום
+    expect(exact.ok && exact.quote).toMatchObject({ total: 80, minCharges: [] });
+    const high = quotePrint(p, f, { finish: 'lam' }, 200);
+    expect(high.ok && high.quote).toMatchObject({ total: 160, minCharges: [] });
+  });
+  it('counts fixed and percent adds toward the minimum', () => {
+    const fixed = quotePrint(p, f, { finish: 'fix' }, 10); // 3 + 20, השלמה 30
+    expect(fixed.ok && fixed.quote).toMatchObject({ total: 53, minCharges: [{ amount: 30 }] });
+    const pct = quotePrint(p, f, { finish: 'pct' }, 100); // 30 + 3, השלמה 47
+    expect(pct.ok && pct.quote).toMatchObject({ total: 80, minCharges: [{ amount: 47 }] });
+    const pctHigh = quotePrint(p, f, { finish: 'pct' }, 10000); // 3000 + 300
+    expect(pctHigh.ok && pctHigh.quote).toMatchObject({ total: 3300, minCharges: [] });
+  });
+  it('blocks an option below its minimum quantity, on the server price and in the missing list', () => {
+    expect(quotePrint(p, f, { finish: 'uv' }, 499)).toEqual({ ok: false, error: 'גימור: UV זמין מכמות 500' });
+    expect(quotePrint(p, f, { finish: 'uv' }, 500).ok).toBe(true);
+    const file = { required: false, hasFile: false, needsDesign: false };
+    expect(missingForSubmit(p, f, { finish: 'uv' }, 499, file)).toEqual(['גימור: UV זמין מכמות 500']);
+    expect(missingForSubmit(p, f, { finish: 'uv' }, 500, file)).toEqual([]);
+  });
+  it('rejects bad minimums and drops empty ones', () => {
+    expect(parseFields([{ key: 'a', label: 'א', type: 'select', options: [{ value: 'x', minQuantity: 1.5 }] }]).ok).toBe(false);
+    expect(parseFields([{ key: 'a', label: 'א', type: 'select', options: [{ value: 'x', minCharge: -1 }] }]).ok).toBe(false);
+    const r = parseFields([{ key: 'a', label: 'א', type: 'select', options: [{ value: 'x', minCharge: 0, minQuantity: 0 }] }]);
+    expect(r.ok && r.value[0]!.options![0]).toEqual({ value: 'x', label: 'x', priceDelta: 0 });
+  });
+});
+
 describe('visibility and server validation', () => {
   it('conditional fields appear only when their condition holds', () => {
     const glue = fields[1]!;
