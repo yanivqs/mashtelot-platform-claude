@@ -3,9 +3,7 @@ import { ArrowLeft, FolderOpen } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryPage } from '@/lib/nursery-scope';
 import { formatPrice } from '@/lib/utils';
-import { parsePriceTiers } from '@/lib/print-pricing';
 import { parseFields, parsePricing } from '@/lib/print-template';
-import { PrintOrderForm, type PrintProductVM } from './order-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,15 +11,12 @@ export const dynamic = 'force-dynamic';
 export default async function PrintShopPage() {
   const { nurseryId } = await requireNurseryPage({ all: ['print_shop'] });
 
-  const [templates, products, options, jobCount] = await Promise.all([
+  const [templates, jobCount] = await Promise.all([
     prisma.printTemplateVersion.findMany({
       where: { status: 'PUBLISHED', template: { isActive: true } },
       include: { template: true },
       orderBy: [{ template: { sortOrder: 'asc' } }, { template: { createdAt: 'asc' } }],
     }),
-    // מוצרים ישנים: הטופס הישן מוצג רק כל עוד יש כאלה פעילים
-    prisma.printProduct.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: 'asc' }, { basePrice: 'asc' }] }),
-    prisma.printGlobalOption.findMany({ orderBy: { optionName: 'asc' } }),
     prisma.printSavedProduct.count({ where: { nurseryId, isArchived: false } }),
   ]);
 
@@ -42,22 +37,6 @@ export default async function PrintShopPage() {
       },
     ];
   });
-
-  const vm: PrintProductVM[] = products.map((p) => ({
-    id: p.id,
-    title: p.title,
-    category: p.category,
-    description: p.description,
-    specs: p.specs,
-    imageUrl: p.imageUrl,
-    basePrice: p.basePrice.toString(),
-    unitLabel: p.unitLabel,
-    minQuantity: p.minQuantity,
-    leadTimeDays: p.leadTimeDays,
-    priceTiers: parsePriceTiers(p.priceTiers),
-    requiresArtwork: p.requiresArtwork,
-    allowOptions: p.allowOptions,
-  }));
 
   return (
     <div className="max-w-5xl">
@@ -95,10 +74,8 @@ export default async function PrintShopPage() {
           ))}
         </section>
       ) : (
-        vm.length === 0 && <p className="rounded-xl border border-dashed border-gray-200 bg-white p-8 text-center text-sm text-gray-600">אין כרגע מוצרי דפוס להזמנה.</p>
+        <p className="rounded-xl border border-dashed border-gray-200 bg-white p-8 text-center text-sm text-gray-600">אין כרגע מוצרי דפוס להזמנה.</p>
       )}
-
-      {vm.length > 0 && <PrintOrderForm products={vm} options={options.map((o) => ({ id: o.id, optionName: o.optionName, extraPrice: o.extraPrice.toString() }))} />}
     </div>
   );
 }

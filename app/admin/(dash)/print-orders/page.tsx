@@ -30,7 +30,7 @@ export default async function PrintOrdersPage() {
       },
       orderBy: { createdAt: 'desc' },
     }),
-    prisma.printProduct.count(),
+    prisma.printTemplate.count(),
   ]);
 
   // PT-06: פאנל ייצור להזמנות מתבנית (הזמנות ממוצרים ישנים — בזרימה הקודמת)
@@ -89,7 +89,7 @@ export default async function PrintOrdersPage() {
           <p className="text-sm text-gray-500">{orders.length} הזמנות מהמשתלות</p>
         </div>
         <Link
-          href="/admin/print-orders/products"
+          href="/admin/print-templates"
           className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
         >
           ניהול מוצרי דפוס ({productCount})
