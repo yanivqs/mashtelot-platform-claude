@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeValues, isVisible, parseFields, parsePricing, quotePrint, validateValues, type TemplateField } from './print-template';
+import { describeValues, isVisible, missingForSubmit, parseFields, parsePricing, quotePrint, sizeFromValues, validateValues, type TemplateField } from './print-template';
 
 const def = [
   { key: 'material', label: 'חומר', type: 'select', required: true, options: [
@@ -57,6 +57,66 @@ describe('parsePricing', () => {
   });
 });
 
+const quoted = { basePrice: 0, tiers: [{ minQty: 500, unitPrice: 0.5 }], setupFee: 50, minQuantity: 1, quoteOnly: false, quantityOptions: [500, 1000], allowCustomQuantity: true };
+const specFields = (() => {
+  const r = parseFields([
+    { key: 'paper', label: 'נייר', type: 'select', required: true, options: [{ value: 'chromo', label: 'כרומו', priceDelta: 0.1 }, { value: 'special', label: 'מיוחד', requiresQuote: true }] },
+    { key: 'finish', label: 'גימור', type: 'multiselect', allowCustom: true, options: [{ value: 'lam', label: 'למינציה', fixedAdd: 30, percentAdd: 10 }] },
+    { key: 'size', label: 'מידה', type: 'select', allowCustom: true, options: [{ value: 'opt_1', label: 'A4' }, { value: 'opt_2', label: '10x15 ס"מ' }] },
+  ]);
+  if (!r.ok) throw new Error(r.errors.join(';'));
+  return r.value;
+})();
+
+describe('spec acceptance: pricing and review', () => {
+  it('5.2 example returns 748', () => {
+    const q = quotePrint(quoted, specFields, { paper: 'chromo', finish: ['lam'] }, 1000);
+    expect(q.ok && q.quote).toMatchObject({ quoteOnly: false, total: 748, perUnit: 0.748, unitPrice: 0.6, fixedAdds: 30, percent: 10 });
+  });
+  it('quantity 750 with options [500,1000] goes to review with the custom-quantity reason', () => {
+    const q = quotePrint(quoted, specFields, { paper: 'chromo' }, 750);
+    expect(q.ok && q.quote).toMatchObject({ quoteOnly: true, total: 0, reasons: ['כמות מותאמת אישית'] });
+  });
+  it('collects every review reason, and low resolution only without a design request', () => {
+    const values = { paper: 'special', finish: ['__custom'], finish__custom: 'זהב' };
+    const q = quotePrint({ ...quoted, quantityOptions: [], basePrice: 0 }, specFields, values, 100, { needsDesign: true, lowResolution: true });
+    expect(q.ok && q.quote.reasons).toEqual(['אין מחירון לכמות זו', 'גימור: ערך מותאם אישית', 'נייר: מיוחד', 'נדרש עיצוב']);
+    const low = quotePrint(quoted, specFields, { paper: 'chromo' }, 500, { lowResolution: true });
+    expect(low.ok && low.quote.reasons).toEqual(['רזולוציית הקובץ נמוכה מ-300 DPI']);
+  });
+  it('a fixed quantity list rejects other quantities', () => {
+    expect(quotePrint({ ...quoted, allowCustomQuantity: false }, specFields, {}, 750)).toEqual({ ok: false, error: 'יש לבחור כמות מהרשימה' });
+  });
+  it('custom value needs text, is kept and described', () => {
+    expect(validateValues(specFields, { paper: 'chromo', size: '__custom' }).ok).toBe(false);
+    const r = validateValues(specFields, { paper: 'chromo', size: '__custom', size__custom: '20x30' });
+    expect(r.ok && r.values).toMatchObject({ size: '__custom', size__custom: '20x30' });
+    if (r.ok) expect(describeValues(specFields, r.values)).toContainEqual({ label: 'מידה', value: 'התאמה אישית: 20x30' });
+    expect(validateValues(fields, { material: '__custom', text: 'x' }).ok).toBe(false);
+  });
+  it('missing list blocks sending: quantity, required fields and file', () => {
+    const file = { required: true, hasFile: false, needsDesign: false };
+    expect(missingForSubmit(quoted, specFields, {}, 0, file)).toEqual(['יש לבחור כמות', 'נייר: יש לבחור', 'יש להעלות קובץ, או לסמן שצריך גם עיצוב']);
+    expect(missingForSubmit(quoted, specFields, { paper: 'chromo' }, 500, { ...file, needsDesign: true })).toEqual([]);
+    expect(missingForSubmit(quoted, specFields, { paper: 'chromo' }, 500, { ...file, required: false })).toEqual([]);
+  });
+  it('size comes from the option label or the custom text', () => {
+    expect(sizeFromValues(specFields, { size: 'opt_1' })).toEqual([21, 29.7]);
+    expect(sizeFromValues(specFields, { size: 'opt_2' })).toEqual([10, 15]);
+    expect(sizeFromValues(specFields, { size: '__custom', size__custom: '20*30' })).toEqual([20, 30]);
+    expect(sizeFromValues(specFields, {})).toBeNull();
+  });
+  it('old stored pricing without the new keys keeps working', () => {
+    const p = parsePricing({ basePrice: 2, tiers: [], setupFee: 0, minQuantity: 1, quoteOnly: false });
+    expect(p.ok && p.value).toMatchObject({ quantityOptions: [], allowCustomQuantity: true });
+  });
+  it('tiers without a base price are valid; neither is not', () => {
+    expect(parsePricing({ basePrice: 0, tiers: [{ minQty: 10, unitPrice: 1 }] }).ok).toBe(true);
+    expect(parsePricing({ basePrice: 0, tiers: [] }).ok).toBe(false);
+    expect(parsePricing({ basePrice: 1, minQuantity: 10, quantityOptions: [5] }).ok).toBe(false);
+  });
+});
+
 describe('visibility and server validation', () => {
   it('conditional fields appear only when their condition holds', () => {
     const glue = fields[1]!;
@@ -82,7 +142,7 @@ describe('visibility and server validation', () => {
 });
 
 describe('quotePrint (server pricing)', () => {
-  const pricing = { basePrice: 1, tiers: [{ minQty: 500, unitPrice: 0.8 }], setupFee: 50, minQuantity: 100, quoteOnly: false };
+  const pricing = { basePrice: 1, tiers: [{ minQty: 500, unitPrice: 0.8 }], setupFee: 50, minQuantity: 100, quoteOnly: false, quantityOptions: [], allowCustomQuantity: true };
   it('tier + option deltas per unit + setup fee', () => {
     const v = validateValues(fields, { material: 'pvc', glue: 'remov', text: 'ורד', finishes: ['uv', 'lam'] });
     if (!v.ok) throw new Error('invalid');

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseProfile, pdfBoxMm, preflight, type ProductionProfile } from './print-preflight';
+import { parseProfile, pdfBoxMm, preflight, type ProductionProfile, checkResolution, parseSizeCm } from './print-preflight';
 
 const enc = (s: string) => new TextEncoder().encode(s);
 const mm = (x: number) => (x * 72) / 25.4; // mm → pt
@@ -60,5 +60,27 @@ describe('raster checks', () => {
   });
   it('without a profile nothing is blocked', () => {
     expect(preflight(new Uint8Array(), png(10, 10), null).critical).toEqual([]);
+  });
+});
+
+describe('parseSizeCm and checkResolution (spec section 6)', () => {
+  const png = (widthPx: number, heightPx: number) => ({ mimeType: 'image/png', widthPx, heightPx });
+  it('parses sizes in every separator and the A sizes', () => {
+    expect(parseSizeCm('10×15')).toEqual([10, 15]);
+    expect(parseSizeCm('10x15 ס"מ')).toEqual([10, 15]);
+    expect(parseSizeCm('10 X 15')).toEqual([10, 15]);
+    expect(parseSizeCm('7,5*12.5')).toEqual([7.5, 12.5]);
+    expect(parseSizeCm('a4')).toEqual([21, 29.7]);
+    expect(parseSizeCm('גודל A6')).toEqual([10.5, 14.8]);
+    expect(parseSizeCm('גדול')).toBeNull();
+  });
+  it('A4 at 2480x3508 is 300 DPI and ok; 1240x1754 is 150 and low; orientation does not matter', () => {
+    expect(checkResolution(png(2480, 3508), [21, 29.7])).toEqual({ status: 'ok', dpi: 300 });
+    expect(checkResolution(png(3508, 2480), [21, 29.7])).toEqual({ status: 'ok', dpi: 300 });
+    expect(checkResolution(png(1240, 1754), [21, 29.7])).toEqual({ status: 'low', dpi: 150 });
+  });
+  it('PDF or an unknown size needs a manual check', () => {
+    expect(checkResolution({ mimeType: 'application/pdf', widthPx: null, heightPx: null }, [21, 29.7])).toEqual({ status: 'manual', dpi: null });
+    expect(checkResolution(png(2480, 3508), null)).toEqual({ status: 'manual', dpi: null });
   });
 });

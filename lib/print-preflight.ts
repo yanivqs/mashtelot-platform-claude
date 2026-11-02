@@ -39,6 +39,36 @@ export interface PreflightResult {
   checkedAt: string;
 }
 
+const ISO_SIZES: Record<string, [number, number]> = { A3: [29.7, 42], A4: [21, 29.7], A5: [14.8, 21], A6: [10.5, 14.8] };
+
+/** מידות בס"מ מטקסט: "רוחב×גובה" (×, x, X או *) או A3–A6. לא מזוהה — null. */
+export function parseSizeCm(text: string): [number, number] | null {
+  const iso = /(?:^|[^A-Za-z0-9])(A[3-6])(?:$|[^A-Za-z0-9])/i.exec(text);
+  if (iso) return ISO_SIZES[iso[1]!.toUpperCase()]!;
+  const m = /(\d+(?:[.,]\d+)?)\s*[×xX*]\s*(\d+(?:[.,]\d+)?)/.exec(text);
+  if (!m) return null;
+  const w = Number(m[1]!.replace(',', '.'));
+  const h = Number(m[2]!.replace(',', '.'));
+  return w > 0 && h > 0 ? [w, h] : null;
+}
+
+export type FileCheckStatus = 'ok' | 'low' | 'manual';
+
+export const FILE_CHECK_LABELS: Record<FileCheckStatus, string> = { ok: 'תקין', low: 'רזולוציה נמוכה', manual: 'לבדיקה ידנית' };
+
+/**
+ * בדיקת רזולוציה מול מידות המוצר (לא תלויה בכיוון): 300 DPI ומעלה — תקין. PDF, TIFF/EPS או מידה
+ * לא מזוהה — לבדיקה ידנית.
+ */
+export function checkResolution(file: { mimeType: string; widthPx: number | null; heightPx: number | null }, sizeCm: [number, number] | null): { status: FileCheckStatus; dpi: number | null } {
+  const raster = file.mimeType === 'image/png' || file.mimeType === 'image/jpeg';
+  if (!raster || !sizeCm || !file.widthPx || !file.heightPx) return { status: 'manual', dpi: null };
+  const [pxSmall, pxLarge] = [file.widthPx, file.heightPx].sort((a, b) => a - b) as [number, number];
+  const [cmSmall, cmLarge] = [...sizeCm].sort((a, b) => a - b) as [number, number];
+  const dpi = Math.round(Math.min(pxSmall / (cmSmall / 2.54), pxLarge / (cmLarge / 2.54)));
+  return { status: dpi >= 300 ? 'ok' : 'low', dpi };
+}
+
 const PT_TO_MM = 25.4 / 72;
 const round1 = (x: number) => Math.round(x * 10) / 10;
 
