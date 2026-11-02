@@ -56,7 +56,7 @@ export default async function PrintJobsPage() {
 
   const byJob = new Map<string, typeof items>();
   for (const it of items) {
-    const key = it.savedRevision?.savedProductId;
+    const key = it.savedRevision?.savedProductId ?? it.savedProductId;
     if (key) byJob.set(key, [...(byJob.get(key) ?? []), it]);
   }
 
@@ -73,27 +73,32 @@ export default async function PrintJobsPage() {
       const latest = [...versions].sort((a, b) => b.version - a.version)[0];
       const revision = j.revisions[0];
       const stored = (j.activeRevision?.values ?? revision?.values ?? null) as Stored | null;
-      const pub = j.template.isActive ? j.template.versions[0] : undefined;
+      const pub = j.template?.isActive ? j.template.versions[0] : undefined;
+      // עבודה קודמת בלי מוצר מהקטלוג: הזמנה חוזרת עוברת להצעת מחיר
+      const freeReorder = !j.template;
       const fields = pub ? parseFields(pub.fields) : null;
       const pricing = pub ? parsePricing(pub.pricing) : null;
       const raw = fields?.ok && j.activeRevision ? specStillValid(fields.value, j.activeRevision.values as Stored) : null;
       const expired = lastOrder ? isQuoteExpired(lastOrder) : false;
 
       let blocked: string | null = null;
-      if (!pub) blocked = 'המוצר אינו זמין כרגע';
+      if (freeReorder) blocked = null;
+      else if (!pub) blocked = 'המוצר אינו זמין כרגע';
       else if (!j.activeRevision) blocked = revision?.status === 'REJECTED' ? 'המפרט נדחה בבית הדפוס' : 'המפרט ממתין לאישור בית הדפוס';
       else if (!raw) blocked = 'המוצר השתנה מאז ההזמנה האחרונה. בדקו את הפרטים בהזמנה דומה';
 
       return {
         id: j.id,
         name: j.name,
-        productTitle: j.template.title,
-        productHref: `/admin/print-shop/${j.template.slug ?? j.template.id}`,
+        productTitle: j.template?.title ?? j.name,
+        productHref: j.template ? `/admin/print-shop/${j.template.slug ?? j.template.id}` : '',
+        imported: Boolean(j.importedAt),
+        freeReorder,
         canOrderSimilar: Boolean(pub),
-        image: latest && withThumb.has(latest.fileId) ? `/api/print-files/${latest.fileId}/thumbnail` : latest ? null : j.template.imageUrl,
+        image: latest && withThumb.has(latest.fileId) ? `/api/print-files/${latest.fileId}/thumbnail` : latest ? null : (j.template?.imageUrl ?? null),
         fileName: latest?.file.originalName ?? null,
         fileType: latest ? latest.file.mimeType.split('/').pop()!.toUpperCase() : null,
-        description: (stored?.display ?? []).map((d) => `${d.label}: ${d.value}`),
+        description: [...(j.description ? [j.description] : []), ...(stored?.display ?? []).map((d) => `${d.label}: ${d.value}`)],
         lastOrderAt: lastOrder?.createdAt.toISOString() ?? null,
         lastQuantity: last?.quantity ?? null,
         lastTotal: lastOrder && Number(lastOrder.totalAmount) > 0 ? Number(lastOrder.totalAmount) : null,
@@ -108,7 +113,7 @@ export default async function PrintJobsPage() {
             ? { orderId: lastOrder.id, total: Number(lastOrder.totalAmount), validUntil: lastOrder.quoteValidUntil?.toISOString() ?? null, expired }
             : null,
         blocked,
-        reorder: !blocked && fields?.ok && pricing?.ok && raw ? { fields: fields.value, pricing: pricing.value, raw, unitLabel: j.template.unitLabel } : null,
+        reorder: !blocked && fields?.ok && pricing?.ok && raw ? { fields: fields.value, pricing: pricing.value, raw, unitLabel: j.template?.unitLabel ?? null } : null,
         artwork: await artworkVersionsVM(versions),
         sortAt: lastOrder?.createdAt.getTime() ?? j.createdAt.getTime(),
       };
@@ -118,7 +123,7 @@ export default async function PrintJobsPage() {
 
   // הזמנות שלא שייכות לעבודה (מהטופס הישן): לקריאה בלבד
   const older = items
-    .filter((it) => !it.savedRevisionId)
+    .filter((it) => !it.savedRevisionId && !it.savedProductId)
     .map((it) => {
       const d = itemDisplay(it);
       return {

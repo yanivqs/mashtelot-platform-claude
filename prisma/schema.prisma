@@ -784,6 +784,8 @@ model PrintOrder {
   quoteValidUntil  DateTime?             @map("quote_valid_until")
   /// הערות פנימיות של בית הדפוס — לא מוצגות למשתלה
   adminNotes       String?               @map("admin_notes")
+  /// היסטוריה של עבודה קודמת: לא בתור ההזמנות ולא בייצור
+  imported         Boolean               @default(false)
   productionFile   PrintFile?            @relation("ProductionFile", fields: [productionFileId], references: [id], onDelete: NoAction)
   createdAt        DateTime              @default(now()) @map("created_at")
   updatedAt        DateTime              @updatedAt @map("updated_at")
@@ -815,7 +817,11 @@ model PrintOrderItem {
   /// PT-04: הזמנה ממוצר קבוע — גרסת המפרט המאושרת שממנה הוזמן
   savedRevisionId   String?               @map("saved_revision_id")
   savedRevision     PrintSavedRevision?   @relation(fields: [savedRevisionId], references: [id], onDelete: NoAction)
+  /// עבודה קודמת בלי מפרט: הקישור הישיר לעבודה
+  savedProductId    String?               @map("saved_product_id")
+  savedProduct      PrintSavedProduct?    @relation(fields: [savedProductId], references: [id], onDelete: Cascade)
 
+  @@index([savedProductId])
   @@map("print_order_items")
 }
 
@@ -1173,16 +1179,22 @@ model PrintTemplateVersion {
 model PrintSavedProduct {
   id               String               @id @default(uuid())
   nurseryId        String               @map("nursery_id")
-  templateId       String               @map("template_id")
+  /// ריק בעבודה קודמת שאינה שייכת למוצר מהקטלוג
+  templateId       String?              @map("template_id")
   /// שם פנימי של המשתלה ("מדבקה לעציץ 1 ליטר — לוגו")
   name             String
+  description      String?
+  /// עבודה קודמת שנוספה בידי בית הדפוס
+  importedAt       DateTime?            @map("imported_at")
+  importedBy       String?              @map("imported_by")
   isArchived       Boolean              @default(false) @map("is_archived")
   /// גרסת המפרט המאושרת שממנה מזמינים
   activeRevisionId String?              @unique @map("active_revision_id")
   createdAt        DateTime             @default(now()) @map("created_at")
   updatedAt        DateTime             @updatedAt @map("updated_at")
   nursery          Nursery              @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
-  template         PrintTemplate        @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  template         PrintTemplate?       @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  orderItems       PrintOrderItem[]
   activeRevision   PrintSavedRevision?  @relation("ActiveRevision", fields: [activeRevisionId], references: [id], onDelete: SetNull)
   artworks         PrintArtwork[]
   revisions        PrintSavedRevision[] @relation("Revisions")

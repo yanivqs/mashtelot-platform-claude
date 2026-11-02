@@ -75,6 +75,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/catalog', label: 'קטלוג בוטני', icon: Sprout },
   { href: '/admin/nurseries', label: 'משתלות', icon: Store },
   { href: '/admin/print-orders', label: 'בית דפוס', icon: Printer },
+  { href: '/admin/print-jobs', label: 'עבודות קודמות', icon: History },
   { href: '/admin/print-templates', label: 'תבניות דפוס', icon: FileText },
   { href: '/admin/print-specs', label: 'אישורי מפרט', icon: ClipboardCheck },
   { href: '/admin/print-artwork', label: 'גרפיקה והגהות', icon: ImageIcon },

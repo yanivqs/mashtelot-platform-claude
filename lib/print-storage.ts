@@ -35,6 +35,8 @@ export interface UploadTicket {
     draftVersionId?: string;
     /** בית הדפוס מעלה עיצוב בשם המשתלה */
     byPrintHouse?: string;
+    /** קובץ של עבודה קודמת: נחשב מאושר */
+    importedJobId?: string;
   };
 }
 
