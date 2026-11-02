@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import { ChevronLeft, ExternalLink } from 'lucide-react';
+import { ChevronLeft, Copy, ExternalLink } from 'lucide-react';
 import type { Plant } from '@prisma/client';
 import { formatPrice } from '@/lib/utils';
 import { SEO_LEVEL_META, type SeoScore } from '@/lib/seo-score';
 import type { EditorVariant } from './variants-editor';
-import { toggleAlwaysInStock } from './actions';
+import { duplicateProductAction, toggleAlwaysInStock } from './actions';
+import { DeleteProductButton } from './delete-button';
 import { ToggleCheckbox } from '@/components/admin/toggle-checkbox';
 import { StatusToggle } from '@/components/admin/status-toggle';
 
@@ -136,6 +137,13 @@ export function ProductRow({ product, viewUrl }: { product: RowProduct; viewUrl:
         >
           <ExternalLink className="h-4 w-4" />
         </a>
+        <form action={duplicateProductAction}>
+          <input type="hidden" name="id" value={product.id} />
+          <button aria-label={`שכפול ${product.customTitle || product.title}`} title="שכפול" className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700">
+            <Copy className="h-4 w-4" />
+          </button>
+        </form>
+        <DeleteProductButton id={product.id} title={product.customTitle || product.title} />
         <Link href={href} aria-label="עריכה" className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
           <ChevronLeft className="h-4 w-4" />
         </Link>

@@ -20,11 +20,12 @@ export default async function NurserySettingsPage() {
   const canEditDesign = await isModuleEnabled(nurseryId, 'design');
   const canEditCarousel =
     canEditDesign && (await getModuleConfig(nurseryId, 'design')).carousel !== false;
-  const salesEnabled = await isModuleEnabled(nurseryId, 'sales');
+  const paymentEnabled = await isModuleEnabled(nurseryId, 'payment_options');
+  const deliveryEnabled = await isModuleEnabled(nurseryId, 'delivery_options');
   const shippingEnabled = await isModuleEnabled(nurseryId, 'shipping');
   const socialEnabled = await isModuleEnabled(nurseryId, 'social');
 
-  const paymentMethods = salesEnabled
+  const paymentMethods = paymentEnabled
     ? await prisma.nurseryPaymentMethod.findMany({ where: { nurseryId } })
     : [];
   const channels = socialEnabled
@@ -49,7 +50,7 @@ export default async function NurserySettingsPage() {
         </div>
       </div>
 
-      {salesEnabled && (
+      {paymentEnabled && (
         <div>
           <h2 className="mb-1 text-xl font-bold">אפשרויות תשלום</h2>
           <p className="mb-4 text-sm text-gray-500">
@@ -62,7 +63,7 @@ export default async function NurserySettingsPage() {
         </div>
       )}
 
-      {salesEnabled && (
+      {deliveryEnabled && (
         <div>
           <h2 className="mb-1 text-xl font-bold">איסוף עצמי ומשלוחים</h2>
           <p className="mb-4 text-sm text-gray-500">

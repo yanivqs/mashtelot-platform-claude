@@ -7,6 +7,7 @@ import { requireNurseryAction } from '@/lib/nursery-scope';
 import { assertOwnedBy } from '@/lib/ownership';
 import { setOnHandStock } from '@/lib/order-service';
 import { recordAudit } from '@/lib/audit';
+import { duplicateProduct, removeProduct } from '@/lib/product-admin';
 import { saveRedirect } from '@/lib/redirects-admin';
 import { rateLimit } from '@/lib/rate-limit';
 import { suggestSlugWithAi } from '@/lib/ai-slug';
@@ -212,12 +213,33 @@ export async function createCustomProduct(
   redirect('/admin/products');
 }
 
+/** מחיקה: מוצר שהוזמן נעלם מהמלאי ומהחנות, וההזמנות נשארות שלמות. */
 export async function deleteProduct(formData: FormData): Promise<void> {
   const id = String(formData.get('id') || '');
-  await ownedProduct(id);
-  await prisma.nurseryProduct.delete({ where: { id } });
+  const { nurseryId, actorEmail } = await ownedProduct(id);
+  const r = await removeProduct(prisma, nurseryId, id);
+  if (r.ok) {
+    await recordAudit({ nurseryId, actorEmail, action: r.mode === 'archived' ? 'product.archived' : 'product.deleted', entityType: 'NurseryProduct', entityId: id, metadata: { title: r.title } });
+    revalidateStore(nurseryId);
+  }
   revalidatePath('/admin/products');
   redirect('/admin/products');
+}
+
+/** שכפול: העותק מוסתר ובלי מלאי, ונפתח לעריכה. */
+export async function duplicateProductAction(formData: FormData): Promise<void> {
+  const id = String(formData.get('id') || '');
+  const { nurseryId, actorEmail } = await ownedProduct(id);
+  const r = await duplicateProduct(prisma, nurseryId, id);
+  if (!r.ok) redirect('/admin/products');
+  await recordAudit({ nurseryId, actorEmail, action: 'product.duplicated', entityType: 'NurseryProduct', entityId: r.id, metadata: { from: id, title: r.title } });
+  revalidatePath('/admin/products');
+  redirect(`/admin/products/${r.id}`);
+}
+
+async function revalidateStore(nurseryId: string): Promise<void> {
+  const n = await prisma.nursery.findUnique({ where: { id: nurseryId }, select: { subdomain: true } });
+  if (n) revalidatePath(`/${n.subdomain}`, 'layout');
 }
 
 /** "תמיד במלאי" ישירות מרשימת המלאי — זמין למכירה בלי קשר לכמות. */

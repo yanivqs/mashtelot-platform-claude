@@ -22,7 +22,7 @@ test('owner adds redirects; old addresses land on the new pages (§14.01)', asyn
   expect((await visit(page, '/old-page.html')).status).toBe(404);
 
   await loginOwner(page);
-  await page.getByRole('link', { name: 'הפניות (SEO)' }).click();
+  await page.getByRole('link', { name: 'הפניות SEO' }).click();
 
   // Open redirect נדחה, והקלט נשמר
   await page.locator('input[name="from"]').fill('/go-away');

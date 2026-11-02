@@ -250,6 +250,22 @@ describe('C-P1-02 payment status (separate axis)', () => {
 });
 
 describe('C-P1-02 coupons (§12.01) and snapshot (§9.03)', () => {
+  beforeAll(async () => {
+    await prisma.nurseryModule.upsert({
+      where: { nurseryId_moduleKey: { nurseryId: f.A.nurseryId, moduleKey: 'coupons' } },
+      create: { nurseryId: f.A.nurseryId, moduleKey: 'coupons', isEnabled: true },
+      update: { isEnabled: true },
+    });
+  });
+
+  it('a coupon is rejected while the coupons module is off', async () => {
+    const p = await newProduct(f.A.nurseryId, 5);
+    await prisma.coupon.update({ where: { id: f.A.couponId }, data: { usageLimit: 5, usageCount: 0, minOrderAmount: null, perCustomerLimit: null } });
+    await prisma.nurseryModule.update({ where: { nurseryId_moduleKey: { nurseryId: f.A.nurseryId, moduleKey: 'coupons' } }, data: { isEnabled: false } });
+    await expect(createOrderRecord(prisma, orderInput({ productId: p.id, couponCode: 'CODEA' }))).rejects.toThrow('קוד קופון לא תקף');
+    await prisma.nurseryModule.update({ where: { nurseryId_moduleKey: { nurseryId: f.A.nurseryId, moduleKey: 'coupons' } }, data: { isEnabled: true } });
+  });
+
   it('stores the coupon snapshot and restores usage once on cancel', async () => {
     const p = await newProduct(f.A.nurseryId, 5);
     await prisma.coupon.update({ where: { id: f.A.couponId }, data: { usageLimit: 5, usageCount: 0, minOrderAmount: null, perCustomerLimit: null } });

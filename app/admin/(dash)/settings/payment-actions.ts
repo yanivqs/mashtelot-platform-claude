@@ -8,7 +8,7 @@ import { PAYMENT_METHODS, PAYMENT_DESTINATION_LABELS, PAYMENT_METHOD_LABELS, val
 
 /** הקשר המשתלה של המשתמש המחובר בלבד + אכיפת המודול (C-P1-01). */
 async function resolveNurseryId(): Promise<string> {
-  return (await requireNurseryAction({ all: ['sales'] })).nurseryId;
+  return (await requireNurseryAction({ all: ['payment_options'] })).nurseryId;
 }
 
 export interface SavePaymentMethodsState {

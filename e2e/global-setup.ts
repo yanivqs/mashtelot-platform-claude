@@ -122,7 +122,12 @@ export default async function globalSetup() {
         { nurseryId: n.id, moduleKey: 'customer_accounts', isEnabled: true },
         { nurseryId: n.id, moduleKey: 'loyalty', isEnabled: true },
         { nurseryId: n.id, moduleKey: 'crm', isEnabled: true },
-        { nurseryId: n.id, moduleKey: 'promotions', isEnabled: true },
+        { nurseryId: n.id, moduleKey: 'announcement', isEnabled: true },
+        { nurseryId: n.id, moduleKey: 'coupons', isEnabled: true },
+        { nurseryId: n.id, moduleKey: 'popups', isEnabled: true },
+        { nurseryId: n.id, moduleKey: 'payment_options', isEnabled: true },
+        { nurseryId: n.id, moduleKey: 'delivery_options', isEnabled: true },
+        { nurseryId: n.id, moduleKey: 'team', isEnabled: true },
         { nurseryId: n.id, moduleKey: 'page_builder', isEnabled: true },
       ],
     });
@@ -216,7 +221,7 @@ export default async function globalSetup() {
       },
     });
     await db.nurseryModule.createMany({
-      data: ['plant_catalog', 'supplies', 'sales', 'orders', 'promotions', 'page_builder'].map((moduleKey) => ({
+      data: ['plant_catalog', 'supplies', 'sales', 'orders', 'announcement', 'coupons', 'popups', 'payment_options', 'delivery_options', 'team', 'page_builder'].map((moduleKey) => ({
         nurseryId: fl.id,
         moduleKey,
         isEnabled: true,
@@ -268,7 +273,7 @@ export default async function globalSetup() {
       },
     });
     await db.nurseryModule.createMany({
-      data: ['plant_catalog', 'supplies', 'sales', 'orders'].map((moduleKey) => ({
+      data: ['plant_catalog', 'supplies', 'sales', 'orders', 'announcement', 'payment_options', 'delivery_options', 'team'].map((moduleKey) => ({
         nurseryId: fix.id,
         moduleKey,
         isEnabled: true,

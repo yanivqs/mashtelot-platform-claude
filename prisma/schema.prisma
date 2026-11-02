@@ -103,6 +103,7 @@ model Nursery {
   stockMovements  StockMovement[]
   pageLayouts     PageLayout[]
   images          NurseryImage[]
+  account         NurseryAccount?
 
   @@map("nurseries")
 }
@@ -240,12 +241,62 @@ model NurseryModule {
   moduleKey String   @map("module_key")
   isEnabled Boolean  @default(false) @map("is_enabled")
   config    Json?
+  /// עלות הקמה ועלות חודשית של המודול במשתלה זו (חשבונות משתלות)
+  setupFee   Decimal @default(0) @map("setup_fee") @db.Decimal(10, 2)
+  monthlyFee Decimal @default(0) @map("monthly_fee") @db.Decimal(10, 2)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   nursery   Nursery  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
 
   @@unique([nurseryId, moduleKey])
   @@map("nursery_modules")
+}
+
+enum AccountPaymentMethod {
+  TRANSFER
+  CASH
+  CARD
+}
+
+enum AccountBillingType {
+  ONE_TIME
+  MONTHLY
+}
+
+/// חשבון המשתלה מול הפלטפורמה. בלי רשומה או בלי תאריכים — אין חסימה (lib/nursery-billing.ts).
+model NurseryAccount {
+  nurseryId      String                @id @map("nursery_id")
+  joinedAt       DateTime?             @map("joined_at") @db.Date
+  billingDate    DateTime?             @map("billing_date") @db.Date
+  amountDue      Decimal?              @map("amount_due") @db.Decimal(10, 2)
+  paymentMethod  AccountPaymentMethod? @map("payment_method")
+  billingType    AccountBillingType?   @map("billing_type")
+  /// חיוב חד פעמי: בתוקף עד
+  validUntil     DateTime?             @map("valid_until") @db.Date
+  /// מערכת הבסיס מתומחרת כחבילה אחת
+  baseSetupFee   Decimal               @default(0) @map("base_setup_fee") @db.Decimal(10, 2)
+  baseMonthlyFee Decimal               @default(0) @map("base_monthly_fee") @db.Decimal(10, 2)
+  /// השהיית חשבון: חוסמת את האדמין של המשתלה בלבד. שונה מהשעיית משתלה, שסוגרת גם את החנות
+  suspendedAt    DateTime?             @map("suspended_at")
+  suspendReason  String?               @map("suspend_reason")
+  lastPaidAt     DateTime?             @map("last_paid_at")
+  notes          String?
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+  nursery        Nursery               @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@map("nursery_accounts")
+}
+
+/// פרטי הקשר של הפלטפורמה, מוצגים למשתלה חסומה. שורה אחת.
+model PlatformSettings {
+  id           String   @id @default("default")
+  contactName  String?  @map("contact_name")
+  contactPhone String?  @map("contact_phone")
+  contactEmail String?  @map("contact_email")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
 }
 
 model StaticPage {
@@ -378,6 +429,8 @@ model NurseryProduct {
   catalogRevisionId  String?                  @map("catalog_revision_id")
   /// §6.02: שדות שנשמרו מקומית ואינם מוצעים לסנכרון — { שדה: ערך }
   catalogOverrides   Json?                    @map("catalog_overrides")
+  /// מוצר שהוזמן ונמחק: לא מוצג באדמין ובחנות, נשמר בשביל היסטוריית ההזמנות
+  deletedAt          DateTime?                @map("deleted_at")
   catalogRevision    CatalogRevision?         @relation(fields: [catalogRevisionId], references: [id], onDelete: SetNull)
   syncDecisions      CatalogSyncDecision[]
   createdAt          DateTime                 @default(now()) @map("created_at")

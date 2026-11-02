@@ -30,15 +30,17 @@ import {
   LayoutTemplate,
   History,
   Sparkles,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { getEnabledModuleKeys } from '@/lib/module-access';
-import { MODULES } from '@/lib/modules';
 import { tenantOrigin } from '@/lib/seo';
 import { prisma } from '@/lib/prisma';
 import { pendingUpdateCount } from '@/lib/catalog-sync-admin';
 import { ROLE_LABELS, roleAllowsArea } from '@/lib/nursery-access';
+import { getAccountStatus } from '@/lib/nursery-account';
+import { formatAccountDate } from '@/lib/nursery-billing';
 import type { Role } from '@prisma/client';
 import { logout } from './actions';
 import { AdminShell } from '@/components/admin/admin-shell';
@@ -46,23 +48,6 @@ import { AdminShell } from '@/components/admin/admin-shell';
 export const metadata: Metadata = {
   title: 'פורטל ניהול',
   robots: { index: false, follow: false },
-};
-
-const ICONS: Record<string, LucideIcon> = {
-  LayoutDashboard,
-  Package,
-  PlusSquare,
-  ShoppingBag,
-  Megaphone,
-  Printer,
-  Settings,
-  FileText,
-  Newspaper,
-  Truck,
-  Tags,
-  Users,
-  Gift,
-  LayoutTemplate,
 };
 
 interface NavItem {
@@ -74,6 +59,7 @@ interface NavItem {
 const adminNav: NavItem[] = [
   { href: '/admin/catalog', label: 'קטלוג בוטני', icon: Sprout },
   { href: '/admin/nurseries', label: 'משתלות', icon: Store },
+  { href: '/admin/accounts', label: 'חשבונות משתלות', icon: Wallet },
   { href: '/admin/print-orders', label: 'בית דפוס', icon: Printer },
   { href: '/admin/print-templates', label: 'תבניות דפוס', icon: FileText },
   { href: '/admin/print-specs', label: 'אישורי מפרט', icon: ClipboardCheck },
@@ -88,45 +74,39 @@ const adminNav: NavItem[] = [
 /** מסכי תוכן (R06: כותב תוכן רואה רק אותם). */
 const CONTENT_HREFS = new Set(['/admin/pages', '/admin/blog']);
 
-/** ניווט משתלה — נבנה מתוך המודולים המשויכים, ומסונן לפי התפקיד (R06-01). */
+/** ניווט משתלה: מערכת הבסיס בסדר הקבוע, אחריה התוספות שהופעלו. מסונן לפי התפקיד (R06-01). */
 async function buildOwnerNav(nurseryId: string | null, role: Role): Promise<NavItem[]> {
-  const nav = await buildFullNurseryNav(nurseryId);
+  const overview: NavItem = { href: '/admin', label: 'סקירה', icon: LayoutDashboard };
+  if (!nurseryId) return [overview];
+  const enabled = await getEnabledModuleKeys(nurseryId);
+  const pending = await pendingUpdateCount(prisma, nurseryId);
+  const isOwner = roleAllowsArea(role, 'owner');
+
+  const nav: NavItem[] = [
+    overview,
+    { href: '/admin/products', label: 'המלאי שלי', icon: Package },
+    { href: '/admin/products/browse', label: 'שיוך מוצרים', icon: PlusSquare },
+    { href: '/admin/products/categories', label: 'הקטגוריות שלי', icon: Tags },
+    { href: '/admin/orders', label: 'הזמנות', icon: ShoppingBag },
+    { href: '/admin/redirects', label: 'הפניות SEO', icon: Signpost },
+    { href: '/admin/settings', label: 'הגדרות משתלה', icon: Settings },
+    { href: '/admin/print-shop', label: 'בית דפוס', icon: Printer },
+  ];
+  if (isOwner) nav.push({ href: '/admin/activity', label: 'יומן פעילות', icon: History });
+  // §6: עדכונים ממתינים מהקטלוג המרכזי (ללא הודעות יזומות — מונה בתפריט בלבד, Q3-א)
+  nav.push({ href: '/admin/catalog-updates', label: pending > 0 ? `עדכונים מהקטלוג (${pending})` : 'עדכונים מהקטלוג', icon: RefreshCw });
+  nav.push({ href: '/admin/products/images', label: 'תיקיית תמונות', icon: Images });
+
+  if (enabled.has('announcement') || enabled.has('coupons') || enabled.has('popups')) nav.push({ href: '/admin/marketing', label: 'שיווק', icon: Megaphone });
+  if (enabled.has('static_pages')) nav.push({ href: '/admin/pages', label: 'עמודים', icon: FileText });
+  if (enabled.has('blog')) nav.push({ href: '/admin/blog', label: 'בלוג', icon: Newspaper });
+  if (enabled.has('shipping')) nav.push({ href: '/admin/shipping', label: 'משלוחים', icon: Truck });
+  if (enabled.has('crm')) nav.push({ href: '/admin/customers', label: 'לקוחות', icon: Users });
+  if (enabled.has('loyalty')) nav.push({ href: '/admin/loyalty', label: 'מועדון לקוחות', icon: Gift });
+  if (enabled.has('page_builder')) nav.push({ href: '/admin/page-builder', label: 'עיצוב דף הבית', icon: LayoutTemplate });
+  if (enabled.has('team') && isOwner) nav.push({ href: '/admin/team', label: 'צוות', icon: Users });
+
   if (role === 'NURSERY_WRITER') return nav.filter((i) => i.href === '/admin' || CONTENT_HREFS.has(i.href));
-  if (roleAllowsArea(role, 'owner')) {
-    nav.splice(nav.length - 1, 0, { href: '/admin/team', label: 'צוות', icon: Users }, { href: '/admin/activity', label: 'יומן פעולות', icon: History });
-  }
-  return nav;
-}
-
-async function buildFullNurseryNav(nurseryId: string | null): Promise<NavItem[]> {
-  const nav: NavItem[] = [{ href: '/admin', label: 'סקירה', icon: LayoutDashboard }];
-  const enabled = nurseryId ? await getEnabledModuleKeys(nurseryId) : new Set<string>();
-
-  const hasProducts = enabled.has('plant_catalog') || enabled.has('supplies');
-  if (hasProducts) {
-    nav.push({ href: '/admin/products', label: 'המלאי שלי', icon: Package });
-    nav.push({ href: '/admin/products/browse', label: 'שיוך מוצרים', icon: PlusSquare });
-    nav.push({ href: '/admin/products/categories', label: 'הקטגוריות שלי', icon: Tags });
-    nav.push({ href: '/admin/products/images', label: 'תיקיית תמונות', icon: Images });
-    // §6: עדכונים ממתינים מהקטלוג המרכזי (ללא הודעות יזומות — מונה בתפריט בלבד, Q3-א)
-    const pending = nurseryId ? await pendingUpdateCount(prisma, nurseryId) : 0;
-    nav.push({
-      href: '/admin/catalog-updates',
-      label: pending > 0 ? `עדכונים מהקטלוג (${pending})` : 'עדכונים מהקטלוג',
-      icon: RefreshCw,
-    });
-  }
-
-  for (const mod of MODULES) {
-    if (mod.key === 'plant_catalog') continue; // כבר טופל למעלה
-    if (!enabled.has(mod.key) || !mod.ownerNav) continue;
-    for (const item of mod.ownerNav) {
-      nav.push({ href: item.href, label: item.label, icon: ICONS[item.icon] ?? Package });
-    }
-  }
-
-  nav.push({ href: '/admin/redirects', label: 'הפניות (SEO)', icon: Signpost });
-  nav.push({ href: '/admin/settings', label: 'הגדרות המשתלה', icon: Settings });
   return nav;
 }
 
@@ -144,7 +124,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   let ownerNav: NavItem[] = [];
   let storeUrl: string | null = null;
-  if (!isSuper) {
+  const account = !isSuper && user.nurseryId ? await getAccountStatus(user.nurseryId) : null;
+  const blocked = account?.state === 'BLOCKED';
+  if (!isSuper && !blocked) {
     const nursery = user.nursery; // לעולם לא "המשתלה הראשונה" (C-P1-01)
     ownerNav = await buildOwnerNav(nursery?.id ?? null, user.role);
     storeUrl = nursery ? tenantOrigin(nursery) : null;
@@ -209,7 +191,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </nav>
 
         {/* R06: לעובדים אין "החשבון שלי" — הסיסמה מנוהלת בידי בעל המשתלה */}
-        {(isSuper || user.role === 'NURSERY_OWNER') && (
+        {(isSuper || user.role === 'NURSERY_OWNER') && !blocked && (
         <div className="border-t border-gray-100 p-3 pb-0">
           <Link
             href="/admin/account"
@@ -231,6 +213,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <AdminShell title={title} sidebar={sidebar}>
+      {account?.state === 'WARNING' && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status" data-testid="account-warning">
+          {account.reason === 'EXPIRED' ? 'תוקף החשבון מסתיים' : 'מועד החיוב'} ב-{formatAccountDate(account.dueDate)}. אם לא יוסדר, הגישה לניהול תיחסם ב-{formatAccountDate(account.blocksOn)}. לפרטים פנו למנהל הפלטפורמה.
+        </div>
+      )}
       {children}
     </AdminShell>
   );

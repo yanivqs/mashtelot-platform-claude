@@ -15,7 +15,7 @@ export async function saveDeliverySettings(
   _prev: SaveDeliveryState,
   formData: FormData,
 ): Promise<SaveDeliveryState> {
-  const scope = await nurseryActionScope({ all: ['sales'] });
+  const scope = await nurseryActionScope({ all: ['delivery_options'] });
   if (!scope.ok) return { error: scope.error };
   const { nurseryId } = scope;
 

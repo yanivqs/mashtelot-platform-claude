@@ -310,7 +310,7 @@ export default function CheckoutPage() {
             )}
           </section>
 
-          {!isQuote && (
+          {!isQuote && options?.couponsEnabled && (
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-gray-700">קוד קופון</span>
               <input name="couponCode" className={field} />

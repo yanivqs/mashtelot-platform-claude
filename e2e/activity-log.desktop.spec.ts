@@ -20,8 +20,8 @@ test('activity log (§20.02): settings change is audited; owner sees own nursery
   await form.getByRole('button', { name: 'שמירה' }).click();
   await expect(form.getByText('נשמר ✓')).toBeVisible();
 
-  // בעל המשתלה: "יומן פעולות" בתפריט, סינון "הגדרות"
-  await page.locator('aside nav').getByRole('link', { name: 'יומן פעולות' }).click();
+  // בעל המשתלה: "יומן פעילות" בתפריט, סינון "הגדרות"
+  await page.locator('aside nav').getByRole('link', { name: 'יומן פעילות' }).click();
   await page.getByLabel('תחום').selectOption('settings');
   await page.getByRole('button', { name: 'סינון' }).click();
   const row = page.getByTestId('activity-row').filter({ hasText: 'delivery_settings.updated' }).filter({ hasText: E2E_OWNER7.email });

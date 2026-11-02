@@ -5,7 +5,6 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireUser, hashPassword } from '@/lib/auth';
 import { normalizeOpeningHours, parseOpeningHoursText, normalizeCarousel, HERO_LAYOUTS, HEADER_STYLES, type HeaderStyle, type HeroLayout } from '@/lib/theme';
-import { MODULE_KEYS } from '@/lib/modules';
 import { syncMasterCategoriesToNursery } from '@/lib/category-provision';
 import { nurseryActionScope } from '@/lib/nursery-scope';
 import { isModuleEnabled, getModuleConfig } from '@/lib/module-access';
@@ -240,51 +239,6 @@ async function keepLockedDesignFields(id: string, data: Prisma.NurseryUpdateInpu
       ? Prisma.JsonNull
       : (next.themeConfig as Prisma.InputJsonValue);
   if (!designEnabled) data.primaryColor = next.primaryColor;
-}
-
-const DESIGN_FLAGS = ['colors', 'hero', 'carousel', 'popup', 'sticky'] as const;
-
-/** שיוך מודולים למשתלה (סופר-אדמין). טופס אחד לכל המודולים. */
-export async function setNurseryModules(
-  _prev: NurseryFormState,
-  formData: FormData,
-): Promise<NurseryFormState> {
-  await requireUser(['SUPER_ADMIN']);
-  const nurseryId = String(formData.get('nurseryId') || '');
-  if (!nurseryId) return { error: 'מזהה חסר' };
-
-  for (const key of MODULE_KEYS) {
-    const isEnabled = formData.get(`mod_${key}`) === 'on';
-
-    const config: Record<string, unknown> = {};
-    if (key === 'sales') {
-      config.mode = formData.get('sales_mode') === 'QUOTE' ? 'QUOTE' : 'ONLINE';
-    }
-    if (key === 'design') {
-      for (const flag of DESIGN_FLAGS) config[flag] = formData.get(`design_${flag}`) === 'on';
-    }
-    const hasConfig = Object.keys(config).length > 0;
-
-    await prisma.nurseryModule.upsert({
-      where: { nurseryId_moduleKey: { nurseryId, moduleKey: key } },
-      update: {
-        isEnabled,
-        config: hasConfig ? (config as Prisma.InputJsonValue) : Prisma.JsonNull,
-      },
-      create: {
-        nurseryId,
-        moduleKey: key,
-        isEnabled,
-        config: hasConfig ? (config as Prisma.InputJsonValue) : undefined,
-      },
-    });
-  }
-
-  // §20.02: שינוי מודולים (זכאות לשדרוגים) — נרשם עם הרשימה הפעילה אחרי השינוי
-  const enabledNow = await prisma.nurseryModule.findMany({ where: { nurseryId, isEnabled: true }, select: { moduleKey: true } });
-  await auditAsCurrentUser({ nurseryId, action: 'nursery.modules_changed', entityType: 'Nursery', entityId: nurseryId, metadata: { enabled: enabledNow.map((m) => m.moduleKey).sort() } });
-  revalidatePath(`/admin/nurseries/${nurseryId}`);
-  return { ok: true };
 }
 
 /** §2.03: שינוי סטטוס מחזור החיים (השעיה אינה מחיקה). נרשם ב-Audit. */

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
 import { recordAudit } from '@/lib/audit';
+import { isNurseryBlocked } from '@/lib/nursery-account';
 import { storageDriver, verifyDownloadToken } from '@/lib/print-storage';
 
 /**
@@ -22,7 +23,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const allowed =
     user.role === 'SUPER_ADMIN' ||
     ((user.role === 'NURSERY_OWNER' || user.role === 'NURSERY_STAFF') && user.nurseryId === file.nurseryId);
-  if (!allowed) return new Response('Not found', { status: 404 });
+  if (!allowed || (user.role !== 'SUPER_ADMIN' && (await isNurseryBlocked(user.nurseryId)))) return new Response('Not found', { status: 404 });
 
   const bytes = await storageDriver().read(file.storageKey);
   if (!bytes) return new Response('Missing in storage', { status: 404 });

@@ -260,6 +260,9 @@ export async function createOrderRecord(db: PrismaClient, input: CreateOrderInpu
       let coupon: { id: string; code: string; discountPct: number } | null = null;
 
       if (!input.isQuote && input.couponCode?.trim()) {
+        // קוד שנשלח כשמודול הקופונים כבוי — כמו קוד לא קיים
+        const couponsOn = await tx.nurseryModule.count({ where: { nurseryId: input.nurseryId, moduleKey: 'coupons', isEnabled: true } });
+        if (!couponsOn) throw new CheckoutError('קוד קופון לא תקף');
         const c = await tx.coupon.findFirst({
           where: { nurseryId: input.nurseryId, code: input.couponCode.trim(), isActive: true },
         });

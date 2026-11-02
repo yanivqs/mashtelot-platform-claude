@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { getSessionUser } from '@/lib/auth';
+import { isNurseryBlocked } from '@/lib/nursery-account';
 
 /** תמונה קטנה של קובץ דפוס: אותה הרשאה כמו בהורדה — בעל המשתלה ועובד שלה, או בית הדפוס. */
 export const dynamic = 'force-dynamic';
@@ -12,7 +13,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const allowed =
     user.role === 'SUPER_ADMIN' ||
     ((user.role === 'NURSERY_OWNER' || user.role === 'NURSERY_STAFF') && user.nurseryId === file?.nurseryId);
-  if (!file?.thumbnail || !allowed) return new Response('Not found', { status: 404 });
+  if (!file?.thumbnail || !allowed || (user.role !== 'SUPER_ADMIN' && (await isNurseryBlocked(user.nurseryId)))) return new Response('Not found', { status: 404 });
 
   return new Response(new Uint8Array(file.thumbnail.bytes), {
     headers: {

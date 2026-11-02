@@ -30,7 +30,7 @@ export default async function CategoryManagerPage(props: { params: Promise<{ id:
       include: { nurseryProduct: { include: { plant: true, supply: true, ...catalogRevisionInclude } } },
     }).then((rows) => rows.map((a) => ({ ...a, nurseryProduct: localizeProduct(a.nurseryProduct) }))),
     prisma.nurseryProduct.findMany({
-      where: { nurseryId: category.nurseryId },
+      where: { nurseryId: category.nurseryId, deletedAt: null },
       include: { plant: true, supply: true, ...catalogRevisionInclude },
       orderBy: { createdAt: 'desc' },
     }).then((rows) => rows.map(localizeProduct)),
