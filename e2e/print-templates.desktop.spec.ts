@@ -98,6 +98,7 @@ test('editor: tabs, drag, duplicate; nursery: calculator, review reasons, job an
   const published = page.getByTestId('published-version');
   await expect(published).toContainText('PVC');
   await expect(published).toContainText('0.5');
+  await expect(published).toContainText(/מינימום.*300/);
   await expect(published).toContainText(/500, ?1,000/);
   await expect(published).toContainText('מ-500');
   await expect(published).toContainText('מחיר מיידי');

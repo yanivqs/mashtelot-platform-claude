@@ -127,6 +127,8 @@ export default async function PrintTemplatePage(props: { params: Promise<{ id: s
                         {o.priceDelta ? ` · ${formatPrice(o.priceDelta)} ליחידה` : ''}
                         {o.fixedAdd ? ` · ${formatPrice(o.fixedAdd)} קבוע` : ''}
                         {o.percentAdd ? ` · ${o.percentAdd}%` : ''}
+                        {o.minCharge ? ` · מינימום ${formatPrice(o.minCharge)}` : ''}
+                        {o.minQuantity ? ` · מכמות ${o.minQuantity.toLocaleString('he-IL')}` : ''}
                         {o.requiresQuote ? ' · דורש הצעה' : ''}
                         {o.help ? ` · ${o.help}` : ''}
                       </li>
