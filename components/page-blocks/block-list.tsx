@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ScrollArea } from '@/components/storefront/scroll-row';
 import { ArrowLeft, Clock, Mail, MapPin, Phone } from 'lucide-react';
 import type { Nursery } from '@prisma/client';
 import { sanitizeRichHtml } from '@/lib/sanitize';
@@ -187,7 +188,7 @@ function BlockView({ b, nursery, data, level }: { b: Block; nursery: Nursery; da
         <section className="mx-auto max-w-6xl px-6 py-12">
           <SectionTitle title={b.title} />
           {/* נייד: שורה אחת בגלילה אופקית; מחשב: רשת */}
-          <div className="-mx-6 flex gap-3 overflow-x-auto px-6 pb-2 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
+          <ScrollArea className="-mx-6 flex gap-3 overflow-x-auto px-6 pb-2 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
             {cats.map((c) => (
               <Link
                 key={c.id}
@@ -197,7 +198,7 @@ function BlockView({ b, nursery, data, level }: { b: Block; nursery: Nursery; da
                 {c.name}
               </Link>
             ))}
-          </div>
+          </ScrollArea>
         </section>
       );
     }

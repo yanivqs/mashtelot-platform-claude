@@ -39,6 +39,10 @@ export const FIX_SHOP = 'http://e2efix.localhost:3100';
 /** תיקיית התמונות — משתמשים נפרדים בגלל מגבלת ההתחברויות לאימייל */
 export const E2E_FOLDER_OWNER = { email: 'folder-owner@e2e.invalid', password: 'e2e-folder-pass-123' };
 export const E2E_SUPER7 = { email: 'super7@e2e.invalid', password: 'e2e-super7-pass-123' };
+/** משתלה נפרדת לעיצוב דף הבית בידי הסופר-אדמין ולתפוצת הדואר (טופס ההרשמה מופיע בכל עמוד בחנות) */
+export const E2E_ROUND3_OWNER = { email: 'round3-owner@e2e.invalid', password: 'e2e-round3-pass-123' };
+export const E2E_SUPER8 = { email: 'super8@e2e.invalid', password: 'e2e-super8-pass-123' };
+export const ROUND3_SHOP = 'http://e2eround3.localhost:3100';
 /** תבנית מפורסמת שנוצרת כאן לבדיקת המוצרים הקבועים (PT-04) */
 export const E2E_SAVED_TEMPLATE = 'תוויות קבועות E2E';
 export const E2E_PREFLIGHT_TEMPLATE = 'שלט ייצור E2E';
@@ -81,6 +85,12 @@ export default async function globalSetup() {
       await db.user.deleteMany({ where: { nurseryId: oldFloat.id } });
       await db.nursery.delete({ where: { id: oldFloat.id } });
     }
+    const oldRound3 = await db.nursery.findUnique({ where: { subdomain: 'e2eround3' } });
+    if (oldRound3) {
+      await db.user.deleteMany({ where: { nurseryId: oldRound3.id } });
+      await db.nursery.delete({ where: { id: oldRound3.id } });
+    }
+    await db.user.deleteMany({ where: { email: E2E_SUPER8.email } });
     const oldFix = await db.nursery.findUnique({ where: { subdomain: 'e2efix' } });
     if (oldFix) {
       await db.order.deleteMany({ where: { nurseryId: oldFix.id } });
@@ -314,6 +324,14 @@ export default async function globalSetup() {
     });
     await db.user.create({
       data: { email: E2E_SUPER7.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER7.password, 4) },
+    });
+    const round3 = await db.nursery.create({ data: { name: 'משתלת סבב 3', subdomain: 'e2eround3', ownerEmail: E2E_ROUND3_OWNER.email } });
+    await db.nurseryModule.create({ data: { nurseryId: round3.id, moduleKey: 'newsletter', isEnabled: true } });
+    await db.user.create({
+      data: { email: E2E_ROUND3_OWNER.email, role: 'NURSERY_OWNER', nurseryId: round3.id, passwordHash: await bcrypt.hash(E2E_ROUND3_OWNER.password, 4) },
+    });
+    await db.user.create({
+      data: { email: E2E_SUPER8.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER8.password, 4) },
     });
     // PT-04: תבנית מפורסמת ופעילה (תווית עם טקסט וגודל)
     await db.printTemplate.create({

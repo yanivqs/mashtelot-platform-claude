@@ -3,6 +3,7 @@ import type { Nursery } from '@prisma/client';
 import { Phone, Mail, MapPin, Clock } from 'lucide-react';
 import { normalizeOpeningHours } from '@/lib/theme';
 import type { EnabledChannel } from '@/lib/channels';
+import { NewsletterForm } from './newsletter-form';
 import { SocialLinks } from './social-links';
 import { WazeIcon } from '@/components/waze-icon';
 import { wazeUrl } from '@/lib/waze';
@@ -10,15 +11,19 @@ import { wazeUrl } from '@/lib/waze';
 export function SiteFooter({
   nursery,
   channels = [],
+  newsletterTenant = null,
 }: {
   nursery: Nursery;
   channels?: EnabledChannel[];
+  /** מודול תפוצת הדואר פעיל: הטופס מוצג, עם ה-tenant שאליו נרשמים */
+  newsletterTenant?: string | null;
 }) {
   const hours = normalizeOpeningHours(nursery.openingHours);
   const address = [nursery.addressLine, nursery.city].filter(Boolean).join(', ');
 
   return (
     <footer className="mt-16 border-t border-gray-100 bg-gray-50">
+      {newsletterTenant && <NewsletterForm tenant={newsletterTenant} nurseryName={nursery.name} />}
       <div className="mx-auto grid max-w-6xl gap-8 px-6 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <p className="text-base font-bold text-gray-900">{nursery.name}</p>

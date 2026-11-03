@@ -104,6 +104,7 @@ model Nursery {
   pageLayouts     PageLayout[]
   images          NurseryImage[]
   account         NurseryAccount?
+  newsletterSubscribers NewsletterSubscriber[]
 
   @@map("nurseries")
 }
@@ -233,6 +234,22 @@ model NurseryPaymentMethod {
 
   @@unique([nurseryId, method])
   @@map("nursery_payment_methods")
+}
+
+/// תפוצת דואר: הסכמה מפורשת לכל כתובת במשתלה; הסרה נשמרת
+model NewsletterSubscriber {
+  id             String    @id @default(uuid())
+  nurseryId      String    @map("nursery_id")
+  email          String
+  consentAt      DateTime  @map("consent_at")
+  unsubscribedAt DateTime? @map("unsubscribed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  nursery        Nursery   @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@unique([nurseryId, email])
+  @@index([nurseryId, createdAt])
+  @@map("newsletter_subscribers")
 }
 
 model NurseryModule {

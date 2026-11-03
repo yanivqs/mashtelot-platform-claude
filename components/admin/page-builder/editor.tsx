@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useState, useTransition, startTransition } from 'react';
+import { createContext, useActionState, useContext, useEffect, useRef, useState, useTransition, startTransition } from 'react';
 import { useFormStatus } from 'react-dom';
 import { ArrowDown, ArrowUp, Copy, Monitor, Plus, Smartphone, Trash2 } from 'lucide-react';
 import { ImageUpload } from '@/components/admin/image-upload';
@@ -29,6 +29,9 @@ import {
 
 const field = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500';
 const initial: BuilderState = {};
+
+/** כשהסופר-אדמין עורך עבור משתלה: מזהה המשתלה נשלח עם כל פעולה, והשרת בודק את ההרשאה. */
+const PlatformNursery = createContext<string | undefined>(undefined);
 
 export interface VersionRow {
   version: number;
@@ -111,13 +114,14 @@ function HeroFields({ b, set }: { b: BlockOf<'hero'>; set: Patch<BlockOf<'hero'>
 function ProductPicker({ target, b, set, titles }: { target: string; b: BlockOf<'products'>; set: Patch<BlockOf<'products'>>; titles: Record<string, string> }) {
   const [q, setQ] = useState('');
   const [results, setResults] = useState<Array<{ id: string; title: string }>>([]);
+  const platformNurseryId = useContext(PlatformNursery);
   const [known, setKnown] = useState<Record<string, string>>(titles);
   useEffect(() => {
     const t = window.setTimeout(() => {
-      searchProductsAction(target, q).then(setResults).catch(() => setResults([]));
+      searchProductsAction(target, q, platformNurseryId).then(setResults).catch(() => setResults([]));
     }, 300);
     return () => window.clearTimeout(t);
-  }, [q, target]);
+  }, [q, target, platformNurseryId]);
   const add = (p: { id: string; title: string }) => {
     setKnown((k) => ({ ...k, [p.id]: p.title }));
     if (!b.productIds.includes(p.id)) set({ productIds: [...b.productIds, p.id] });
@@ -428,10 +432,12 @@ function VersionRowForms({
   onDone: (state: BuilderState) => void;
 }) {
   const [pending, start] = useTransition();
+  const platformNurseryId = useContext(PlatformNursery);
   const call = (action: typeof restoreAction) =>
     start(async () => {
       const fd = new FormData();
       fd.set('target', target);
+      if (platformNurseryId) fd.set('platformNurseryId', platformNurseryId);
       fd.set('version', String(v.version));
       onDone(await action(initial, fd));
     });
@@ -469,6 +475,7 @@ export function PageBuilderEditor({
   productTitles,
   previewUrl,
   storeUrl,
+  platformNurseryId,
 }: {
   target: string;
   initialBlocks: Block[];
@@ -478,6 +485,7 @@ export function PageBuilderEditor({
   productTitles: Record<string, string>;
   previewUrl: string;
   storeUrl: string | null;
+  platformNurseryId?: string;
 }) {
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
   const [open, setOpen] = useState<string | null>(initialBlocks[0]?.id ?? null);
@@ -499,17 +507,19 @@ export function PageBuilderEditor({
     const t = window.setTimeout(() => {
       const fd = new FormData();
       fd.set('target', target);
+      if (platformNurseryId) fd.set('platformNurseryId', platformNurseryId);
       fd.set('blocks', JSON.stringify(blocks));
       startTransition(() => save(fd));
     }, 1000);
     return () => window.clearTimeout(t);
-  }, [blocks, target, save]);
+  }, [blocks, target, save, platformNurseryId]);
 
   const update = (id: string, patch: Partial<Block>) => setBlocks((prev) => prev.map((b) => (b.id === id ? ({ ...b, ...patch } as Block) : b)));
   const move = (i: number, d: -1 | 1) => setBlocks((prev) => swap(prev, i, i + d));
   const status = saving ? 'שומר...' : saveState.error ? null : saveState.ok ? 'הטיוטה נשמרה' : 'אין שינויים שלא נשמרו';
 
   return (
+    <PlatformNursery.Provider value={platformNurseryId}>
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -600,6 +610,7 @@ export function PageBuilderEditor({
           <h2 className="font-semibold">פרסום</h2>
           <form action={publish} className="space-y-3">
             <input type="hidden" name="target" value={target} />
+            {platformNurseryId && <input type="hidden" name="platformNurseryId" value={platformNurseryId} />}
             <div className="flex flex-wrap gap-4 text-sm">
               <label className="flex items-center gap-2">
                 <input type="radio" name="when" value="now" checked={when === 'now'} onChange={() => setWhen('now')} />
@@ -622,6 +633,7 @@ export function PageBuilderEditor({
           {versions.length > 0 && (
             <form action={toggleActive} className="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-3 text-sm">
               <input type="hidden" name="target" value={target} />
+            {platformNurseryId && <input type="hidden" name="platformNurseryId" value={platformNurseryId} />}
               <input type="hidden" name="active" value={isActive ? '0' : '1'} />
               <span className="text-gray-600">{isActive ? 'החנות מציגה את הדף מהבלוקים.' : 'החנות מציגה את התצוגה הרגילה.'}</span>
               <Submit label={isActive ? 'חזרה לתצוגה הרגילה' : 'הצגת הבלוקים שוב'} cls="border border-gray-300 text-gray-800 hover:bg-gray-50" />
@@ -683,5 +695,6 @@ export function PageBuilderEditor({
         </div>
       </div>
     </div>
+    </PlatformNursery.Provider>
   );
 }

@@ -6,8 +6,8 @@ import { tenantOrigin } from '@/lib/seo';
 import { editorState, type LayoutTarget } from '@/lib/page-builder-admin';
 import type { VersionRow } from '@/components/admin/page-builder/editor';
 
-/** כל מה שהעורך צריך — רק נתוני המשתלה שבהקשר. */
-export async function loadEditorProps(nurseryId: string, target: LayoutTarget, storePath: string) {
+/** כל מה שהעורך צריך — רק נתוני המשתלה שבהקשר. `platform`: הסופר-אדמין עורך עבור המשתלה. */
+export async function loadEditorProps(nurseryId: string, target: LayoutTarget, storePath: string, platform = false) {
   const [state, categories, nursery] = await Promise.all([
     editorState(prisma, nurseryId, target),
     prisma.nurseryCategory.findMany({ where: { nurseryId } }),
@@ -34,7 +34,8 @@ export async function loadEditorProps(nurseryId: string, target: LayoutTarget, s
     isActive: state.isActive,
     categories: flattenCategoryTree(categories),
     productTitles: Object.fromEntries(products.map((p) => [p.id, p.customTitle || p.plant?.hebrewName || p.supply?.title || 'מוצר'])),
-    previewUrl: `/admin/preview/${targetParam}`,
+    previewUrl: `/admin/preview/${targetParam}${platform ? `?nursery=${encodeURIComponent(nurseryId)}` : ''}`,
+    platformNurseryId: platform ? nurseryId : undefined,
     storeUrl: nursery ? `${tenantOrigin(nursery)}${storePath}` : null,
   };
 }

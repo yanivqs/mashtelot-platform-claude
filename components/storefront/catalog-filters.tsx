@@ -90,7 +90,7 @@ export function CategoryRows({
   return (
     <div className="space-y-2.5">
       {rows.map((row, i) => (
-        <ScrollRow key={i}>
+        <ScrollRow key={i} bar>
           {i === 0 ? (
             <Link href={href({ category: null })} aria-current={path.length ? undefined : 'true'} className={path.length ? chipIdle : chipActive}>
               הכל

@@ -96,6 +96,7 @@ export default async function TenantLayout(props: LayoutProps) {
   const showSocial = await isModuleEnabled(nursery.id, 'social');
   // R06-03: קישור לחשבון — קבוע (בלי לקרוא עוגיות, כדי לא לבטל את המטמון של דפי החנות)
   const showAccount = await isModuleEnabled(nursery.id, 'customer_accounts');
+  const showNewsletter = await isModuleEnabled(nursery.id, 'newsletter');
   const channels = showSocial ? await getEnabledChannels(nursery.id) : [];
   const navPages = await getNavPages(nursery.id);
   const showBlog = await hasPublicBlog(nursery.id);
@@ -136,7 +137,7 @@ export default async function TenantLayout(props: LayoutProps) {
         <main id="main" tabIndex={-1} className="flex-1 outline-none">
           {children}
         </main>
-        <SiteFooter nursery={nursery} channels={channels} />
+        <SiteFooter nursery={nursery} channels={channels} newsletterTenant={showNewsletter ? params.tenant : null} />
         {theme.headerStyle === 'float' ? (
           // מקום לסרגל הצף כדי שלא יסתיר את תחתית הדף
           <div className="h-16 md:hidden" aria-hidden />

@@ -28,6 +28,17 @@ test('mobile catalog: categories stay on one scrollable row and only existing le
     expect(await row.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
     // הקטגוריה שנבחרה נגללת אל תוך המסך, והעמוד עצמו לא נמתח לרוחב
     await expect(active).toBeInViewport();
+
+    // פס גלילה כתום מתחת לכפתורים: מראה שיש עוד, וזז עם הגלילה
+    const scrollBar = row.locator('..').getByTestId('scroll-bar');
+    await expect(scrollBar).toBeVisible();
+    const thumb = scrollBar.getByTestId('scroll-bar-thumb');
+    expect(await thumb.evaluate((el) => getComputedStyle(el).backgroundColor)).toMatch(/249, 115, 22|oklch/);
+    const thumbBox = () => thumb.evaluate((el) => Math.round(el.getBoundingClientRect().right));
+    const atActive = await thumbBox();
+    await row.evaluate((el) => (el.scrollLeft = 0));
+    await expect.poll(thumbBox).toBeGreaterThan(atActive);
+    await active.scrollIntoViewIfNeeded();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
     // סינון א-ב רק בקטלוג הראשי: לא בקטגוריה ולא בחיפוש, ואות שנשארה בכתובת לא חלה בהם

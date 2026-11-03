@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Loader2, Search, Trash2, Upload, X } from 'lucide-react';
+import { Loader2, Search, Trash2, Upload, X, ZoomIn } from 'lucide-react';
 import { shrinkImageIfNeeded } from '@/lib/shrink-image';
 
 export interface FolderTile {
@@ -164,6 +164,54 @@ function AssignPanel({
   );
 }
 
+/** תמונה בריבוע, ובלחיצה תצוגה מוגדלת. dialog נותן סגירה ב-Esc ושמירת פוקוס. התמונה הגדולה נטענת רק כשפותחים. */
+function ZoomableImage({ url, fileName }: { url: string; fileName: string }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [opened, setOpened] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={`הגדלת ${fileName}`}
+        onClick={() => {
+          setOpened(true);
+          dialog.current?.showModal();
+        }}
+        className="group relative block aspect-square w-full cursor-zoom-in bg-gray-50"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt="" loading="lazy" className="h-full w-full object-cover" />
+        <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 p-1 text-white group-hover:bg-black/90">
+          <ZoomIn className="h-4 w-4" />
+        </span>
+      </button>
+      <dialog
+        ref={dialog}
+        aria-label={fileName}
+        onClick={(e) => {
+          if (e.target === dialog.current) dialog.current.close();
+        }}
+        className="m-auto max-h-[95vh] max-w-[95vw] overflow-hidden rounded-xl bg-white p-2 backdrop:bg-black/80"
+      >
+        {opened && (
+          <>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="truncate text-xs text-gray-700" dir="ltr">
+                {fileName}
+              </p>
+              <button type="button" autoFocus aria-label="סגירת התצוגה המוגדלת" onClick={() => dialog.current?.close()} className="shrink-0 rounded p-1 text-gray-700 hover:bg-gray-100">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt={fileName} data-testid="zoomed-image" className="mx-auto max-h-[85vh] max-w-full object-contain" />
+          </>
+        )}
+      </dialog>
+    </>
+  );
+}
+
 function Tile({
   image,
   products,
@@ -195,10 +243,7 @@ function Tile({
 
   return (
     <li className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="aspect-square bg-gray-50">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={image.url} alt={image.fileName} loading="lazy" className="h-full w-full object-cover" />
-      </div>
+      <ZoomableImage url={image.url} fileName={image.fileName} />
       <div className="space-y-1.5 p-2 text-xs">
         <p className="truncate text-gray-700" title={image.fileName} dir="ltr">
           {image.fileName}

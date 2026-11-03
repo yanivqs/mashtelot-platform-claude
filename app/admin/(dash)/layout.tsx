@@ -99,6 +99,7 @@ async function buildOwnerNav(nurseryId: string | null, role: Role): Promise<NavI
   nav.push({ href: '/admin/products/images', label: 'תיקיית תמונות', icon: Images });
 
   if (enabled.has('announcement') || enabled.has('coupons') || enabled.has('popups')) nav.push({ href: '/admin/marketing', label: 'שיווק', icon: Megaphone });
+  if (enabled.has('newsletter')) nav.push({ href: '/admin/newsletter', label: 'תפוצת דואר', icon: Mail });
   if (enabled.has('static_pages')) nav.push({ href: '/admin/pages', label: 'עמודים', icon: FileText });
   if (enabled.has('blog')) nav.push({ href: '/admin/blog', label: 'בלוג', icon: Newspaper });
   if (enabled.has('shipping')) nav.push({ href: '/admin/shipping', label: 'משלוחים', icon: Truck });

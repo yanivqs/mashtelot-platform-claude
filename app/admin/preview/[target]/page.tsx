@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { requireUser } from '@/lib/auth';
 import { requireNurseryPage } from '@/lib/nursery-scope';
 import { prisma } from '@/lib/prisma';
 import { getNurseryTheme } from '@/lib/theme';
@@ -14,12 +15,15 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'תצוגה מקדימה', robots: { index: false, follow: false } };
 
 /** R03-01: תצוגה מקדימה של הטיוטה — באותם רכיבים של החנות, רק למשתמשי המשתלה. */
-export default async function DraftPreview(props: { params: Promise<{ target: string }> }) {
+export default async function DraftPreview(props: { params: Promise<{ target: string }>; searchParams: Promise<{ nursery?: string }> }) {
   const { target } = await props.params;
   const isHome = target === 'home';
-  const { nurseryId } = await requireNurseryPage(
-    isHome ? { all: ['page_builder'], area: 'general' } : { all: ['page_builder', 'static_pages'], area: 'content' },
-  );
+  // סופר-אדמין שמעצב את דף הבית עבור משתלה
+  const platformNursery = isHome ? (await props.searchParams).nursery : undefined;
+  if (platformNursery) await requireUser(['SUPER_ADMIN']);
+  const nurseryId =
+    platformNursery ??
+    (await requireNurseryPage(isHome ? { all: ['page_builder'], area: 'general' } : { all: ['page_builder', 'static_pages'], area: 'content' })).nurseryId;
   const nursery = await prisma.nursery.findUnique({ where: { id: nurseryId } });
   if (!nursery) notFound();
   let title = nursery.name;

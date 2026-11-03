@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { auditAsCurrentUser } from '@/lib/audit-actor';
+import { getSessionUser } from '@/lib/auth';
 import { nurseryActionScope } from '@/lib/nursery-scope';
 import { sanitizeRichHtml } from '@/lib/sanitize';
 import { parseIsraelLocal } from '@/lib/il-time';
@@ -40,10 +41,20 @@ function readTarget(formData: FormData): LayoutTarget {
  * הרשאות (C-P1-01 + R06): דף הבית — בעלים ועובד; עמוד סטטי — גם כותב תוכן.
  * המודול page_builder חייב להיות פעיל (ולעמודים — גם static_pages).
  */
-async function scopeFor(target: LayoutTarget) {
+async function scopeFor(target: LayoutTarget, platformNurseryId?: string) {
+  if (platformNurseryId) return platformScope(target, platformNurseryId);
   return target.kind === 'home'
     ? nurseryActionScope({ all: ['page_builder'], area: 'general' })
     : nurseryActionScope({ all: ['page_builder', 'static_pages'], area: 'content' });
+}
+
+/** סופר-אדמין שעורך את דף הבית של משתלה. המזהה מגיע מהדפדפן, ולכן נבדק כאן שהמשתמש סופר-אדמין. */
+async function platformScope(target: LayoutTarget, nurseryId: string) {
+  const user = await getSessionUser();
+  if (user?.role !== 'SUPER_ADMIN' || user.disabledAt || target.kind !== 'home') return { ok: false as const, error: 'אין הרשאה לפעולה זו' };
+  const nursery = await prisma.nursery.findUnique({ where: { id: nurseryId }, select: { id: true } });
+  if (!nursery) return { ok: false as const, error: 'המשתלה לא נמצאה' };
+  return { ok: true as const, user, nurseryId };
 }
 
 function cleanBlocks(blocks: Block[]): Block[] {
@@ -68,12 +79,14 @@ async function run(
 ): Promise<BuilderState> {
   try {
     const target = readTarget(formData);
-    const scope = await scopeFor(target);
+    const platformNurseryId = String(formData.get('platformNurseryId') || '') || undefined;
+    const scope = await scopeFor(target, platformNurseryId);
     if (!scope.ok) return { error: scope.error };
     const message = await fn({ nurseryId: scope.nurseryId, email: scope.user.email, target });
     if (refresh) {
       revalidatePath('/admin/page-builder');
       revalidatePath('/admin/pages', 'layout');
+      if (platformNurseryId) revalidatePath(`/admin/nurseries/${platformNurseryId}/home-design`);
     }
     return { ok: true, message };
   } catch (e) {
@@ -160,9 +173,9 @@ export async function setActiveAction(_prev: BuilderState, formData: FormData): 
 }
 
 /** רשימת מוצרים לבחירה ידנית בבלוק "מוצרים" (רק של המשתלה). */
-export async function searchProductsAction(target: string, q: string): Promise<Array<{ id: string; title: string }>> {
+export async function searchProductsAction(target: string, q: string, platformNurseryId?: string): Promise<Array<{ id: string; title: string }>> {
   const t: LayoutTarget = target === 'home' ? { kind: 'home' } : { kind: 'page', staticPageId: target };
-  const scope = await scopeFor(t);
+  const scope = await scopeFor(t, platformNurseryId);
   if (!scope.ok) return [];
   const term = q.trim().slice(0, 60);
   const rows = await prisma.nurseryProduct.findMany({

@@ -38,6 +38,7 @@ export async function exportCustomerData(db: PrismaClient, nurseryId: string, em
   const orders = await db.order.findMany({ where: ordersOf(nurseryId, e, customer?.id ?? null), include: { items: true }, orderBy: { createdAt: 'asc' } });
   return {
     exportedAt: new Date().toISOString(),
+    newsletter: await db.newsletterSubscriber.findUnique({ where: { nurseryId_email: { nurseryId, email: e } }, select: { consentAt: true, unsubscribedAt: true } }),
     profile: customer
       ? {
           email: customer.email,
@@ -78,7 +79,8 @@ export async function deleteCustomerData(db: PrismaClient, nurseryId: string, em
   const customer = await db.customer.findUnique({ where: { nurseryId_email: { nurseryId, email: e } }, select: { id: true } });
   const where = ordersOf(nurseryId, e, customer?.id ?? null);
   const total = await db.order.count({ where });
-  if (!customer && total === 0) return { ok: false, error: 'לא נמצא לקוח עם האימייל הזה' };
+  const subscribed = await db.newsletterSubscriber.count({ where: { nurseryId, email: e } });
+  if (!customer && total === 0 && subscribed === 0) return { ok: false, error: 'לא נמצא לקוח עם האימייל הזה' };
   const open = await db.order.count({ where: { ...where, status: { in: [...OPEN] } } });
   if (open > 0) return { ok: false, error: `יש ${open} הזמנות פתוחות — אפשר למחוק אחרי שיושלמו או יבוטלו` };
 
@@ -99,6 +101,7 @@ export async function deleteCustomerData(db: PrismaClient, nurseryId: string, em
     // החשבון וכל מה שתלוי בו (כתובות, מועדפים, הערות, יומן נקודות) — נמחקים בשרשור
     if (customer) await tx.customer.delete({ where: { id: customer.id } });
     await tx.customerOtp.deleteMany({ where: { nurseryId, email: e } });
+    await tx.newsletterSubscriber.deleteMany({ where: { nurseryId, email: e } });
     await tx.emailJob.deleteMany({ where: { nurseryId, to: { has: e } } });
     await tx.auditEvent.updateMany({ where: { nurseryId, actorEmail: e }, data: { actorEmail: `deleted-${ref}` } });
     return { ok: true as const, anonymizedOrders: anonymized.count, ref };
