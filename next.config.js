@@ -32,9 +32,10 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
-  // בדיקות E2E משנות נתונים בניהול ומיד בודקות את החנות, ולכן רצות בלי מטמון דפים
+  // בדיקות E2E משנות נתונים בניהול ומיד בודקות את החנות, ולכן רצות בלי מטמון דפים.
+  // expireTime מסיר את stale-while-revalidate, שבלי Vercel מאפשר לדפדפן להציג עותק ישן.
   ...(process.env.E2E === '1'
-    ? { cacheHandler: require.resolve('./scripts/e2e-no-cache-handler.js'), cacheMaxMemorySize: 0 }
+    ? { cacheHandler: require.resolve('./scripts/e2e-no-cache-handler.js'), cacheMaxMemorySize: 0, expireTime: 3600 }
     : {}),
   // אין `images.remotePatterns`: האפליקציה אינה משתמשת ב-next/image (תמונות מוצגות ב-<img>),
   // ותצורת hostname '**' אפשרה ל-/_next/image למשוך ולעבד תמונה מכל דומיין — משטח התקיפה של
