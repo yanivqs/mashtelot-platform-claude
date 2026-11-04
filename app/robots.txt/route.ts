@@ -6,13 +6,18 @@ import { buildRobots } from '@/lib/seo-files';
 /**
  * robots.txt לפי הדומיין (C-P1-05). Preview וכל סביבה שאינה Production — חסימה מלאה
  * (אפיון §14.04, §22.07). משתלה לא קיימת/מושעית — חסימה מלאה.
+ *
+ * עד העלייה ללקוחות האתר חסום למנועי חיפוש גם ב-Production.
+ * ביום העלייה: להגדיר ב-Vercel ALLOW_SEARCH_ENGINES=1.
  */
 export const dynamic = 'force-dynamic';
 
 const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'localhost:3000';
 
 export async function GET(request: Request) {
-  const preview = Boolean(process.env.VERCEL_ENV) && process.env.VERCEL_ENV !== 'production';
+  const preview =
+    Boolean(process.env.VERCEL_ENV) &&
+    (process.env.VERCEL_ENV !== 'production' || process.env.ALLOW_SEARCH_ENGINES !== '1');
   const target = resolveHost(request.headers.get('host'), ROOT_DOMAIN);
 
   let body: string;
