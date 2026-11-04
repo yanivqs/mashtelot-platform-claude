@@ -19,7 +19,10 @@ function CategoriesMenu({ basePath, categories }: { basePath: string; categories
     <div className={`group ${wide ? '' : 'relative'}`}>
       <Link
         href={`${basePath}/catalog`}
-        className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+        className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 ${
+          // גשר בלתי נראה עד הפאנל, רק כשהתפריט פתוח: כששורת הכותרת גבוהה, הרווח מתחת לכפתור גדל והעכבר היה סוגר את התפריט
+          wide ? 'relative after:absolute after:inset-x-0 after:top-full after:hidden after:h-12 group-hover:after:block' : ''
+        }`}
         aria-haspopup="true"
       >
         קטגוריות

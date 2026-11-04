@@ -162,6 +162,27 @@ test.describe('accessibility menu', () => {
       const box = await child.locator('xpath=ancestor::div[contains(@class,"max-h-")][1]').boundingBox();
       expect(box!.x, `שמאל ברוחב ${width}`).toBeGreaterThanOrEqual(0);
       expect(box!.x + box!.width, `ימין ברוחב ${width}`).toBeLessThanOrEqual(width);
+      // עכבר: מעבר איטי מהכפתור לתוך הפאנל לא סוגר אותו, גם כששורת הכותרת גבוהה (שם משתלה ארוך שנשבר לשתי שורות)
+      await page.addStyleTag({ content: 'header > div:has(> nav) { min-height: 5rem; }' });
+      await trigger.evaluate((el) => (el as HTMLElement).blur());
+      await trigger.hover();
+      const from = (await trigger.boundingBox())!;
+      const x = from.x + from.width / 2;
+      const startY = from.y + from.height / 2;
+      const endY = box!.y + 30;
+      for (let i = 1; i <= 20; i++) await page.mouse.move(x, startY + ((endY - startY) * i) / 20);
+      await page.waitForTimeout(250);
+      await expect(child, `עכבר ברוחב ${width}`).toBeVisible();
+      await page.mouse.move(0, 700);
+      // סגור: הגשר לא תופס את התוכן שמתחת לכותרת
+      await expect(child).toBeHidden();
+      const below = await trigger.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const headerBottom = el.closest('header')!.getBoundingClientRect().bottom;
+        const hit = document.elementFromPoint(r.left + r.width / 2, headerBottom + 4);
+        return Boolean(hit?.closest('header'));
+      });
+      expect(below, `גשר פעיל מתחת לכותרת ברוחב ${width}`).toBe(false);
     }
   });
 
