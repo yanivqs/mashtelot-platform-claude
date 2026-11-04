@@ -105,6 +105,8 @@ model Nursery {
   images          NurseryImage[]
   account         NurseryAccount?
   newsletterSubscribers NewsletterSubscriber[]
+  accessibilityInfo     Json?                 @map("accessibility_info")
+  accessibilityReports  AccessibilityReport[]
 
   @@map("nurseries")
 }
@@ -237,6 +239,34 @@ model NurseryPaymentMethod {
 }
 
 /// תפוצת דואר: הסכמה מפורשת לכל כתובת במשתלה; הסרה נשמרת
+enum AccessibilityReportStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+/// פנייה על בעיית נגישות מהחנות. לפי תקנה 35א(ד) יש 60 ימים לתיקון מיום ההודעה.
+model AccessibilityReport {
+  id           String                    @id @default(uuid())
+  nurseryId    String                    @map("nursery_id")
+  description  String
+  pageUrl      String?                   @map("page_url")
+  contactName  String?                   @map("contact_name")
+  contactEmail String?                   @map("contact_email")
+  contactPhone String?                   @map("contact_phone")
+  status       AccessibilityReportStatus @default(OPEN)
+  handlingNote String?                   @map("handling_note")
+  dueAt        DateTime                  @map("due_at")
+  resolvedAt   DateTime?                 @map("resolved_at")
+  createdAt    DateTime                  @default(now()) @map("created_at")
+  updatedAt    DateTime                  @updatedAt @map("updated_at")
+  nursery      Nursery                   @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+
+  @@index([nurseryId, status, dueAt])
+  @@index([nurseryId, contactEmail])
+  @@map("accessibility_reports")
+}
+
 model NewsletterSubscriber {
   id             String    @id @default(uuid())
   nurseryId      String    @map("nursery_id")

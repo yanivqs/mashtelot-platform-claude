@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { AccessibilityWidget } from '@/components/accessibility/accessibility-widget';
+import { A11Y_BOOT_SCRIPT } from '@/lib/a11y-settings';
 import type { Metadata } from 'next';
 import { Leaf, Store, Search, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
@@ -56,6 +58,8 @@ export default async function LandingPage() {
 
   return (
     <div dir="rtl" className="bg-white text-gray-900">
+      <script dangerouslySetInnerHTML={{ __html: A11Y_BOOT_SCRIPT }} />
+      <AccessibilityWidget statementHref="/accessibility" />
       {/* Hero */}
       <section className="bg-gradient-to-b from-brand-50 to-white">
         <div className="mx-auto max-w-6xl px-6 py-24 text-center">

@@ -102,7 +102,7 @@ export default async function CatalogPage(props: CatalogPageProps) {
             : selectedCategory?.name ?? 'הקטלוג שלנו'}
         </h1>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-gray-600">{view.total} מוצרים</p>
+          <p role="status" className="text-sm text-gray-600">{view.total} מוצרים</p>
           <SortSelect
             value={view.sort}
             options={CATALOG_SORTS.map((s) => ({

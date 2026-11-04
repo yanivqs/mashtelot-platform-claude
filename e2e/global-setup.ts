@@ -43,6 +43,9 @@ export const E2E_SUPER7 = { email: 'super7@e2e.invalid', password: 'e2e-super7-p
 export const E2E_ROUND3_OWNER = { email: 'round3-owner@e2e.invalid', password: 'e2e-round3-pass-123' };
 export const E2E_SUPER8 = { email: 'super8@e2e.invalid', password: 'e2e-super8-pass-123' };
 export const ROUND3_SHOP = 'http://e2eround3.localhost:3100';
+/** משתלה לבדיקות הנגישות: קרוסלה ופופאפ, כדי לבדוק גם אותם */
+export const E2E_A11Y_OWNER = { email: 'a11y-owner@e2e.invalid', password: 'e2e-a11y-pass-1234' };
+export const A11Y_SHOP = 'http://e2ea11y.localhost:3100';
 /** תבנית מפורסמת שנוצרת כאן לבדיקת המוצרים הקבועים (PT-04) */
 export const E2E_SAVED_TEMPLATE = 'תוויות קבועות E2E';
 export const E2E_PREFLIGHT_TEMPLATE = 'שלט ייצור E2E';
@@ -84,6 +87,11 @@ export default async function globalSetup() {
       await db.order.deleteMany({ where: { nurseryId: oldFloat.id } });
       await db.user.deleteMany({ where: { nurseryId: oldFloat.id } });
       await db.nursery.delete({ where: { id: oldFloat.id } });
+    }
+    const oldA11y = await db.nursery.findUnique({ where: { subdomain: 'e2ea11y' } });
+    if (oldA11y) {
+      await db.user.deleteMany({ where: { nurseryId: oldA11y.id } });
+      await db.nursery.delete({ where: { id: oldA11y.id } });
     }
     const oldRound3 = await db.nursery.findUnique({ where: { subdomain: 'e2eround3' } });
     if (oldRound3) {
@@ -324,6 +332,43 @@ export default async function globalSetup() {
     });
     await db.user.create({
       data: { email: E2E_SUPER7.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER7.password, 4) },
+    });
+    const a11y = await db.nursery.create({
+      data: {
+        name: 'משתלת נגישות',
+        subdomain: 'e2ea11y',
+        ownerEmail: E2E_A11Y_OWNER.email,
+        phoneNumber: '03-1234567',
+        addressLine: 'הרצל 1',
+        city: 'רחובות',
+        themeConfig: {
+          hero: { layout: 'carousel' },
+          carousel: {
+            intervalSec: 5,
+            slides: [
+              { imageUrl: 'https://example.invalid/a.jpg', headline: 'שקופית ראשונה' },
+              { imageUrl: 'https://example.invalid/b.jpg', headline: 'שקופית שנייה' },
+            ],
+          },
+        },
+      },
+    });
+    await db.nurseryModule.createMany({
+      data: ['plant_catalog', 'supplies', 'sales', 'orders', 'popups', 'payment_options', 'delivery_options'].map((moduleKey) => ({
+        nurseryId: a11y.id,
+        moduleKey,
+        isEnabled: true,
+        ...(moduleKey === 'sales' ? { config: { mode: 'ONLINE' } } : {}),
+      })),
+    });
+    await db.promotion.create({ data: { nurseryId: a11y.id, title: 'מבצע נגיש', popupText: '10% הנחה השבוע', isActive: true } });
+    const a11yCategory = await db.nurseryCategory.create({ data: { nurseryId: a11y.id, name: 'תבלינים', slug: 'a11y-herbs' } });
+    await db.nurseryProduct.create({
+      data: { nurseryId: a11y.id, customTitle: 'בזיליקום', slug: 'basil', price: '15.00', stockQuantity: 30, categories: { create: [{ nurseryCategoryId: a11yCategory.id }] } },
+    });
+    await db.nurseryProduct.create({ data: { nurseryId: a11y.id, customTitle: 'פיקוס כינורי', price: '120.00', stockQuantity: 2 } });
+    await db.user.create({
+      data: { email: E2E_A11Y_OWNER.email, role: 'NURSERY_OWNER', nurseryId: a11y.id, passwordHash: await bcrypt.hash(E2E_A11Y_OWNER.password, 4) },
     });
     const round3 = await db.nursery.create({ data: { name: 'משתלת סבב 3', subdomain: 'e2eround3', ownerEmail: E2E_ROUND3_OWNER.email } });
     await db.nurseryModule.create({ data: { nurseryId: round3.id, moduleKey: 'newsletter', isEnabled: true } });

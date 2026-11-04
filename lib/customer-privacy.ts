@@ -39,6 +39,7 @@ export async function exportCustomerData(db: PrismaClient, nurseryId: string, em
   return {
     exportedAt: new Date().toISOString(),
     newsletter: await db.newsletterSubscriber.findUnique({ where: { nurseryId_email: { nurseryId, email: e } }, select: { consentAt: true, unsubscribedAt: true } }),
+    accessibilityReports: await db.accessibilityReport.findMany({ where: { nurseryId, contactEmail: e }, select: { description: true, pageUrl: true, contactName: true, contactPhone: true, status: true, createdAt: true } }),
     profile: customer
       ? {
           email: customer.email,
@@ -80,7 +81,8 @@ export async function deleteCustomerData(db: PrismaClient, nurseryId: string, em
   const where = ordersOf(nurseryId, e, customer?.id ?? null);
   const total = await db.order.count({ where });
   const subscribed = await db.newsletterSubscriber.count({ where: { nurseryId, email: e } });
-  if (!customer && total === 0 && subscribed === 0) return { ok: false, error: 'לא נמצא לקוח עם האימייל הזה' };
+  const reports = await db.accessibilityReport.count({ where: { nurseryId, contactEmail: e } });
+  if (!customer && total === 0 && subscribed === 0 && reports === 0) return { ok: false, error: 'לא נמצא לקוח עם האימייל הזה' };
   const open = await db.order.count({ where: { ...where, status: { in: [...OPEN] } } });
   if (open > 0) return { ok: false, error: `יש ${open} הזמנות פתוחות — אפשר למחוק אחרי שיושלמו או יבוטלו` };
 
@@ -102,6 +104,7 @@ export async function deleteCustomerData(db: PrismaClient, nurseryId: string, em
     if (customer) await tx.customer.delete({ where: { id: customer.id } });
     await tx.customerOtp.deleteMany({ where: { nurseryId, email: e } });
     await tx.newsletterSubscriber.deleteMany({ where: { nurseryId, email: e } });
+    await tx.accessibilityReport.updateMany({ where: { nurseryId, contactEmail: e }, data: { contactName: null, contactEmail: null, contactPhone: null } });
     await tx.emailJob.deleteMany({ where: { nurseryId, to: { has: e } } });
     await tx.auditEvent.updateMany({ where: { nurseryId, actorEmail: e }, data: { actorEmail: `deleted-${ref}` } });
     return { ok: true as const, anonymizedOrders: anonymized.count, ref };

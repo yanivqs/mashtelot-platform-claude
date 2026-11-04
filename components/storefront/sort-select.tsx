@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 export function SortSelect({ value, options }: { value: string; options: Array<{ key: string; label: string; href: string }> }) {
   const router = useRouter();
   return (
-    <label className="flex items-center gap-2 text-sm text-gray-600">
+    <label className="flex min-w-0 max-w-full items-center gap-2 text-sm text-gray-600">
       מיון
       <select
         value={value}
@@ -15,7 +15,7 @@ export function SortSelect({ value, options }: { value: string; options: Array<{
           const o = options.find((x) => x.key === e.target.value);
           if (o) router.push(o.href);
         }}
-        className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-800"
+        className="min-w-0 max-w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-800"
       >
         {options.map((o) => (
           <option key={o.key} value={o.key}>

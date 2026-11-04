@@ -7,7 +7,16 @@ import { Menu } from 'lucide-react';
 export function MobileMenu({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDetailsElement>(null);
   return (
-    <details ref={ref} className="relative">
+    <details
+      ref={ref}
+      className="relative"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && ref.current?.open) {
+          ref.current.removeAttribute('open');
+          ref.current.querySelector('summary')?.focus();
+        }
+      }}
+    >
       <summary
         className="flex cursor-pointer list-none items-center rounded-lg p-2 text-gray-700 hover:bg-gray-100"
         aria-label="תפריט"
@@ -18,7 +27,7 @@ export function MobileMenu({ children }: { children: React.ReactNode }) {
         onClick={(e) => {
           if ((e.target as HTMLElement).closest('a')) ref.current?.removeAttribute('open');
         }}
-        className="absolute left-0 top-full z-40 mt-2 max-h-[75vh] w-72 overflow-y-auto rounded-xl border border-gray-100 bg-white p-3 shadow-lg"
+        className="absolute left-0 top-full z-40 mt-2 max-h-[75vh] w-72 max-w-[calc(100vw-5rem)] overflow-y-auto rounded-xl border border-gray-100 bg-white p-3 shadow-lg"
       >
         {children}
       </div>

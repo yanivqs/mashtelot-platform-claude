@@ -41,17 +41,18 @@ export function CatalogSearch({
   current: Record<string, string | undefined>;
 }) {
   return (
-    <form method="get" action={basePath} className="flex gap-2">
+    <form method="get" action={basePath} role="search" className="flex flex-wrap gap-2">
       {FILTER_PARAM_KEYS.filter((k) => k !== 'q' && k !== 'letter' && current[k]).map((k) => (
         <input key={k} type="hidden" name={k} value={current[k]} />
       ))}
-      <div className="relative flex-1">
+      <div className="relative min-w-0 flex-[1_1_12rem]">
         <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
         <input
           type="search"
           name="q"
           defaultValue={current.q ?? ''}
           placeholder="חיפוש צמח או מוצר..."
+          aria-label="חיפוש צמח או מוצר"
           className="w-full rounded-lg border border-gray-200 py-2.5 pr-10 pl-3 text-sm outline-none focus:border-[var(--brand,#16a34a)]"
         />
       </div>

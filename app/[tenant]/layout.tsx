@@ -17,6 +17,9 @@ import { SiteHeader } from '@/components/storefront/site-header';
 import { SiteFooter } from '@/components/storefront/site-footer';
 import { PromoPopup } from '@/components/storefront/promo-popup';
 import { BottomNav } from '@/components/storefront/bottom-nav';
+import { AccessibilityWidget } from '@/components/accessibility/accessibility-widget';
+import { A11Y_BOOT_SCRIPT } from '@/lib/a11y-settings';
+import { parseAccessibilityInfo } from '@/lib/accessibility';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -112,6 +115,7 @@ export default async function TenantLayout(props: LayoutProps) {
         className="flex min-h-screen flex-col bg-surface"
         style={themeStyleVars(theme) as React.CSSProperties}
       >
+        <script dangerouslySetInnerHTML={{ __html: A11Y_BOOT_SCRIPT }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: jsonLdHtml(jsonLd) }}
@@ -122,6 +126,7 @@ export default async function TenantLayout(props: LayoutProps) {
         >
           דילוג לתוכן
         </a>
+        <AccessibilityWidget statementHref="/accessibility" reportHref="/accessibility#report" side={parseAccessibilityInfo(nursery.accessibilityInfo).buttonSide} />
         <AnnouncementBar announcement={announcement} basePath="" />
         <SiteHeader
           nursery={nursery}

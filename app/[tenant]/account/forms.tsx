@@ -38,7 +38,7 @@ export function LoginForm({ tenant }: { tenant: string }) {
           <span className="mb-1 block font-medium text-gray-700">אימייל</span>
           <input name="email" type="email" required autoComplete="email" dir="ltr" className={field} />
         </label>
-        {req.error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{req.error}</p>}
+        {req.error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{req.error}</p>}
         <Submit label="שליחת קוד" />
       </form>
     );
@@ -63,7 +63,7 @@ export function LoginForm({ tenant }: { tenant: string }) {
           className={`${field} text-center font-mono text-lg tracking-widest`}
         />
       </label>
-      {ver.error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{ver.error}</p>}
+      {ver.error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{ver.error}</p>}
       <Submit label="כניסה" />
       <button type="button" onClick={() => window.location.reload()} className="w-full text-center text-xs text-gray-600 hover:underline">
         מייל אחר / שליחה מחדש
@@ -105,7 +105,7 @@ export function ProfileForm({
           <Submit label="שמירה" />
         </div>
         {state.ok && <span className="text-sm text-green-700">נשמר ✓</span>}
-        {state.error && <span className="text-sm text-red-600">{state.error}</span>}
+        {state.error && <span role="alert" className="text-sm text-red-700">{state.error}</span>}
       </div>
     </form>
   );
@@ -153,7 +153,7 @@ export function PrivacySection({ tenant }: { tenant: string }) {
           <input type="checkbox" name="confirm" className="h-4 w-4" /> אני מבין/ה שהמחיקה סופית
         </label>
         <button className="rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-sm text-rose-700 hover:bg-rose-50">מחיקת החשבון</button>
-        {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+        {state.error && <p role="alert" className="text-sm text-red-700">{state.error}</p>}
       </form>
     </div>
   );

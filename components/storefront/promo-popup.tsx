@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 
+/** פופאפ מבצע בחלון מודאלי של הדפדפן: הפוקוס עובר אליו ונשאר בו, Esc סוגר והפוקוס חוזר למקום. */
 export function PromoPopup({
   id,
   title,
@@ -13,6 +14,7 @@ export function PromoPopup({
   text: string;
 }) {
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const storageKey = `promo-dismissed:${id}`;
 
   useEffect(() => {
@@ -23,11 +25,18 @@ export function PromoPopup({
       /* ignore */
     }
     if (dismissed) return;
-    const t = setTimeout(() => setOpen(true), 1200);
+    const t = setTimeout(() => {
+      // לא קופץ מעל חלון פתוח, למשל תפריט הנגישות
+      if (!document.querySelector('dialog[open]')) setOpen(true);
+    }, 1200);
     return () => clearTimeout(t);
   }, [storageKey]);
 
-  function close() {
+  useEffect(() => {
+    if (open) dialogRef.current?.showModal();
+  }, [open]);
+
+  function dismiss() {
     setOpen(false);
     try {
       localStorage.setItem(storageKey, '1');
@@ -39,19 +48,19 @@ export function PromoPopup({
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
       aria-label={title}
-      onClick={close}
+      onClose={dismiss}
+      onClick={(e) => {
+        if (e.target === dialogRef.current) dialogRef.current?.close();
+      }}
+      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl bg-white p-0 shadow-xl backdrop:bg-black/40"
     >
-      <div
-        className="relative w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="relative p-8 text-center">
         <button
-          onClick={close}
+          type="button"
+          onClick={() => dialogRef.current?.close()}
           aria-label="סגירה"
           className="absolute left-4 top-4 text-gray-600 hover:text-gray-700"
         >
@@ -60,12 +69,13 @@ export function PromoPopup({
         <h2 className="text-xl font-bold text-brand-900">{title}</h2>
         <p className="mt-3 whitespace-pre-line text-gray-600">{text}</p>
         <button
-          onClick={close}
+          type="button"
+          onClick={() => dialogRef.current?.close()}
           className="mt-6 rounded-lg bg-[var(--brand,#16a34a)] px-6 py-2.5 font-medium text-white transition hover:brightness-95"
         >
           הבנתי
         </button>
       </div>
-    </div>
+    </dialog>
   );
 }

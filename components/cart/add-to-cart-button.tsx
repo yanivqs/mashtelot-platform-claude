@@ -43,7 +43,7 @@ export function AddToCartButton({ product, disabled, className, withQuantity }: 
   const doneLabel = isQuote ? 'נוסף לבקשה' : 'נוסף לעגלה';
 
   return (
-    <div className={cn('flex items-center gap-3', className)}>
+    <div className={cn('flex flex-wrap items-center gap-3', className)}>
       {withQuantity && (
         <div className="flex items-center rounded-lg border border-gray-200">
           <button
@@ -54,7 +54,9 @@ export function AddToCartButton({ product, disabled, className, withQuantity }: 
           >
             −
           </button>
-          <span className="w-8 text-center text-sm font-medium">{qty}</span>
+          <span className="w-8 text-center text-sm font-medium" aria-live="polite" aria-label={`כמות: ${qty}`}>
+            {qty}
+          </span>
           <button
             type="button"
             aria-label="הוסף כמות"
@@ -65,6 +67,9 @@ export function AddToCartButton({ product, disabled, className, withQuantity }: 
           </button>
         </div>
       )}
+      <span role="status" className="sr-only">
+        {added ? doneLabel : ''}
+      </span>
       <button
         type="button"
         onClick={handleAdd}

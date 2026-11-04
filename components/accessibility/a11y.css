@@ -1,0 +1,252 @@
+/*
+ * התאמות תפריט הנגישות. כל הכללים פעילים רק כשהמאפיין קיים על <html>.
+ * .a11y-ui הוא התפריט עצמו: הוא לא מושפע מההתאמות, כדי שתמיד יהיה אפשר לקרוא אותו ולבטל אותן.
+ * גם מי שביקש במכשיר פחות תנועה מקבל עצירת תנועה, בלי לפתוח את התפריט.
+ */
+
+/* גודל טקסט: כל האתר ב-rem, ולכן מספיק לשנות את הבסיס */
+html[data-a11y-text='1'] { font-size: 125%; }
+html[data-a11y-text='2'] { font-size: 150%; }
+html[data-a11y-text='3'] { font-size: 200%; }
+
+html[data-a11y-lineheight='1'] body *:not(.a11y-ui, .a11y-ui *) { line-height: 1.8 !important; }
+html[data-a11y-lineheight='2'] body *:not(.a11y-ui, .a11y-ui *) { line-height: 2.2 !important; }
+
+/* הערכים של WCAG 1.4.12: 0.12em בין אותיות ו-0.16em בין מילים */
+html[data-a11y-spacing='1'] body *:not(.a11y-ui, .a11y-ui *) { letter-spacing: 0.12em !important; word-spacing: 0.16em !important; }
+html[data-a11y-spacing='2'] body *:not(.a11y-ui, .a11y-ui *) { letter-spacing: 0.2em !important; word-spacing: 0.3em !important; }
+
+html[data-a11y-font] body *:not(.a11y-ui, .a11y-ui *) { font-family: Arial, Tahoma, 'Segoe UI', sans-serif !important; font-style: normal !important; }
+
+html[data-a11y-align] :is(p, li, h1, h2, h3, h4, h5, h6, td, th, dd, dt, blockquote, label, figcaption):not(.a11y-ui, .a11y-ui *) { text-align: start !important; }
+
+/* ניגודיות כהה */
+html[data-a11y-contrast='dark'] body { background: #000 !important; }
+html[data-a11y-contrast='dark'] body *:not(.a11y-ui, .a11y-ui *, img, video, picture, svg, svg *) {
+  background-color: #000 !important;
+  background-image: none !important;
+  color: #fff !important;
+  border-color: #fff !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+html[data-a11y-contrast='dark'] body :is(a, a *):not(.a11y-ui, .a11y-ui *, img, video, picture, svg, svg *) { color: #ffe600 !important; }
+html[data-a11y-contrast='dark'] body a:not(.a11y-ui a) { text-decoration: underline !important; }
+html[data-a11y-contrast='dark'] body :is(button, input, select, textarea, summary):not(.a11y-ui, .a11y-ui *, nav button) { border: 1px solid #fff !important; }
+html[data-a11y-contrast='dark'] ::placeholder { color: #ddd !important; opacity: 1 !important; }
+
+/* ניגודיות בהירה */
+html[data-a11y-contrast='light'] body { background: #fff !important; }
+html[data-a11y-contrast='light'] body *:not(.a11y-ui, .a11y-ui *, img, video, picture, svg, svg *) {
+  background-color: #fff !important;
+  background-image: none !important;
+  color: #000 !important;
+  border-color: #000 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+html[data-a11y-contrast='light'] body :is(a, a *):not(.a11y-ui, .a11y-ui *, img, video, picture, svg, svg *) { color: #00339a !important; }
+html[data-a11y-contrast='light'] body a:not(.a11y-ui a) { text-decoration: underline !important; }
+html[data-a11y-contrast='light'] body :is(button, input, select, textarea, summary):not(.a11y-ui, .a11y-ui *, nav button) { border: 1px solid #000 !important; }
+html[data-a11y-contrast='light'] ::placeholder { color: #333 !important; opacity: 1 !important; }
+
+/* על <html> המסנן לא הופך את האב של רכיבים קבועים, ולכן סרגלים צפים נשארים במקומם */
+html[data-a11y-color='mono'] { filter: grayscale(1); }
+html[data-a11y-color='low'] { filter: saturate(0.5); }
+html[data-a11y-color='high'] { filter: saturate(1.7); }
+
+html[data-a11y-links] body a:not(.a11y-ui a) {
+  text-decoration: underline !important;
+  text-underline-offset: 0.2em;
+  outline: 2px solid #b45309;
+  outline-offset: 2px;
+}
+
+html[data-a11y-headings] body :is(h1, h2, h3, h4, h5, h6):not(.a11y-ui *) {
+  outline: 2px dashed #1d4ed8;
+  outline-offset: 3px;
+}
+
+html[data-a11y-focus] body *:focus {
+  outline: 4px solid #f59e0b !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 7px #000 !important;
+}
+
+html[data-a11y-cursor], html[data-a11y-cursor] body * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 24 24'%3E%3Cpath d='M4 2l15 12h-8l5 8-3 1.5-5-8.5-4 5z' fill='%23000' stroke='%23fff' stroke-width='1.5'/%3E%3C/svg%3E") 8 4, auto !important;
+}
+
+/* כפתורים גדולים: 44 פיקסלים לפחות. קישור בתוך פסקה נשאר בשורה שלו */
+html[data-a11y-targets] body :is(button, summary, select, input:not([type='checkbox'], [type='radio'], [type='hidden']), [role='button']):not(.a11y-ui, .a11y-ui *) {
+  min-height: 44px;
+  min-width: 44px;
+}
+html[data-a11y-targets] body :is(nav a, footer a):not(.a11y-ui a) { padding-block: 0.6em; }
+html[data-a11y-targets] body input:is([type='checkbox'], [type='radio']) { width: 1.5rem; height: 1.5rem; }
+
+html[data-a11y-motion] *, html[data-a11y-motion] *::before, html[data-a11y-motion] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html[data-a11y-hideimages] body :is(img, video, picture):not(.a11y-ui *) { visibility: hidden !important; }
+html[data-a11y-hideimages] body *:not(.a11y-ui, .a11y-ui *) { background-image: none !important; }
+
+/* ---------- התפריט: גודל ב-em, כך שהוא גדל עם הטקסט עד גבול שבו עדיין נכנס למסך ---------- */
+.a11y-ui { font-size: clamp(16px, 1rem, 21px); line-height: 1.4; font-family: Arial, Tahoma, 'Segoe UI', sans-serif; }
+
+.a11y-trigger {
+  position: fixed;
+  z-index: 45;
+  bottom: calc(5rem + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: #1d4ed8;
+  color: #fff;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.35);
+  cursor: pointer;
+}
+.a11y-trigger:hover { background: #1e40af; }
+.a11y-trigger:focus-visible { outline: 3px solid #000; outline-offset: 2px; }
+.a11y-trigger[data-side='left'] { left: 12px; }
+.a11y-trigger[data-side='right'] { right: 12px; }
+.a11y-trigger svg { width: 28px; height: 28px; }
+@media (min-width: 768px) { .a11y-trigger { bottom: 20px; } }
+
+.a11y-panel {
+  position: fixed;
+  inset-block: 0;
+  margin: 0;
+  width: min(25em, 92vw);
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #fff;
+  color: #111827;
+  box-shadow: 0 0 24px rgb(0 0 0 / 0.35);
+}
+.a11y-panel[data-side='left'] { inset-inline: auto 0; }
+.a11y-panel[data-side='right'] { inset-inline: 0 auto; }
+.a11y-panel::backdrop { background: rgb(0 0 0 / 0.25); }
+
+.a11y-panel-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+  padding: 0.75em 1em;
+  background: #1e3a8a;
+  color: #fff;
+}
+.a11y-panel-head h2 { margin: 0; font-size: 1.15em; font-weight: 700; }
+.a11y-panel-body { padding: 1em; }
+.a11y-section { margin-bottom: 1.25em; }
+.a11y-section h3 { margin: 0 0 0.5em; font-size: 0.95em; font-weight: 700; color: #1f2937; }
+.a11y-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5em, 1fr)); gap: 0.5em; }
+
+.a11y-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25em;
+  min-height: 4.6em;
+  padding: 0.5em;
+  border: 1px solid #6b7280;
+  border-radius: 0.6em;
+  background: #fff;
+  color: #111827;
+  font: inherit;
+  font-size: 0.9em;
+  text-align: center;
+  cursor: pointer;
+}
+.a11y-tile svg { width: 1.4em; height: 1.4em; flex: none; }
+.a11y-tile:hover { background: #eff6ff; }
+.a11y-tile[aria-pressed='true'], .a11y-tile[data-active='true'] { border-color: #1e3a8a; background: #1e3a8a; color: #fff; }
+.a11y-tile:disabled { cursor: not-allowed; background: #f3f4f6; color: #4b5563; }
+.a11y-tile small { font-size: 0.85em; }
+
+.a11y-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  min-height: 44px;
+  padding: 0.4em 0.8em;
+  border: 1px solid #1e3a8a;
+  border-radius: 0.6em;
+  background: #fff;
+  color: #1e3a8a;
+  font: inherit;
+  font-size: 0.9em;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.a11y-action svg { width: 1.2em; height: 1.2em; }
+.a11y-action:hover { background: #eff6ff; }
+.a11y-actions { display: flex; flex-wrap: wrap; gap: 0.5em; }
+.a11y-close { min-width: 44px; min-height: 44px; border: 1px solid #fff; border-radius: 0.6em; background: transparent; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.a11y-panel :focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
+.a11y-note { margin: 0.5em 0 0; font-size: 0.85em; color: #374151; }
+
+.a11y-structure { margin: 0; padding: 0; list-style: none; }
+.a11y-structure button {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.4em 0.6em;
+  border: 0;
+  border-bottom: 1px solid #e5e7eb;
+  background: none;
+  color: #1e3a8a;
+  font: inherit;
+  font-size: 0.9em;
+  text-align: start;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.a11y-structure button:hover { background: #eff6ff; }
+
+/* סרגל קריאה ומסיכת קריאה: לא חוסמים לחיצות */
+.a11y-guide-line { position: fixed; inset-inline: 0; top: 0; z-index: 44; height: 6px; background: #f59e0b; border-block: 1px solid #000; pointer-events: none; }
+.a11y-mask { position: fixed; inset-inline: 0; z-index: 44; background: rgb(0 0 0 / 0.6); pointer-events: none; }
+.a11y-mask[data-part='top'] { top: 0; }
+.a11y-mask[data-part='bottom'] { bottom: 0; }
+
+.a11y-tip {
+  position: fixed;
+  z-index: 46;
+  max-width: 20em;
+  padding: 0.4em 0.7em;
+  border-radius: 0.4em;
+  background: #111827;
+  color: #fff;
+  font-size: 0.9em;
+  pointer-events: none;
+}
+.a11y-speaking { outline: 3px solid #1d4ed8 !important; outline-offset: 2px; }
+.a11y-frozen-gif { max-width: 100%; }

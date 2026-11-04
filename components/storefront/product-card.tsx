@@ -68,7 +68,7 @@ export function ProductCard({
         {kicker &&
           (categoryLabel ? (
             <span
-              className="w-fit rounded-full px-2 py-0.5 text-[11px] font-bold text-[var(--accent-strong,#15803d)]"
+              className="w-fit rounded-full px-2 py-0.5 text-[0.6875rem] font-bold text-[var(--accent-strong,#15803d)]"
               style={{ backgroundColor: 'color-mix(in srgb, var(--accent, #16a34a) 12%, transparent)' }}
               data-testid="card-category"
             >

@@ -16,9 +16,20 @@ export function BottomNav({ basePath }: { basePath: string }) {
   const { count, salesMode } = useCart();
   const [searchOpen, setSearchOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (searchOpen) inputRef.current?.focus();
+    if (!searchOpen) return;
+    inputRef.current?.focus();
+    const trigger = searchButtonRef.current;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSearchOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      trigger?.focus();
+    };
   }, [searchOpen]);
 
   const home = basePath || '/';
@@ -27,7 +38,7 @@ export function BottomNav({ basePath }: { basePath: string }) {
   const isQuote = salesMode === 'QUOTE';
   const cartHref = `${basePath}/cart`;
 
-  const item = 'flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium';
+  const item = 'flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-center [overflow-wrap:anywhere] text-[0.6875rem] font-medium';
   const tone = (active: boolean) => (active ? 'text-[var(--brand,#16a34a)]' : 'text-gray-600');
 
   return (
@@ -109,7 +120,7 @@ export function BottomNav({ basePath }: { basePath: string }) {
             {isQuote ? <FileText className="h-5 w-5" /> : <ShoppingCart className="h-5 w-5" />}
             {isQuote ? 'הצעה' : 'עגלה'}
             {count > 0 && (
-              <span className="absolute right-1/2 top-1 flex h-4 min-w-4 translate-x-4 items-center justify-center rounded-full bg-[var(--brand,#16a34a)] px-1 text-[10px] font-bold text-white">
+              <span className="absolute right-1/2 top-1 flex h-4 min-w-4 translate-x-4 items-center justify-center rounded-full bg-[var(--brand,#16a34a)] px-1 text-[0.625rem] font-bold text-white">
                 {count}
               </span>
             )}

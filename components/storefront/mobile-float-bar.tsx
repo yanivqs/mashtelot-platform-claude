@@ -51,6 +51,8 @@ export function MobileFloatBar({
 
   useEffect(() => {
     if (!menuOpen && !searchOpen) return;
+    // הפוקוס חוזר לכפתור שפתח את המגירה או את החיפוש
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setMenuOpen(false);
@@ -63,6 +65,7 @@ export function MobileFloatBar({
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = overflow;
+      opener?.focus();
     };
   }, [menuOpen, searchOpen]);
 
@@ -112,7 +115,7 @@ export function MobileFloatBar({
             >
               <div className="flex items-center justify-between border-b border-black/5 px-4 py-3">
                 <span className="font-bold text-brand-800">{name}</span>
-                <button type="button" onClick={() => setMenuOpen(false)} aria-label="סגירת התפריט" className="rounded-full p-2 text-gray-600">
+                <button type="button" autoFocus onClick={() => setMenuOpen(false)} aria-label="סגירת התפריט" className="rounded-full p-2 text-gray-600">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -122,7 +125,7 @@ export function MobileFloatBar({
                   {categories.map((c) =>
                     c.children.length > 0 ? (
                       <details key={c.id} className="group">
-                        <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-2 py-2.5 text-[15px] font-semibold text-gray-900">
+                        <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-2 py-2.5 text-[0.9375rem] font-semibold text-gray-900">
                           {c.name}
                           <ChevronDown className="h-4 w-4 text-gray-600 transition group-open:rotate-180" />
                         </summary>
@@ -148,7 +151,7 @@ export function MobileFloatBar({
                       <Link
                         key={c.id}
                         href={`${basePath}/catalog?category=${encodeURIComponent(c.slug)}`}
-                        className="block rounded-lg px-2 py-2.5 text-[15px] font-semibold text-gray-900"
+                        className="block rounded-lg px-2 py-2.5 text-[0.9375rem] font-semibold text-gray-900"
                       >
                         {c.name}
                       </Link>
@@ -158,7 +161,7 @@ export function MobileFloatBar({
               )}
               <div className="px-2 py-2">
                 {nav.map((item) => (
-                  <Link key={item.href} href={item.href} className="block rounded-lg px-2 py-2.5 text-[15px] text-gray-800">
+                  <Link key={item.href} href={item.href} className="block rounded-lg px-2 py-2.5 text-[0.9375rem] text-gray-800">
                     {item.label}
                   </Link>
                 ))}
@@ -247,7 +250,7 @@ function Bar({
         >
           {salesMode === 'QUOTE' ? <FileText className="h-5 w-5" /> : <ShoppingCart className="h-5 w-5" />}
           {count > 0 && (
-            <span className="absolute right-0.5 top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent-strong)] px-1 text-[11px] font-bold text-white">
+            <span className="absolute right-0.5 top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent-strong)] px-1 text-[0.6875rem] font-bold text-white">
               {count}
             </span>
           )}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import type { CarouselSlide } from '@/lib/theme';
 
 interface Fallback {
@@ -12,7 +12,7 @@ interface Fallback {
   ctaHref: string;
 }
 
-/** קרוסלת תמונות ל-Hero: מעבר אוטומטי, חיצים, נקודות והחלקה במגע. */
+/** קרוסלת תמונות ל-Hero: מעבר אוטומטי עם כפתור עצירה (WCAG 2.2.2), חיצים, נקודות והחלקה במגע. */
 export function HeroCarousel({
   slides,
   intervalSec,
@@ -24,17 +24,21 @@ export function HeroCarousel({
 }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [stopped, setStopped] = useState(false);
   const touchX = useRef<number | null>(null);
   const count = slides.length;
 
   const go = useCallback((next: number) => setIndex(((next % count) + count) % count), [count]);
 
   useEffect(() => {
-    if (count < 2 || paused) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const t = window.setTimeout(() => go(index + 1), intervalSec * 1000);
+    if (count < 2 || paused || stopped) return;
+    const t = window.setTimeout(() => {
+      // גולש שביקש פחות תנועה, במכשיר או בתפריט הנגישות: הקרוסלה נשארת עצורה עד שיפעיל אותה
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.hasAttribute('data-a11y-motion')) setStopped(true);
+      else go(index + 1);
+    }, intervalSec * 1000);
     return () => window.clearTimeout(t);
-  }, [index, paused, count, intervalSec, go]);
+  }, [index, paused, stopped, count, intervalSec, go]);
 
   return (
     <section
@@ -105,6 +109,14 @@ export function HeroCarousel({
 
       {count > 1 && (
         <>
+          <button
+            type="button"
+            onClick={() => setStopped((s) => !s)}
+            aria-label={stopped ? 'הפעלת המעבר האוטומטי' : 'עצירת המעבר האוטומטי'}
+            className="absolute bottom-3 right-3 rounded-full bg-black/60 p-2 text-white transition hover:bg-black/80"
+          >
+            {stopped ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
+          </button>
           <button
             type="button"
             onClick={() => go(index - 1)}

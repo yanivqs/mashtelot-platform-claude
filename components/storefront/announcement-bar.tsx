@@ -7,7 +7,7 @@ export function AnnouncementBar({ announcement, basePath }: { announcement: Anno
   if (!announcement.enabled || !announcement.text) return null;
   const href = announcement.href?.startsWith('/') ? `${basePath}${announcement.href}` || '/' : announcement.href;
   const bg = announcement.tone === 'accent' ? 'bg-[var(--accent-strong)]' : 'bg-[var(--brand)]';
-  const inner = 'mx-auto flex min-h-9 max-w-6xl flex-wrap items-center justify-center gap-x-2 px-4 py-1 text-center text-[13px] font-medium leading-snug';
+  const inner = 'mx-auto flex min-h-9 max-w-6xl flex-wrap items-center justify-center gap-x-2 px-4 py-1 text-center text-[0.8125rem] font-medium leading-snug';
   const content = (
     <>
       <span>{announcement.text}</span>

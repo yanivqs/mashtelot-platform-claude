@@ -18,7 +18,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="he" dir="rtl" className={`${inter.variable} h-full antialiased`}>
+    // התאמות הנגישות של הגולש נוספות ל-<html> לפני ההידרציה (lib/a11y-settings.ts)
+    <html lang="he" dir="rtl" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getNurseryByTenant } from '@/lib/tenant';
 import { AccessibilityStatement } from '@/components/accessibility-statement';
+import { AccessibilityReportForm } from '@/components/accessibility/report-form';
+import { parseAccessibilityInfo } from '@/lib/accessibility';
 
 export const metadata: Metadata = {
   title: 'הצהרת נגישות',
@@ -18,6 +20,9 @@ export default async function NurseryAccessibilityPage(props: { params: Promise<
       phone={nursery.phoneNumber}
       email={nursery.contactEmail || nursery.ownerEmail}
       physicalNote
-    />
+      info={parseAccessibilityInfo(nursery.accessibilityInfo)}
+    >
+      <AccessibilityReportForm tenant={tenant} />
+    </AccessibilityStatement>
   );
 }

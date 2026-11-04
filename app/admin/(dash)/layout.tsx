@@ -32,6 +32,7 @@ import {
   Sparkles,
   Wallet,
   type LucideIcon,
+  Accessibility,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { getEnabledModuleKeys } from '@/lib/module-access';
@@ -97,6 +98,8 @@ async function buildOwnerNav(nurseryId: string | null, role: Role): Promise<NavI
   // §6: עדכונים ממתינים מהקטלוג המרכזי (ללא הודעות יזומות — מונה בתפריט בלבד, Q3-א)
   nav.push({ href: '/admin/catalog-updates', label: pending > 0 ? `עדכונים מהקטלוג (${pending})` : 'עדכונים מהקטלוג', icon: RefreshCw });
   nav.push({ href: '/admin/products/images', label: 'תיקיית תמונות', icon: Images });
+  const a11yOpen = await prisma.accessibilityReport.count({ where: { nurseryId, status: { not: 'RESOLVED' } } });
+  nav.push({ href: '/admin/accessibility', label: a11yOpen > 0 ? `נגישות (${a11yOpen})` : 'נגישות', icon: Accessibility });
 
   if (enabled.has('announcement') || enabled.has('coupons') || enabled.has('popups')) nav.push({ href: '/admin/marketing', label: 'שיווק', icon: Megaphone });
   if (enabled.has('newsletter')) nav.push({ href: '/admin/newsletter', label: 'תפוצת דואר', icon: Mail });
