@@ -32,6 +32,10 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  // בדיקות E2E משנות נתונים בניהול ומיד בודקות את החנות, ולכן רצות בלי מטמון דפים
+  ...(process.env.E2E === '1'
+    ? { cacheHandler: require.resolve('./scripts/e2e-no-cache-handler.js'), cacheMaxMemorySize: 0 }
+    : {}),
   // אין `images.remotePatterns`: האפליקציה אינה משתמשת ב-next/image (תמונות מוצגות ב-<img>),
   // ותצורת hostname '**' אפשרה ל-/_next/image למשוך ולעבד תמונה מכל דומיין — משטח התקיפה של
   // advisories קריטיים (RCE ב-Image Optimization API עם AVIF, DoS). ללא תצורה — נדחה. C-P1-03 שלב 0.

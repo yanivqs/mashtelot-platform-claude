@@ -6,7 +6,13 @@ import { getNurseryByTenant } from '@/lib/tenant';
 import { isModuleEnabled } from '@/lib/module-access';
 import { prisma } from '@/lib/prisma';
 
-export const revalidate = 300;
+export const revalidate = 3600;
+
+// בלי הפונקציה הזו Next מרנדר את הדף בכל בקשה ומתעלם מ-revalidate.
+// רשימה ריקה: שום דף לא נבנה מראש, וכל דף נשמר במטמון בכניסה הראשונה אליו.
+export async function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata(
   props: {

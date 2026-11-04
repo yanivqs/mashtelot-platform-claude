@@ -8,7 +8,13 @@ import { htmlToText } from '@/lib/sanitize';
 import { redirectOrNotFound } from '@/lib/redirect-resolve';
 import { articleJsonLd, jsonLdHtml, tenantUrl } from '@/lib/seo';
 
-export const revalidate = 300;
+export const revalidate = 3600;
+
+// בלי הפונקציה הזו Next מרנדר את הדף בכל בקשה ומתעלם מ-revalidate.
+// רשימה ריקה: שום דף לא נבנה מראש, וכל דף נשמר במטמון בכניסה הראשונה אליו.
+export async function generateStaticParams() {
+  return [];
+}
 
 async function loadPost(tenant: string, slug: string) {
   const nursery = await getNurseryByTenant(tenant);

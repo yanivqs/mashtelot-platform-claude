@@ -10,7 +10,13 @@ import { SocialLinks } from '@/components/storefront/social-links';
 import { WazeIcon } from '@/components/waze-icon';
 import { wazeUrl } from '@/lib/waze';
 
-export const revalidate = 300;
+export const revalidate = 3600;
+
+// בלי הפונקציה הזו Next מרנדר את הדף בכל בקשה ומתעלם מ-revalidate.
+// רשימה ריקה: שום דף לא נבנה מראש, וכל דף נשמר במטמון בכניסה הראשונה אליו.
+export async function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata(
   props: {

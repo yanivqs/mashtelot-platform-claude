@@ -8,7 +8,13 @@ import { resolveProductContent, tenantUrl } from '@/lib/seo';
 import { redirectOrNotFound } from '@/lib/redirect-resolve';
 import { ProductView } from '@/components/storefront/product-view';
 
-export const revalidate = 300;
+export const revalidate = 3600;
+
+// בלי הפונקציה הזו Next מרנדר את הדף בכל בקשה ומתעלם מ-revalidate.
+// רשימה ריקה: שום דף לא נבנה מראש, וכל דף נשמר במטמון בכניסה הראשונה אליו.
+export async function generateStaticParams() {
+  return [];
+}
 
 function decodeParam(p: string): string {
   try {

@@ -9,7 +9,13 @@ import { BlockList } from '@/components/page-blocks/block-list';
 import { getLiveLayout, loadBlockData } from '@/lib/page-builder';
 import { pageKey } from '@/lib/page-builder-admin';
 
-export const revalidate = 300;
+export const revalidate = 3600;
+
+// בלי הפונקציה הזו Next מרנדר את הדף בכל בקשה ומתעלם מ-revalidate.
+// רשימה ריקה: שום דף לא נבנה מראש, וכל דף נשמר במטמון בכניסה הראשונה אליו.
+export async function generateStaticParams() {
+  return [];
+}
 export const dynamicParams = true;
 
 interface Props {
