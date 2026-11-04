@@ -363,8 +363,10 @@ export default async function globalSetup() {
     });
     await db.promotion.create({ data: { nurseryId: a11y.id, title: 'מבצע נגיש', popupText: '10% הנחה השבוע', isActive: true } });
     const a11yCategory = await db.nurseryCategory.create({ data: { nurseryId: a11y.id, name: 'תבלינים', slug: 'a11y-herbs' } });
+    // תת-קטגוריה: הופכת את תפריט הקטגוריות בכותרת לפאנל הרחב
+    const a11yChild = await db.nurseryCategory.create({ data: { nurseryId: a11y.id, name: 'עלים', slug: 'a11y-leaves', parentId: a11yCategory.id } });
     await db.nurseryProduct.create({
-      data: { nurseryId: a11y.id, customTitle: 'בזיליקום', slug: 'basil', price: '15.00', stockQuantity: 30, categories: { create: [{ nurseryCategoryId: a11yCategory.id }] } },
+      data: { nurseryId: a11y.id, customTitle: 'בזיליקום', slug: 'basil', price: '15.00', stockQuantity: 30, categories: { create: [{ nurseryCategoryId: a11yCategory.id }, { nurseryCategoryId: a11yChild.id }] } },
     });
     await db.nurseryProduct.create({ data: { nurseryId: a11y.id, customTitle: 'פיקוס כינורי', price: '120.00', stockQuantity: 2 } });
     await db.user.create({

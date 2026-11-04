@@ -15,7 +15,8 @@ function categoryHref(basePath: string, slug: string) {
 function CategoriesMenu({ basePath, categories }: { basePath: string; categories: CategoryNode[] }) {
   const wide = categories.some((c) => c.children.length > 0);
   return (
-    <div className="group relative">
+    // פאנל רחב נצמד לשורת הכותרת ולא לכפתור, אחרת הוא חורג מהמסך גם כשהוא נסתר ויוצר גלילה אופקית
+    <div className={`group ${wide ? '' : 'relative'}`}>
       <Link
         href={`${basePath}/catalog`}
         className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
@@ -24,8 +25,12 @@ function CategoriesMenu({ basePath, categories }: { basePath: string; categories
         קטגוריות
         <ChevronDown className="h-3.5 w-3.5 transition group-hover:rotate-180" />
       </Link>
-      {/* pt-2 שומר על רצף ה-hover בין הכפתור לפאנל */}
-      <div className="invisible absolute right-0 top-full z-40 pt-2 opacity-0 transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+      {/* הרווח העליון שומר על רצף ה-hover בין הכפתור לפאנל */}
+      <div
+        className={`invisible absolute top-full z-40 opacity-0 transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100 ${
+          wide ? 'left-6 -mt-3 pt-5' : 'right-0 pt-2'
+        }`}
+      >
         <div
           className={`max-h-[70vh] overflow-y-auto rounded-xl border border-gray-100 bg-white p-4 shadow-lg ${
             wide ? 'grid w-[min(42rem,90vw)] grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3' : 'w-56'
@@ -121,7 +126,7 @@ export function SiteHeader({
           dock={docking}
         />
       )}
-      <div className={`mx-auto max-w-6xl items-center justify-between gap-4 px-6 py-3 ${float ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`relative mx-auto max-w-6xl items-center justify-between gap-4 px-6 py-3 ${float ? 'hidden md:flex' : 'flex'}`}>
         <Link href={basePath || '/'} className="flex min-w-0 items-center gap-3">
           {nursery.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element

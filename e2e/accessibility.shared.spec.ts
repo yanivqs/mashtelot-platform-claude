@@ -147,6 +147,24 @@ test.describe('accessibility menu', () => {
     expect(wide).toEqual([]);
   });
 
+  test('the wide categories menu stays on screen and causes no horizontal scroll on desktop', async ({ page }) => {
+    await withSettings(page, {});
+    for (const width of [768, 1024, 1280, 1440]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(`${A11Y_SHOP}/contact`);
+      const excess = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(excess, `גלישה ברוחב ${width}`).toBeLessThanOrEqual(0);
+      // פתוח: בפוקוס מקלדת, כל הפאנל בתוך המסך
+      const trigger = page.locator('header nav').getByRole('link', { name: 'קטגוריות' });
+      await trigger.focus();
+      const child = page.locator('header nav').getByRole('link', { name: 'עלים' });
+      await expect(child).toBeVisible();
+      const box = await child.locator('xpath=ancestor::div[contains(@class,"max-h-")][1]').boundingBox();
+      expect(box!.x, `שמאל ברוחב ${width}`).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width, `ימין ברוחב ${width}`).toBeLessThanOrEqual(width);
+    }
+  });
+
   test('settings apply before hydration, survive reload and navigation, and reset clears them', async ({ page }) => {
     const errors: string[] = [];
     page.on('console', (m) => {
