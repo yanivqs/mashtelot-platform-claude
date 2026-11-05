@@ -18,8 +18,9 @@ export default async function NurserySettingsPage() {
   // הדף זמין לבעל המשתלה בלבד (סופר-אדמין עורך משתלות ב-/admin/nurseries/[id]);
   // כל מקטע מוצג רק כשהמודול שלו פעיל — ואותה בדיקה נאכפת גם ב-Server Action
   const canEditDesign = await isModuleEnabled(nurseryId, 'design');
-  const canEditCarousel =
-    canEditDesign && (await getModuleConfig(nurseryId, 'design')).carousel !== false;
+  const designConfig = canEditDesign ? await getModuleConfig(nurseryId, 'design') : null;
+  const canEditCarousel = canEditDesign && designConfig?.carousel !== false;
+  const canEditSticky = canEditDesign && designConfig?.sticky !== false;
   const paymentEnabled = await isModuleEnabled(nurseryId, 'payment_options');
   const deliveryEnabled = await isModuleEnabled(nurseryId, 'delivery_options');
   const shippingEnabled = await isModuleEnabled(nurseryId, 'shipping');
@@ -46,6 +47,7 @@ export default async function NurserySettingsPage() {
             scope="owner"
             canEditDesign={canEditDesign}
             canEditCarousel={canEditCarousel}
+            canEditSticky={canEditSticky}
           />
         </div>
       </div>

@@ -228,11 +228,13 @@ async function keepLockedDesignFields(id: string, data: Prisma.NurseryUpdateInpu
   });
   if (!current) return;
   const designEnabled = await isModuleEnabled(id, 'design');
-  const carouselAllowed = designEnabled && (await getModuleConfig(id, 'design')).carousel !== false;
+  const designConfig = designEnabled ? await getModuleConfig(id, 'design') : null;
+  const carouselAllowed = designEnabled && designConfig?.carousel !== false;
+  const stickyAllowed = designEnabled && designConfig?.sticky !== false;
   const next = resolveDesignUpdate(
     { themeConfig: data.themeConfig, primaryColor: (data.primaryColor as string | null | undefined) ?? null },
     { themeConfig: current.themeConfig, primaryColor: current.primaryColor },
-    { designEnabled, carouselAllowed },
+    { designEnabled, carouselAllowed, stickyAllowed },
   );
   data.themeConfig =
     next.themeConfig === null || next.themeConfig === undefined

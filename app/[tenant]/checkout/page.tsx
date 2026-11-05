@@ -466,11 +466,13 @@ export default function CheckoutPage() {
             <span>{isQuote ? 'סה"כ משוער' : 'סה"כ לתשלום'}</span>
             <span>{formatPrice(subtotal - groupAmount - redeemAmount + (shippingEstimate ?? 0))}</span>
           </div>
-          <p className="mt-1 text-xs text-gray-600">
-            {isQuote
-              ? 'המחיר הסופי ייקבע בהצעת המחיר.'
-              : 'הנחת קופון (אם הוזן) תחושב בעת שליחת ההזמנה.'}
-          </p>
+          {(isQuote || options?.couponsEnabled) && (
+            <p className="mt-1 text-xs text-gray-600">
+              {isQuote
+                ? 'המחיר הסופי ייקבע בהצעת המחיר.'
+                : 'הנחת קופון (אם הוזן) תחושב בעת שליחת ההזמנה.'}
+            </p>
+          )}
         </aside>
       </div>
     </div>

@@ -103,17 +103,20 @@ export function NurseryProfileForm({
   scope,
   canEditDesign = true,
   canEditCarousel = true,
+  canEditSticky = true,
 }: {
   nursery: NurseryFormValues;
   scope: 'owner' | 'super';
   canEditDesign?: boolean;
   canEditCarousel?: boolean;
+  canEditSticky?: boolean;
 }) {
   const [state, formAction] = useActionState(updateNursery, initial);
   const keep = useKeepFormValues(state);
   const isSuper = scope === 'super';
   const showDesign = isSuper || canEditDesign;
   const showCarousel = showDesign && (isSuper || canEditCarousel);
+  const showSticky = showDesign && (isSuper || canEditSticky);
   const carouselHidden = (
     <>
       <input type="hidden" name="carouselSlides" value={JSON.stringify(nursery.carousel.slides)} />
@@ -200,7 +203,8 @@ export function NurseryProfileForm({
 
       {showDesign && (
       <Section title="עיצוב ו-Hero">
-        <label className="text-sm">
+        {!showSticky && nursery.stickyHeader && <input type="hidden" name="stickyHeader" value="on" />}
+        <label className={showSticky ? 'text-sm' : 'text-sm sm:col-span-2'}>
           <span className="mb-1 block font-medium text-gray-700">פריסת ה-Hero</span>
           <select name="heroLayout" defaultValue={nursery.hero.layout} className={field}>
             <option value="centered">ממורכז</option>
@@ -211,15 +215,17 @@ export function NurseryProfileForm({
             )}
           </select>
         </label>
-        <label className="flex items-center gap-2 self-end text-sm">
-          <input
-            type="checkbox"
-            name="stickyHeader"
-            defaultChecked={nursery.stickyHeader}
-            className="h-4 w-4 rounded border-gray-300"
-          />
-          <span className="font-medium text-gray-700">כותרת עליונה נדבקת (sticky)</span>
-        </label>
+        {showSticky && (
+          <label className="flex items-center gap-2 self-end text-sm">
+            <input
+              type="checkbox"
+              name="stickyHeader"
+              defaultChecked={nursery.stickyHeader}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            <span className="font-medium text-gray-700">כותרת עליונה נדבקת (sticky)</span>
+          </label>
+        )}
         <label className="text-sm sm:col-span-2">
           <span className="mb-1 block font-medium text-gray-700">סגנון הכותרת בנייד</span>
           <select name="headerStyle" defaultValue={nursery.headerStyle} className={field}>
