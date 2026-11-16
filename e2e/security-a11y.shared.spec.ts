@@ -3,7 +3,7 @@ import { expect, test } from './fixtures';
 import { ADMIN } from '../playwright.config';
 import { FIX_SHOP } from './global-setup';
 
-const PAGES = ['/', '/catalog', '/product/basil', '/contact', '/cart', '/accessibility'];
+const PAGES = ['/', '/catalog', '/product/basil', '/contact', '/cart', '/accessibility', '/privacy'];
 
 test('store pages have no WCAG A/AA violations found by axe, and no CSP violations', async ({ page }) => {
   const csp: string[] = [];
@@ -41,6 +41,11 @@ test('security headers and statement link', async ({ page, request }) => {
   await page.getByRole('contentinfo').getByRole('link', { name: 'הצהרת נגישות' }).click();
   await expect(page).toHaveURL(`${FIX_SHOP}/accessibility`);
   await expect(page.getByRole('heading', { name: 'הצהרת נגישות' })).toBeVisible();
+
+  await page.getByRole('contentinfo').getByRole('link', { name: 'מדיניות פרטיות' }).click();
+  await expect(page).toHaveURL(`${FIX_SHOP}/privacy`);
+  await expect(page.getByRole('heading', { level: 1, name: 'מדיניות פרטיות' })).toBeVisible();
+  await expect(page.getByText('Google Analytics').first()).toBeVisible();
 });
 
 test('platform home links to a working accessibility statement; other root paths stay 404', async ({ page }) => {

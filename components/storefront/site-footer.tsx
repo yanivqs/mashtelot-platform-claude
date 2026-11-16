@@ -104,6 +104,7 @@ export function SiteFooter({
           <Link href="/contact" className="block text-gray-600 hover:text-gray-900">צור קשר</Link>
           <Link href="/cart" className="block text-gray-600 hover:text-gray-900">עגלת קניות</Link>
           <Link href="/accessibility" className="block text-gray-600 hover:text-gray-900">הצהרת נגישות</Link>
+          <Link href="/privacy" className="block text-gray-600 hover:text-gray-900">מדיניות פרטיות</Link>
         </div>
       </div>
 

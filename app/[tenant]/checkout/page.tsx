@@ -414,6 +414,13 @@ export default function CheckoutPage() {
               ? 'המשתלה תחזור אליכם עם הצעת מחיר מפורטת. אין חיוב בשלב זה.'
               : 'התשלום מתבצע מול המשתלה לאחר יצירת ההזמנה.'}
           </p>
+          <p className="text-center text-xs text-gray-600">
+            הפרטים משמשים לטיפול בהזמנה. פרטים נוספים ב
+            <Link href="/privacy" className="underline hover:text-gray-900">
+              מדיניות הפרטיות
+            </Link>
+            .
+          </p>
         </form>
 
         <aside className="h-fit rounded-xl border border-gray-100 bg-gray-50 p-5">

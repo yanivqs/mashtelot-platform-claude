@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import Link from 'next/link';
 import { subscribeAction, type NewsletterState } from '@/app/[tenant]/newsletter-actions';
 
 const initial: NewsletterState = {};
@@ -45,7 +46,13 @@ export function NewsletterForm({ tenant, nurseryName }: { tenant: string; nurser
             </div>
             <label className="flex items-start gap-2 text-xs text-gray-600">
               <input type="checkbox" name="consent" required className="mt-0.5" />
-              <span>אני מסכים/ה לקבל מ{nurseryName} דיוור ומבצעים במייל. להסרה אפשר לפנות למשתלה בכל עת.</span>
+              <span>
+                אני מסכים/ה לקבל מ{nurseryName} דיוור ומבצעים במייל. להסרה אפשר לפנות למשתלה בכל עת. פרטים ב
+                <Link href="/privacy" className="underline hover:text-gray-900">
+                  מדיניות הפרטיות
+                </Link>
+                .
+              </span>
             </label>
             {state.error && (
               <p role="alert" className="text-sm text-red-700">

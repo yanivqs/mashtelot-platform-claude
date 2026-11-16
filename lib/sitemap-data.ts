@@ -6,6 +6,7 @@ import { getCategoryNav, type CategoryNode } from '@/lib/catalog';
 import { productSlug } from '@/lib/utils';
 import { STORE_VISIBLE } from '@/lib/product-visibility';
 import type { SitemapEntry } from '@/lib/seo-files';
+import { PRIVACY_UPDATED_AT } from '@/components/privacy-policy';
 
 /**
  * רשומות ה-sitemap של משתלה — רק מה שהחנות באמת מגישה לציבור, באותם כללי מודולים:
@@ -65,6 +66,7 @@ export async function nurserySitemapEntries(nurseryId: string): Promise<SitemapE
     { path: '/catalog', lastModified: catalogUpdate, priority: 0.9 },
     { path: '/contact', lastModified: nursery.updatedAt, priority: 0.5 },
     { path: '/accessibility', lastModified: new Date('2026-11-01T00:00:00.000Z'), priority: 0.2 },
+    { path: '/privacy', lastModified: new Date(`${PRIVACY_UPDATED_AT}T00:00:00.000Z`), priority: 0.2 },
     ...flatCategories.map((c) => ({ path: `/catalog?category=${c.slug}`, lastModified: categoryUpdate(c), priority: 0.8 })),
     ...products.map((p) => ({
       path: `/product/${productSlug(p.id, p.customTitle || p.plant?.hebrewName || p.supply?.title || 'מוצר', p.slug)}`,
