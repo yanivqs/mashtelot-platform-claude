@@ -79,7 +79,7 @@ export default async function LandingPage() {
           <div className="mt-10 flex items-center justify-center gap-4">
             <Link
               href="mailto:hello@mashtelot.net"
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-6 py-3 font-medium text-white transition hover:bg-brand-700"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-6 py-3 font-medium text-white transition hover:bg-brand-800"
             >
               פתחו חנות למשתלה
               <ArrowLeft className="h-4 w-4" />

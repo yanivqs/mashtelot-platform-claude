@@ -133,18 +133,24 @@ export function HeroCarousel({
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
-          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
+          <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2">
             {slides.map((_, i) => (
+              // שטח לחיצה של 24 פיקסלים לפחות (WCAG 2.5.8); הנקודה עצמה נשארת קטנה
               <button
                 key={i}
                 type="button"
                 onClick={() => go(i)}
                 aria-label={`מעבר לשקופית ${i + 1}`}
                 aria-current={i === index}
-                className={`h-2.5 rounded-full transition-all ${
-                  i === index ? 'w-7 bg-white' : 'w-2.5 bg-white/50 hover:bg-white/80'
-                }`}
-              />
+                className="group flex h-6 min-w-6 items-center justify-center px-1"
+              >
+                <span
+                  aria-hidden
+                  className={`block h-2.5 rounded-full transition-all ${
+                    i === index ? 'w-7 bg-white' : 'w-2.5 bg-white/50 group-hover:bg-white/80'
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </>

@@ -5,7 +5,7 @@ import { A11Y_SHOP, E2E_A11Y_OWNER } from './global-setup';
 import { A11Y_STORAGE_KEY } from '../lib/a11y-settings';
 
 const PAGES = ['/', '/catalog', '/catalog?q=%D7%91%D7%96%D7%99%D7%9C%D7%99%D7%A7%D7%95%D7%9D', '/product/basil', '/contact', '/cart', '/accessibility'];
-const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
 /** ההגדרות נכתבות לפני טעינת הדף, כמו אצל גולש שכבר בחר. */
 async function withSettings(page: Page, settings: Record<string, unknown>) {

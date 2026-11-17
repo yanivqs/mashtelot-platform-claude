@@ -11,10 +11,11 @@ test('store pages have no WCAG A/AA violations found by axe, and no CSP violatio
     if (/Content Security Policy/i.test(m.text())) csp.push(m.text());
   });
   const problems: string[] = [];
-  for (const path of PAGES) {
-    await page.goto(`${FIX_SHOP}${path}`);
+  // דף הבית של הפלטפורמה נבדק יחד עם עמודי החנות
+  for (const path of [...PAGES, ADMIN + '/']) {
+    await page.goto(path.startsWith('http') ? path : `${FIX_SHOP}${path}`);
     await page.waitForLoadState('networkidle');
-    const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+    const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
     for (const v of violations) {
       for (const n of v.nodes) {
         const d = (n.any[0]?.data ?? {}) as { fgColor?: string; bgColor?: string; contrastRatio?: number };
