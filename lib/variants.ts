@@ -87,10 +87,14 @@ export function lineTitle(productTitle: string, variantName: string | null | und
   return v ? `${productTitle} — ${v}` : productTitle;
 }
 
-/** תמונות לווריאנט: תמונות הווריאנט קודם, ואחריהן תמונת המוצר (ללא כפילויות). */
-export function variantImages(v: Pick<VariantLike, 'imageUrls'> | null | undefined, productImage: string | null): string[] {
+/** תמונות לווריאנט: תמונות הווריאנט קודם, ואחריהן תמונת המוצר והגלריה שלו (ללא כפילויות). */
+export function variantImages(
+  v: Pick<VariantLike, 'imageUrls'> | null | undefined,
+  productImage: string | null,
+  gallery: readonly string[] = [],
+): string[] {
   const out = [...(v?.imageUrls ?? []).filter(Boolean)];
-  if (productImage && !out.includes(productImage)) out.push(productImage);
+  for (const url of [productImage, ...gallery]) if (url && !out.includes(url)) out.push(url);
   return out;
 }
 

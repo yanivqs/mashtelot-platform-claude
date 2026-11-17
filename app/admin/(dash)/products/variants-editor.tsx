@@ -3,7 +3,7 @@
 import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { X } from 'lucide-react';
-import { ImageUpload } from '@/components/admin/image-upload';
+import { ImageList } from '@/components/admin/image-list';
 import { formatPrice } from '@/lib/utils';
 import { deleteVariantAction, saveVariantAction, type VariantFormState } from './variant-actions';
 
@@ -39,45 +39,6 @@ function Submit({ label }: { label: string }) {
   );
 }
 
-/** רשימת תמונות לווריאנט: הסרה + העלאת תמונה נוספת (נשלחות כ-imageUrls). */
-function VariantImages({ initialUrls }: { initialUrls: string[] }) {
-  const [urls, setUrls] = useState(initialUrls);
-  const [uploaderKey, setUploaderKey] = useState(0);
-  return (
-    <div className="sm:col-span-3">
-      <span className="mb-1 block text-xs font-medium text-gray-700">תמונות הווריאנט (מוצגות לפני תמונת המוצר)</span>
-      <div className="flex flex-wrap items-start gap-2">
-        {urls.map((u) => (
-          <div key={u} className="relative h-16 w-16 overflow-hidden rounded-lg border border-gray-200">
-            <input type="hidden" name="imageUrls" value={u} />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={u} alt="" className="h-full w-full object-cover" />
-            <button
-              type="button"
-              aria-label="הסרת תמונה"
-              onClick={() => setUrls((prev) => prev.filter((x) => x !== u))}
-              className="absolute left-0.5 top-0.5 rounded-full bg-white/90 p-0.5 text-red-600"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        ))}
-        {urls.length < 8 && (
-          <ImageUpload
-            key={uploaderKey}
-            folder="plants"
-            nurseryFolder
-            onChange={(url) => {
-              if (!url) return;
-              setUrls((prev) => (prev.includes(url) ? prev : [...prev, url]));
-              setUploaderKey((k) => k + 1);
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
 
 interface AxisLabels {
   axis1Label: string;
@@ -161,7 +122,7 @@ function VariantForm({
           <span className="mb-0.5 block font-medium text-gray-700">ברקוד</span>
           <input name="barcode" dir="ltr" inputMode="numeric" defaultValue={v('barcode', variant?.barcode ?? '')} className={field} />
         </label>
-        <VariantImages initialUrls={variant?.imageUrls ?? []} />
+        <ImageList name="imageUrls" initialUrls={variant?.imageUrls ?? []} label="תמונות הווריאנט (מוצגות לפני תמונות המוצר)" className="sm:col-span-3" />
         <div className="flex flex-wrap items-center gap-3 sm:col-span-3">
           <label className="flex items-center gap-1.5 text-xs">
             <input name="isActive" type="checkbox" defaultChecked={variant?.isActive ?? true} className="h-4 w-4" />

@@ -1,4 +1,5 @@
 import type { Nursery, Plant, MasterSupply, NurseryProduct, ProductVariant } from '@prisma/client';
+import { productImages } from '@/lib/product-gallery';
 import { availableQuantity, sellableQuantity } from '@/lib/stock';
 import { activeVariants, effectivePrice, priceSummary } from '@/lib/variants';
 
@@ -83,6 +84,7 @@ export function productJsonLd(params: {
 }) {
   const { nursery, product, url } = params;
   const { title, description, image } = resolveProductContent(product);
+  const images = productImages(image, product.galleryImageUrls);
   const variants = activeVariants(params.variants ?? []);
   const inStock = product.alwaysInStock || (variants.length ? variants.some((v) => sellableQuantity(v, product) > 0) : availableQuantity(product) > 0);
   const availability = inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock';
@@ -96,7 +98,7 @@ export function productJsonLd(params: {
       '@type': 'Product',
       name: title,
       description: description || title,
-      image: image ? [image] : undefined,
+      image: images.length ? images : undefined,
       sku: product.id,
       brand: { '@type': 'Brand', name: nursery.name },
       offers: {
@@ -120,7 +122,7 @@ export function productJsonLd(params: {
     '@type': 'Product',
     name: title,
     description: description || title,
-    image: image ? [image] : undefined,
+    image: images.length ? images : undefined,
     sku: only?.sku || product.id,
     brand: { '@type': 'Brand', name: nursery.name },
     offers: {

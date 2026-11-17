@@ -8,6 +8,7 @@ import { assertOwnedBy } from '@/lib/ownership';
 import { setOnHandStock } from '@/lib/order-service';
 import { recordAudit } from '@/lib/audit';
 import { duplicateProduct, removeProduct } from '@/lib/product-admin';
+import { parseGalleryUrls } from '@/lib/product-gallery';
 import { saveRedirect } from '@/lib/redirects-admin';
 import { rateLimit } from '@/lib/rate-limit';
 import { suggestSlugWithAi } from '@/lib/ai-slug';
@@ -84,6 +85,8 @@ export async function updateProduct(
       }
     }
     const customImageUrl = optionalUrl(formData.get('customImageUrl'));
+    // הטופס שולח את הגלריה תמיד (גם ריקה) — סימון שהשדה קיים, כדי שטופס אחר לא ימחק אותה בטעות
+    const galleryImageUrls = formData.has('galleryPresent') ? parseGalleryUrls(formData.getAll('galleryImageUrls'), customImageUrl) : undefined;
 
     // מלאי ברמת המוצר רק כשיש וריאנט יחיד (השדה לא מוצג כשיש כמה — המלאי לכל וריאנט, §7.01)
     const stockField = formData.get('stockQuantity');
@@ -106,6 +109,7 @@ export async function updateProduct(
         customTitle: (String(formData.get('customTitle') || '').trim() || null),
         customDescription: (String(formData.get('customDescription') || '').trim() || null),
         customImageUrl,
+        ...(galleryImageUrls ? { galleryImageUrls } : {}),
         slug,
         // הועלתה תמונה משלכם — המוצר כבר לא ממתין לתמונה
         ...(customImageUrl ? { imageRequired: false } : {}),

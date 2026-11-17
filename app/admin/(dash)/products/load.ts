@@ -40,6 +40,7 @@ export async function loadAdminProducts(nurseryId: string, where: Prisma.Nursery
       customTitle: p.customTitle,
       customDescription: p.customDescription,
       customImageUrl: p.customImageUrl,
+      galleryImageUrls: p.galleryImageUrls,
       seoMetaTitle: p.seoMetaTitle,
       seoMetaDescription: p.seoMetaDescription,
       slug: p.slug,

@@ -43,7 +43,7 @@ export async function ProductView({
       compareAt: compareAt !== null && compareAt > price ? compareAt : null,
       available: sellableQuantity(v, product),
       unlimited: product.alwaysInStock,
-      images: variantImages(v, image),
+      images: variantImages(v, image, product.galleryImageUrls),
     };
   });
   const plant = product.plant;

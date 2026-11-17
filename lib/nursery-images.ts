@@ -77,16 +77,20 @@ export async function imageUsage(nurseryId: string, urls: string[]): Promise<Map
   };
   const [products, variants] = await Promise.all([
     prisma.nurseryProduct.findMany({
-      where: { nurseryId, customImageUrl: { in: urls } },
-      select: { ...titleFields, customImageUrl: true },
+      where: { nurseryId, OR: [{ customImageUrl: { in: urls } }, { galleryImageUrls: { hasSome: urls } }] },
+      select: { ...titleFields, customImageUrl: true, galleryImageUrls: true },
     }),
     prisma.productVariant.findMany({
       where: { product: { nurseryId }, imageUrls: { hasSome: urls } },
       select: { imageUrls: true, product: { select: titleFields } },
     }),
   ]);
-  for (const p of products) add(p.customImageUrl!, { id: p.id, title: productTitle(p) });
   const wanted = new Set(urls);
+  for (const p of products) {
+    for (const url of [p.customImageUrl, ...p.galleryImageUrls]) {
+      if (url && wanted.has(url)) add(url, { id: p.id, title: productTitle(p) });
+    }
+  }
   for (const v of variants) {
     for (const url of v.imageUrls) {
       if (wanted.has(url)) add(url, { id: v.product.id, title: productTitle(v.product) });

@@ -25,7 +25,7 @@ export async function removeProduct(db: PrismaClient, nurseryId: string, product
     db.customerFavorite.deleteMany({ where: { nurseryProductId: p.id } }),
     db.nurseryProduct.update({
       where: { id: p.id },
-      data: { deletedAt: new Date(), isActive: false, customTitle: title, plantId: null, supplyId: null, slug: null, customImageUrl: null, imageRequired: false, catalogRevisionId: null },
+      data: { deletedAt: new Date(), isActive: false, customTitle: title, plantId: null, supplyId: null, slug: null, customImageUrl: null, galleryImageUrls: [], imageRequired: false, catalogRevisionId: null },
     }),
   ]);
   return { ok: true, mode: 'archived', title };
@@ -52,6 +52,7 @@ export async function duplicateProduct(db: PrismaClient, nurseryId: string, prod
         customTitle: copyTitle,
         customDescription: description || null,
         customImageUrl: image,
+        galleryImageUrls: p.galleryImageUrls,
         price: p.price,
         compareAtPrice: p.compareAtPrice,
         stockQuantity: 0,

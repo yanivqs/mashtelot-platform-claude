@@ -5,6 +5,7 @@ import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { AlertCircle, Copy, Sparkles, Loader2 } from 'lucide-react';
 import { ImageUpload } from '@/components/admin/image-upload';
+import { ImageList } from '@/components/admin/image-list';
 import { SpecTable } from '@/components/storefront/spec-table';
 import { SEO_LEVEL_META } from '@/lib/seo-score';
 import { normalizeProductSlug } from '@/lib/utils';
@@ -152,6 +153,14 @@ export function ProductEditor({
               </p>
             )
           )}
+          <input type="hidden" name="galleryPresent" value="1" />
+          <ImageList
+            name="galleryImageUrls"
+            initialUrls={product.galleryImageUrls}
+            label="תמונות נוספות"
+            hint="מוצגות בדף המוצר אחרי התמונה הראשית. אפשר לשנות את הסדר בחיצים."
+            className="mt-4 border-t border-amber-200 pt-3"
+          />
         </div>
 
         <label className="text-sm sm:col-span-2">

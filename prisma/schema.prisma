@@ -452,6 +452,8 @@ model NurseryProduct {
   supplyId           String?                  @map("supply_id")
   customTitle        String?                  @map("custom_title")
   customImageUrl     String?                  @map("custom_image_url")
+  /// תמונות נוספות לגלריה בדף המוצר, אחרי התמונה הראשית (עד 8)
+  galleryImageUrls   String[]                 @default([]) @map("gallery_image_urls")
   /// כתובת המוצר בחנות (/product/<slug>), ייחודית במשתלה; ריק = שם המוצר + 8 תווי המזהה
   slug               String?
   /// שויך מהקטלוג ועדיין בלי תמונה משלו — מוסתר מהחנות עד שתועלה תמונה

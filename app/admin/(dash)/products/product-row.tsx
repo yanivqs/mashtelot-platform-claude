@@ -26,6 +26,7 @@ export interface RowProduct {
   customTitle: string | null;
   customDescription: string | null;
   customImageUrl: string | null;
+  galleryImageUrls: string[];
   seoMetaTitle: string | null;
   seoMetaDescription: string | null;
   /** כתובת שמורה (ריק = אוטומטית) */
