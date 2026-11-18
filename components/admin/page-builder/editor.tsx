@@ -4,6 +4,7 @@ import { createContext, useActionState, useContext, useEffect, useRef, useState,
 import { useFormStatus } from 'react-dom';
 import { ArrowDown, ArrowUp, Copy, Monitor, Plus, Smartphone, Trash2 } from 'lucide-react';
 import { ImageUpload } from '@/components/admin/image-upload';
+import { DESKTOP_PER_ROW, MOBILE_PER_ROW, gridColumns, layoutRows, recommendedSize, tileCubes, type CategoryTileSize } from '@/lib/category-grid';
 import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import {
   BLOCK_LABELS,
@@ -153,6 +154,154 @@ function ProductPicker({ target, b, set, titles }: { target: string; b: BlockOf<
             </li>
           ))}
       </ul>
+    </div>
+  );
+}
+
+function Choice({ name, checked, label, onPick }: { name: string; checked: boolean; label: string; onPick: () => void }) {
+  return (
+    <label className="flex items-center gap-1.5 whitespace-nowrap">
+      <input type="radio" name={name} checked={checked} onChange={onPick} />
+      {label}
+    </label>
+  );
+}
+
+/** בלוק קטגוריות: בחירה, פריסה במחשב ובנייד, ותמונה וגודל לכל קטגוריה, עם תצוגת קוביות כמו בהדמיה. */
+function CategoryFields({
+  b,
+  set,
+  categories,
+}: {
+  b: BlockOf<'categories'>;
+  set: Patch<BlockOf<'categories'>>;
+  categories: Array<{ id: string; name: string; depth: number }>;
+}) {
+  // הקטגוריות שיוצגו: המסומנות, או הראשיות כשאין סימון (בחנות מוצגות רק כאלה שיש בהן מוצרים פעילים)
+  const shown = b.categoryIds.length ? categories.filter((c) => b.categoryIds.includes(c.id)) : categories.filter((c) => c.depth === 0);
+  const tiles = shown.map((c, i) => ({ id: c.id, name: c.name, n: i + 1, size: b.items[c.id]?.size ?? ('normal' as CategoryTileSize) }));
+  const rows = layoutRows(tiles, b.desktopPerRow);
+  const cols = gridColumns(b.desktopPerRow);
+  const setItem = (id: string, patch: { imageUrl?: string; size?: CategoryTileSize }) => {
+    const cur = b.items[id];
+    const next = { imageUrl: patch.imageUrl ?? cur?.imageUrl ?? '', size: patch.size ?? cur?.size ?? ('normal' as CategoryTileSize) };
+    const items = { ...b.items };
+    if (!next.imageUrl && next.size === 'normal') delete items[id];
+    else items[id] = next;
+    set({ items });
+  };
+
+  return (
+    <div className="space-y-4">
+      <Text label="כותרת" value={b.title} onChange={(v) => set({ title: v })} />
+      <p className="text-xs text-gray-500">בלי סימון — הקטגוריות הראשיות. מוצגות רק קטגוריות שיש בהן מוצרים פעילים, לפי הסדר שנקבע במסך &quot;הקטגוריות שלי&quot;.</p>
+      <div className="grid max-h-48 gap-1 overflow-y-auto text-sm sm:grid-cols-2">
+        {categories.map((c) => (
+          <label key={c.id} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={b.categoryIds.includes(c.id)}
+              onChange={(e) => set({ categoryIds: e.target.checked ? [...b.categoryIds, c.id] : b.categoryIds.filter((x) => x !== c.id) })}
+            />
+            {'— '.repeat(c.depth)}
+            {c.name}
+          </label>
+        ))}
+      </div>
+
+      <fieldset className="space-y-2.5 rounded-lg border border-gray-200 p-3 text-sm">
+        <legend className="px-1 font-medium text-gray-700">תצוגה</legend>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <p className="w-32 font-medium text-gray-700">במחשב</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {DESKTOP_PER_ROW.map((n) => (
+              <Choice key={n} name={`${b.id}-dpr`} checked={b.desktopPerRow === n} label={`${n} בשורה`} onPick={() => set({ desktopPerRow: n })} />
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <p className="w-32 font-medium text-gray-700">בנייד: כמה בשורה</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {MOBILE_PER_ROW.map((n) => (
+              <Choice key={n} name={`${b.id}-mpr`} checked={b.mobilePerRow === n} label={`${n} בשורה`} onPick={() => set({ mobilePerRow: n })} />
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <p className="w-32 font-medium text-gray-700">בנייד: יחס תמונה</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            <Choice name={`${b.id}-mr`} checked={b.mobileRatio === 'square'} label="ריבוע 1:1" onPick={() => set({ mobileRatio: 'square' })} />
+            <Choice name={`${b.id}-mr`} checked={b.mobileRatio === 'wide'} label="רחב 2:1" onPick={() => set({ mobileRatio: 'wide' })} />
+          </div>
+        </div>
+      </fieldset>
+
+      <div>
+        <p className="mb-1 text-sm font-medium text-gray-700">
+          פריסה במחשב: {cols * 2} קוביות בשורה ({cols}×2)
+        </p>
+        <div className="space-y-1.5" data-testid="category-cubes">
+          {rows.map((row, ri) => (
+            <div key={ri}>
+              <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+                {row.items.map((t) => (
+                  <div
+                    key={t.id}
+                    style={{ gridColumn: `span ${t.span} / span ${t.span}` }}
+                    className="flex h-12 items-center justify-center truncate rounded border-2 border-gray-700 bg-white px-1 text-xs font-bold text-gray-900"
+                    title={t.name}
+                  >
+                    {t.n}. {t.name}
+                  </div>
+                ))}
+              </div>
+              {row.emptyColumns > 0 && ri < rows.length - 1 && (
+                <p className="mt-0.5 text-xs text-amber-700">
+                  בשורה {ri + 1} נשארו {row.emptyColumns * 2} קוביות ריקות. אפשר לשנות גודל או סדר.
+                </p>
+              )}
+            </div>
+          ))}
+          {rows.length === 0 && <p className="text-xs text-gray-500">אין קטגוריות להצגה.</p>}
+        </div>
+      </div>
+
+      <ul className="space-y-3">
+        {tiles.map((t) => (
+          <li key={t.id} className="rounded-lg border border-gray-200 p-3" data-testid={`category-tile-${t.id}`}>
+            <p className="mb-2 text-sm font-semibold text-gray-900">
+              {t.n}. {t.name}
+            </p>
+            <div className="flex flex-wrap items-start gap-4">
+              <ImageUpload
+                key={`${b.id}-${t.id}-${b.items[t.id]?.imageUrl ? 1 : 0}`}
+                folder="misc"
+                hint={`מידה מומלצת במחשב: ${recommendedSize(t.size)}. בנייד התמונה נחתכת ליחס שנבחר, אז כדאי שהעיקר יהיה במרכז.`}
+                defaultValue={b.items[t.id]?.imageUrl ?? ''}
+                onChange={(url) => setItem(t.id, { imageUrl: url })}
+              />
+              <div className="text-sm">
+                <p className="mb-1 font-medium text-gray-700">גודל במחשב</p>
+                <div className="flex flex-col gap-1">
+                  <Choice
+                    name={`${b.id}-${t.id}-size`}
+                    checked={t.size === 'normal'}
+                    label={`רגיל: ${tileCubes('normal')} קוביות (ריבוע)`}
+                    onPick={() => setItem(t.id, { size: 'normal' })}
+                  />
+                  <Choice
+                    name={`${b.id}-${t.id}-size`}
+                    checked={t.size === 'wide'}
+                    label={`רחב: ${tileCubes('wide')} קוביות (2:1)`}
+                    onPick={() => setItem(t.id, { size: 'wide' })}
+                  />
+                </div>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-gray-500">כל עוד אין אף תמונה, הקטגוריות מוצגות כמו קודם (שמות בלבד).</p>
     </div>
   );
 }
@@ -311,27 +460,7 @@ function BlockFields({
         </div>
       );
     case 'categories':
-      return (
-        <div className="space-y-3">
-          <Text label="כותרת" value={b.title} onChange={(v) => set({ title: v } as Partial<typeof b>)} />
-          <p className="text-xs text-gray-500">בלי סימון — הקטגוריות הראשיות. מוצגות רק קטגוריות שיש בהן מוצרים פעילים, לפי הסדר שנקבע במסך "הקטגוריות שלי".</p>
-          <div className="grid max-h-48 gap-1 overflow-y-auto text-sm sm:grid-cols-2">
-            {categories.map((c) => (
-              <label key={c.id} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={b.categoryIds.includes(c.id)}
-                  onChange={(e) =>
-                    set({ categoryIds: e.target.checked ? [...b.categoryIds, c.id] : b.categoryIds.filter((x) => x !== c.id) } as Partial<typeof b>)
-                  }
-                />
-                {'— '.repeat(c.depth)}
-                {c.name}
-              </label>
-            ))}
-          </div>
-        </div>
-      );
+      return <CategoryFields b={b} set={set as Patch<BlockOf<'categories'>>} categories={categories} />;
     case 'cta':
       return (
         <div className="space-y-3">

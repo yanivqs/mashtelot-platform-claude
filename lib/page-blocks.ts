@@ -4,6 +4,8 @@
  * R03-08: אין HTML חופשי ואין סקריפטים — רק השדות שמוגדרים כאן נשמרים; כל שדה אחר נזרק.
  */
 
+import { MOBILE_PER_ROW, type CategoryTileSize, type DesktopPerRow, type MobilePerRow, type MobileRatio } from '@/lib/category-grid';
+
 export const BLOCK_TYPES = ['hero', 'text', 'imageText', 'products', 'categories', 'contentCards', 'cta', 'faq', 'contact', 'spacer'] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 
@@ -47,6 +49,12 @@ export type HeroVariant = 'plain' | 'image' | 'carousel' | 'video';
 /** mixed — מגוון: מוצרים מקטגוריות שונות לסירוגין */
 export type ProductSource = 'manual' | 'newest' | 'sale' | 'category' | 'mixed';
 
+/** הגדרות קטגוריה בבלוק הקטגוריות: תמונה (לא חובה) וגודל במחשב */
+export interface CategoryTileSettings {
+  imageUrl: string;
+  size: CategoryTileSize;
+}
+
 /** כרטיס תוכן: תמונה, כותרת, תיאור וקישור לדף באתר */
 export interface ContentCard {
   imageUrl: string;
@@ -60,7 +68,17 @@ export type Block =
   | (BlockBase & { type: 'text'; html: string; align: 'right' | 'center' })
   | (BlockBase & { type: 'imageText'; imageUrl: string; title: string; html: string; imageSide: 'right' | 'left'; ctaText: string; ctaHref: string })
   | (BlockBase & { type: 'products'; title: string; source: ProductSource; productIds: string[]; categoryId: string; limit: number; showCategory: boolean })
-  | (BlockBase & { type: 'categories'; title: string; categoryIds: string[] })
+  | (BlockBase & {
+      type: 'categories';
+      title: string;
+      categoryIds: string[];
+      /** מחשב: כמה קטגוריות רגילות בשורה (רשת של 8 או 6 קוביות ברוחב) */
+      desktopPerRow: DesktopPerRow;
+      mobilePerRow: MobilePerRow;
+      mobileRatio: MobileRatio;
+      /** לפי מזהה קטגוריה */
+      items: Record<string, CategoryTileSettings>;
+    })
   | (BlockBase & { type: 'contentCards'; title: string; source: 'manual' | 'blog'; cards: ContentCard[]; limit: number })
   | (BlockBase & { type: 'cta'; title: string; text: string; ctaText: string; ctaHref: string; tone: 'brand' | 'light' })
   | (BlockBase & { type: 'faq'; title: string; items: Array<{ q: string; a: string }> })
@@ -86,7 +104,7 @@ export function newBlock(type: BlockType): Block {
     case 'products':
       return { ...base, type, title: 'מוצרים נבחרים', source: 'newest', productIds: [], categoryId: '', limit: 8, showCategory: false };
     case 'categories':
-      return { ...base, type, title: 'קטגוריות', categoryIds: [] };
+      return { ...base, type, title: 'קטגוריות', categoryIds: [], desktopPerRow: 4, mobilePerRow: 2, mobileRatio: 'square', items: {} };
     case 'contentCards':
       return { ...base, type, title: 'מדריכים וטיפים', source: 'blog', cards: [], limit: 3 };
     case 'cta':
@@ -170,6 +188,24 @@ function list(o: Raw, key: string): Raw[] {
   return v as Raw[];
 }
 
+/** הגדרות הקטגוריות בבלוק: עד MAX_CATEGORIES, מזהה תקין, תמונה בטוחה; הגדרה ריקה (בלי תמונה ובגודל רגיל) מושמטת. */
+function categoryItems(v: unknown): Record<string, CategoryTileSettings> {
+  if (v === undefined || v === null) return {};
+  if (typeof v !== 'object' || Array.isArray(v)) throw new BlockError('קטגוריות: הגדרות לא תקינות');
+  const entries = Object.entries(v as Raw);
+  if (entries.length > MAX_CATEGORIES * 4) throw new BlockError('קטגוריות: יותר מדי הגדרות');
+  const out: Record<string, CategoryTileSettings> = {};
+  for (const [id, raw] of entries) {
+    if (!/^[A-Za-z0-9-]{1,64}$/.test(id) || !raw || typeof raw !== 'object') throw new BlockError('קטגוריות: הגדרות לא תקינות');
+    const r = raw as Raw;
+    const imageUrl = image(r, 'imageUrl', 'תמונת קטגוריה');
+    const size = oneOf(r, 'size', ['normal', 'wide'] as const, 'normal');
+    if (imageUrl || size !== 'normal') out[id] = { imageUrl, size };
+  }
+  if (Object.keys(out).length > MAX_CATEGORIES) throw new BlockError(`קטגוריות: עד ${MAX_CATEGORIES} עם הגדרות`);
+  return out;
+}
+
 function parseBlock(o: Raw): Block {
   const type = o.type;
   if (typeof type !== 'string' || !(BLOCK_TYPES as readonly string[]).includes(type)) throw new BlockError('סוג בלוק לא מוכר');
@@ -238,7 +274,16 @@ function parseBlock(o: Raw): Block {
       };
     }
     case 'categories':
-      return { ...base, type: 'categories', title: str(o, 'title', 'כותרת'), categoryIds: ids(o, 'categoryIds', 'קטגוריות', MAX_CATEGORIES) };
+      return {
+        ...base,
+        type: 'categories',
+        title: str(o, 'title', 'כותרת'),
+        categoryIds: ids(o, 'categoryIds', 'קטגוריות', MAX_CATEGORIES),
+        desktopPerRow: o.desktopPerRow === 3 ? 3 : 4,
+        mobilePerRow: (MOBILE_PER_ROW as readonly unknown[]).includes(o.mobilePerRow) ? (o.mobilePerRow as MobilePerRow) : 2,
+        mobileRatio: oneOf(o, 'mobileRatio', ['square', 'wide'] as const, 'square'),
+        items: categoryItems(o.items),
+      };
     case 'contentCards': {
       const source = oneOf(o, 'source', ['manual', 'blog'] as const, 'blog');
       const raw = list(o, 'cards');
