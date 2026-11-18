@@ -6,6 +6,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
 import { recordAudit } from '@/lib/audit';
+import { parseDesignRule } from '@/lib/print-designs';
 import {
   createDraftFromLatest,
   createTemplate,
@@ -40,6 +41,7 @@ function readMeta(formData: FormData): TemplateMeta {
     sortOrder: sort === null ? undefined : Math.max(0, Math.trunc(Number(sort)) || 0),
     description: s('description'),
     category: s('category'),
+    categoryId: s('categoryId'),
     imageUrl: s('imageUrl'),
     unitLabel: s('unitLabel'),
     leadTimeDays: lead === null ? null : Number(lead),
@@ -51,7 +53,7 @@ function readMeta(formData: FormData): TemplateMeta {
 function revalidate(id?: string) {
   revalidatePath('/admin/print-templates');
   if (id) revalidatePath(`/admin/print-templates/${id}`);
-  revalidatePath('/admin/print-shop');
+  revalidatePath('/admin/print-shop', 'layout');
 }
 
 export async function createTemplateAction(_prev: TemplateFormState, formData: FormData): Promise<TemplateFormState> {
@@ -71,12 +73,19 @@ export async function updateTemplateMetaAction(_prev: TemplateFormState, formDat
   const meta = readMeta(formData);
   const err = validateMeta(meta);
   if (err) return { error: err };
+  // מוצר עם מאגר דוגמאות: הכמות נגזרת ממספר הדוגמאות שנבחרו
+  const designPool = formData.get('designPool') === 'on';
+  const designRule = designPool
+    ? parseDesignRule({ packSize: formData.get('packSize'), firstPackPerDesign: formData.get('firstPackPerDesign'), perDesign: formData.get('perDesign') })
+    : null;
+  if (designPool && !designRule) return { error: 'חוק הדוגמאות: יש למלא מספרים שלמים חיוביים' };
+  if (meta.categoryId && !(await prisma.printCategory.count({ where: { id: meta.categoryId } }))) return { error: 'הקטגוריה לא נמצאה' };
   if (meta.isActive) {
     const published = await prisma.printTemplateVersion.count({ where: { templateId: id, status: 'PUBLISHED' } });
     if (!published) return { error: 'אי אפשר להציג למשתלות מוצר בלי גרסה מפורסמת — פרסמו קודם את הטיוטה' };
   }
   try {
-    await prisma.printTemplate.update({ where: { id }, data: meta });
+    await prisma.printTemplate.update({ where: { id }, data: { ...meta, designRule: designRule ? { ...designRule } : Prisma.DbNull } });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') return { error: 'כתובת המוצר כבר בשימוש — בחרו כתובת אחרת' };
     throw e;

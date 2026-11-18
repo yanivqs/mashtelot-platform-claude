@@ -31,6 +31,8 @@ export async function createJobOrderAction(input: {
   notes?: string;
   fileId?: string | null;
   needsDesign?: boolean;
+  /** מוצר עם מאגר דוגמאות */
+  designIds?: string[];
 }): Promise<JobOrderActionResult> {
   const scope = await nurseryActionScope({ all: ['print_shop'] });
   if (!scope.ok) return { error: scope.error };
@@ -44,6 +46,7 @@ export async function createJobOrderAction(input: {
     notes: typeof input.notes === 'string' ? input.notes : null,
     fileId: typeof input.fileId === 'string' ? input.fileId : null,
     needsDesign: input.needsDesign === true,
+    designIds: Array.isArray(input.designIds) ? input.designIds.map(String) : null,
   });
   if (!res.ok) return { error: res.error, fieldErrors: res.fieldErrors, missing: res.missing };
   await recordAudit({
@@ -52,7 +55,7 @@ export async function createJobOrderAction(input: {
     action: res.quote.quoteOnly ? 'print.quote_requested' : 'print.order_created',
     entityType: 'PrintOrder',
     entityId: res.orderId,
-    metadata: { templateVersionId: input.templateVersionId, quantity: res.quote.quantity, total: res.quote.total, reasons: res.quote.reasons },
+    metadata: { templateVersionId: input.templateVersionId, designs: Array.isArray(input.designIds) ? input.designIds.length : undefined, quantity: res.quote.quantity, total: res.quote.total, reasons: res.quote.reasons },
   });
   revalidatePath('/admin/print-shop/jobs');
   revalidatePath('/admin/print-orders');

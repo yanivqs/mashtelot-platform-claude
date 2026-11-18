@@ -5,6 +5,8 @@ import { requireNurseryPage } from '@/lib/nursery-scope';
 import { parseFields, parsePricing, type CleanValues } from '@/lib/print-template';
 import { PrintCalculator, type CalculatorPrefill } from '@/components/print/calculator';
 import type { PreflightResult } from '@/lib/print-preflight';
+import { DesignPicker } from '@/components/print/design-picker';
+import { parseDesignRule } from '@/lib/print-designs';
 import { ProductGallery } from './gallery';
 
 export const dynamic = 'force-dynamic';
@@ -30,7 +32,7 @@ export default async function PrintProductPage({ params, searchParams }: { param
 
   const version = await prisma.printTemplateVersion.findFirst({
     where: { status: 'PUBLISHED', template: { isActive: true, OR: [{ slug }, ...(UUID_RE.test(slug) ? [{ id: slug }] : [])] } },
-    include: { template: true },
+    include: { template: { include: { printCategory: { include: { parent: true } } } } },
   });
   const fields = version ? parseFields(version.fields) : null;
   const pricing = version ? parsePricing(version.pricing) : null;
@@ -68,32 +70,50 @@ export default async function PrintProductPage({ params, searchParams }: { param
   }
 
   const images = [...(t.imageUrl ? [t.imageUrl] : []), ...t.galleryImages.filter((u) => u !== t.imageUrl)];
+  const product = {
+    versionId: version.id,
+    title: t.title,
+    unitLabel: t.unitLabel,
+    leadTimeDays: t.leadTimeDays,
+    requiresArtwork: t.requiresArtwork,
+    fields: fields.value,
+    pricing: pricing.value,
+  };
+  const designRule = parseDesignRule(t.designRule);
+  const designs = designRule
+    ? await prisma.printDesign.findMany({
+        where: { templateId: t.id, isActive: true },
+        orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
+        select: { id: true, code: true, title: true, imageUrl: true, tags: true },
+      })
+    : [];
+  const cat = t.printCategory;
+  const back = cat ? { href: `/admin/print-shop/c/${cat.slug}`, label: `חזרה ל${cat.name}` } : { href: '/admin/print-shop', label: 'לכל מוצרי הדפוס' };
 
   return (
     <div className="max-w-5xl space-y-6">
-      <Link href="/admin/print-shop" className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
+      <Link href={back.href} className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
         <ArrowRight className="h-4 w-4" />
-        לכל מוצרי הדפוס
+        {back.label}
       </Link>
-      <div className="flex flex-col gap-4 sm:flex-row">
-        {images.length > 0 && <ProductGallery images={images} title={t.title} />}
-        <div className="min-w-0 flex-1">
+      {designRule ? (
+        <div>
           <h1 className="text-2xl font-bold">{t.title}</h1>
-          {t.description && <p className="mt-2 whitespace-pre-line text-sm text-gray-600">{t.description}</p>}
+          {t.description && <p className="mt-2 max-w-3xl whitespace-pre-line text-sm text-gray-600">{t.description}</p>}
+          <p className="mt-3 rounded-lg bg-brand-50 p-3 text-sm text-brand-900">
+            בוחרים דוגמאות בכפולות של {designRule.packSize}: {designRule.packSize} דוגמאות ({designRule.firstPackPerDesign.toLocaleString('he-IL')} יח' מכל אחת), או {designRule.packSize * 2} ומעלה ({designRule.perDesign.toLocaleString('he-IL')} יח' מכל אחת). הלוגו ופרטי העסק מודפסים על הכרטיס.
+          </p>
         </div>
-      </div>
-      <PrintCalculator
-        prefill={prefill}
-        product={{
-          versionId: version.id,
-          title: t.title,
-          unitLabel: t.unitLabel,
-          leadTimeDays: t.leadTimeDays,
-          requiresArtwork: t.requiresArtwork,
-          fields: fields.value,
-          pricing: pricing.value,
-        }}
-      />
+      ) : (
+        <div className="flex flex-col gap-4 sm:flex-row">
+          {images.length > 0 && <ProductGallery images={images} title={t.title} />}
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-bold">{t.title}</h1>
+            {t.description && <p className="mt-2 whitespace-pre-line text-sm text-gray-600">{t.description}</p>}
+          </div>
+        </div>
+      )}
+      {designRule ? <DesignPicker product={product} designs={designs} rule={designRule} /> : <PrintCalculator prefill={prefill} product={product} />}
     </div>
   );
 }

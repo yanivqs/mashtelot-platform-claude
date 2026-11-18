@@ -57,6 +57,11 @@ export const E2E_SYNONYM = ['זית', 'אוליבה'];
 export const E2E_PLANT = 'צמח בדיקה E2E';
 /** תבנית דפוס שבדיקת PT-02/03 יוצרת במסך */
 export const E2E_PRINT_TEMPLATE = 'מדבקות E2E';
+/** כרטיסי ברכה: מוצר עם מאגר דוגמאות בתת-קטגוריה */
+export const E2E_CARDS_OWNER = { email: 'cards-owner@e2e.invalid', password: 'e2e-cards-pass-123' };
+export const E2E_SUPER9 = { email: 'super9@e2e.invalid', password: 'e2e-super9-pass-123' };
+export const E2E_CARDS_TEMPLATE = 'כרטיסי ברכה E2E';
+export const E2E_CARDS_CATEGORIES = { parent: 'e2e-cards', child: 'e2e-cards-small' };
 
 export default async function globalSetup() {
   const url = process.env.DATABASE_URL ?? '';
@@ -113,11 +118,13 @@ export default async function globalSetup() {
       await db.user.deleteMany({ where: { nurseryId: old.id } });
       await db.nursery.delete({ where: { id: old.id } });
     }
-    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, E2E_OWNER7.email, E2E_LIFE_OWNER.email, E2E_SUPER6.email, E2E_OWNER8.email, E2E_OWNER9.email, E2E_FLOAT_OWNER.email, E2E_GRID_OWNER.email, E2E_FIX_OWNER.email, E2E_FOLDER_OWNER.email, E2E_SUPER7.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
+    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, E2E_OWNER7.email, E2E_LIFE_OWNER.email, E2E_SUPER6.email, E2E_OWNER8.email, E2E_OWNER9.email, E2E_FLOAT_OWNER.email, E2E_GRID_OWNER.email, E2E_FIX_OWNER.email, E2E_FOLDER_OWNER.email, E2E_SUPER7.email, E2E_CARDS_OWNER.email, E2E_SUPER9.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
     // המוצרים נמחקו עם המשתלה; הצמח המרכזי (והגרסאות שלו) נמחק כאן
     await db.plant.deleteMany({ where: { hebrewName: E2E_PLANT } });
     // תבנית הדפוס שבדיקת PT יוצרת (ההזמנות שלה נמחקו עם המשתלה)
-    await db.printTemplate.deleteMany({ where: { title: { in: [E2E_PRINT_TEMPLATE, E2E_SAVED_TEMPLATE, E2E_PREFLIGHT_TEMPLATE] } } });
+    await db.printTemplate.deleteMany({ where: { title: { in: [E2E_PRINT_TEMPLATE, E2E_SAVED_TEMPLATE, E2E_PREFLIGHT_TEMPLATE, E2E_CARDS_TEMPLATE] } } });
+    await db.printCategory.deleteMany({ where: { slug: E2E_CARDS_CATEGORIES.child } });
+    await db.printCategory.deleteMany({ where: { slug: E2E_CARDS_CATEGORIES.parent } });
     await db.searchSynonymGroup.deleteMany({ where: { terms: { has: 'אוליבה' } } });
     await db.rateLimit.deleteMany({});
 
@@ -406,6 +413,43 @@ export default async function globalSetup() {
           },
         },
       },
+    });
+    // כרטיסי ברכה: קטגוריה ותת-קטגוריה, מוצר עם מאגר של 17 דוגמאות (כפולות של 8: 400 / 200 מכל דוגמא)
+    const cardsParent = await db.printCategory.create({ data: { name: 'כרטיסי ברכה E2E', slug: E2E_CARDS_CATEGORIES.parent } });
+    const cardsChild = await db.printCategory.create({ data: { name: 'כרטיסים קטנים E2E', slug: E2E_CARDS_CATEGORIES.child, parentId: cardsParent.id } });
+    await db.printTemplate.create({
+      data: {
+        title: E2E_CARDS_TEMPLATE,
+        slug: 'e2e-greeting-cards',
+        isActive: true,
+        requiresArtwork: true,
+        categoryId: cardsChild.id,
+        designRule: { packSize: 8, firstPackPerDesign: 400, perDesign: 200 },
+        designs: {
+          create: Array.from({ length: 17 }, (_, i) => ({
+            code: `SC${9000 + i}`,
+            title: i % 2 ? `מזל טוב ${i}` : `יום הולדת ${i}`,
+            imageUrl: '/file.svg',
+            tags: [i % 2 ? 'מזל טוב' : 'יום הולדת'],
+            sortOrder: i * 10,
+          })),
+        },
+        versions: {
+          create: {
+            version: 1,
+            status: 'PUBLISHED',
+            publishedAt: new Date(),
+            fields: [{ key: 'business_details', label: 'פרטי העסק להדפסה על הכרטיס', type: 'textarea', required: true, maxLength: 500 }],
+            pricing: { basePrice: 0.4, tiers: [], setupFee: 0, minQuantity: 1, quoteOnly: false, quantityOptions: [], allowCustomQuantity: true },
+          },
+        },
+      },
+    });
+    await db.user.create({
+      data: { email: E2E_CARDS_OWNER.email, role: 'NURSERY_OWNER', nurseryId: n.id, passwordHash: await bcrypt.hash(E2E_CARDS_OWNER.password, 4) },
+    });
+    await db.user.create({
+      data: { email: E2E_SUPER9.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER9.password, 4) },
     });
     await db.user.create({
       data: {

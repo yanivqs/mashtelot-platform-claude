@@ -26,6 +26,8 @@ export interface TemplateMeta {
   sortOrder?: number;
   description: string | null;
   category: string | null;
+  /** קטגוריה בקטלוג בית הדפוס */
+  categoryId?: string | null;
   imageUrl: string | null;
   unitLabel: string | null;
   leadTimeDays: number | null;

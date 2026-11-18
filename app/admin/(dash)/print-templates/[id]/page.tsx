@@ -6,6 +6,7 @@ import { parseFields, parsePricing, FIELD_TYPE_LABELS, SIZE_KEY, type ShowIf, ty
 import { formatPrice } from '@/lib/utils';
 import { DEFAULT_PRICING } from '@/lib/print-templates-admin';
 import { parseProfile } from '@/lib/print-preflight';
+import { parseDesignRule } from '@/lib/print-designs';
 import { newDraftAction } from '../actions';
 import { DraftEditor, MetaForm, type PricingValues } from '../forms';
 
@@ -26,9 +27,14 @@ export default async function PrintTemplatePage(props: { params: Promise<{ id: s
   const { id } = await props.params;
   const t = await prisma.printTemplate.findUnique({
     where: { id },
-    include: { versions: { orderBy: { version: 'desc' }, include: { _count: { select: { orderItems: true } } } } },
+    include: { versions: { orderBy: { version: 'desc' }, include: { _count: { select: { orderItems: true } } } }, _count: { select: { designs: true } } },
   });
   if (!t) notFound();
+  const designRule = parseDesignRule(t.designRule);
+  const cats = await prisma.printCategory.findMany({ orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], select: { id: true, name: true, parentId: true } });
+  const categories = cats
+    .filter((c) => !c.parentId)
+    .flatMap((r) => [{ id: r.id, name: r.name }, ...cats.filter((c) => c.parentId === r.id).map((c) => ({ id: c.id, name: `${r.name} › ${c.name}` }))]);
 
   const draft = t.versions.find((v) => v.status === 'DRAFT');
   const published = t.versions.find((v) => v.status === 'PUBLISHED');
@@ -46,12 +52,15 @@ export default async function PrintTemplatePage(props: { params: Promise<{ id: s
         sortOrder: t.sortOrder,
         description: t.description,
         category: t.category,
+        categoryId: t.categoryId,
+        designRule,
         imageUrl: t.imageUrl,
         unitLabel: t.unitLabel,
         leadTimeDays: t.leadTimeDays,
         requiresArtwork: t.requiresArtwork,
         isActive: t.isActive,
       }}
+      categories={categories}
     />
   );
 
@@ -63,6 +72,17 @@ export default async function PrintTemplatePage(props: { params: Promise<{ id: s
         </Link>
         <h1 className="mt-1 text-2xl font-bold">{t.title}</h1>
       </div>
+
+      {designRule && (
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-100 bg-brand-50 p-5">
+          <p className="text-sm text-brand-900">
+            מוצר עם מאגר דוגמאות: {t._count.designs} דוגמאות. בכפולות של {designRule.packSize} — {designRule.firstPackPerDesign.toLocaleString('he-IL')} יח' מכל דוגמא בחבילה אחת, {designRule.perDesign.toLocaleString('he-IL')} מכל דוגמא מעבר לכך.
+          </p>
+          <Link href={`/admin/print-templates/${t.id}/designs`} className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
+            ניהול דוגמאות
+          </Link>
+        </section>
+      )}
 
       {draft ? (
         <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">

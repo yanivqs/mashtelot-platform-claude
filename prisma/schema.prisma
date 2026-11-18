@@ -1231,12 +1231,56 @@ model PrintTemplate {
   leadTimeDays    Int?                   @map("lead_time_days")
   isActive        Boolean                @default(false) @map("is_active")
   sortOrder       Int                    @default(0) @map("sort_order")
+  /// קטגוריה בקטלוג בית הדפוס (עץ של שתי רמות)
+  categoryId      String?                @map("category_id")
+  /// מוצר עם מאגר דוגמאות: חוק הכמות לפי מספר הדוגמאות (lib/print-designs.ts). ריק — מחשבון רגיל
+  designRule      Json?                  @map("design_rule")
   createdAt       DateTime               @default(now()) @map("created_at")
   updatedAt       DateTime               @updatedAt @map("updated_at")
   versions        PrintTemplateVersion[]
   savedProducts   PrintSavedProduct[]
+  printCategory   PrintCategory?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  designs         PrintDesign[]
 
+  @@index([categoryId])
   @@map("print_templates")
+}
+
+/// קטגוריה בקטלוג בית הדפוס (מוצג למשתלות בלבד). parentId — תת-קטגוריה
+model PrintCategory {
+  id        String          @id @default(uuid())
+  name      String
+  slug      String          @unique
+  parentId  String?         @map("parent_id")
+  imageUrl  String?         @map("image_url")
+  sortOrder Int             @default(0) @map("sort_order")
+  isActive  Boolean         @default(true) @map("is_active")
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+  parent    PrintCategory?  @relation("PrintCategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children  PrintCategory[] @relation("PrintCategoryTree")
+  templates PrintTemplate[]
+
+  @@index([parentId])
+  @@map("print_categories")
+}
+
+/// דוגמא (עיצוב) במאגר של מוצר דפוס, למשל כרטיס ברכה. בעל המשתלה בוחר דוגמאות בהזמנה
+model PrintDesign {
+  id         String        @id @default(uuid())
+  templateId String        @map("template_id")
+  code       String
+  title      String
+  imageUrl   String        @map("image_url")
+  tags       String[]      @default([])
+  sortOrder  Int           @default(0) @map("sort_order")
+  isActive   Boolean       @default(true) @map("is_active")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  template   PrintTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, code])
+  @@map("print_designs")
 }
 
 enum PrintQuoteStatus {
