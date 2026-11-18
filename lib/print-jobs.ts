@@ -11,6 +11,34 @@ import {
   type RawValues,
 } from '@/lib/print-template';
 import { checkResolution } from '@/lib/print-preflight';
+import { describeDesigns, designQuantity, parseDesignRule, type ChosenDesigns } from '@/lib/print-designs';
+
+export type ResolvedDesigns =
+  | { ok: true; chosen: ChosenDesigns; quantity: number; line: { label: string; value: string } }
+  | { ok: false; error: string; changed?: boolean };
+
+/**
+ * מוצר עם מאגר דוגמאות: הדוגמאות נבדקות מול המאגר הפעיל של המוצר, והכמות נגזרת מהחוק — לא מהדפדפן.
+ * null — המוצר אינו מוצר דוגמאות.
+ */
+export async function resolveDesigns(db: PrismaClient, template: { id: string; designRule: unknown }, ids: unknown): Promise<ResolvedDesigns | null> {
+  const rule = parseDesignRule(template.designRule);
+  if (!rule) return null;
+  const list = Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : [];
+  if (new Set(list).size !== list.length || list.length > 500) return { ok: false, error: 'בחירת הדוגמאות אינה תקינה — רעננו את הדף' };
+  const q = designQuantity(rule, list.length);
+  if (!q.ok) return { ok: false, error: q.error };
+  const rows = await db.printDesign.findMany({ where: { templateId: template.id, isActive: true, id: { in: list } }, select: { id: true, code: true, title: true } });
+  if (rows.length !== list.length) return { ok: false, changed: true, error: 'חלק מהדוגמאות שנבחרו כבר אינן זמינות — רעננו את הדף ובחרו שוב' };
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const ordered = list.map((id) => byId.get(id)!);
+  return {
+    ok: true,
+    quantity: q.total,
+    chosen: { ids: ordered.map((d) => d.id), codes: ordered.map((d) => d.code), perDesign: q.perDesign },
+    line: describeDesigns(ordered, q.perDesign),
+  };
+}
 
 /**
  * עבודות דפוס: כל הזמנה מהמחשבון יוצרת עבודה (PrintSavedProduct) עם מפרט נעול וגרפיקה, וממנה מזמינים שוב.
@@ -47,6 +75,8 @@ export async function createJobOrder(
     /** "אין לי קובץ, אני צריך גם עיצוב" — גובר על קובץ */
     needsDesign?: boolean;
     name?: string | null;
+    /** מוצר עם מאגר דוגמאות: הדוגמאות שנבחרו (הכמות נגזרת מהן) */
+    designIds?: string[] | null;
   },
 ): Promise<JobOrderResult> {
   const v = await db.printTemplateVersion.findUnique({ where: { id: args.templateVersionId }, include: { template: true } });
@@ -55,6 +85,10 @@ export async function createJobOrder(
   const pricing = parsePricing(v.pricing);
   if (!fields.ok || !pricing.ok) return { ok: false, error: 'הגדרת המוצר אינה תקינה — פנו לבית הדפוס' };
 
+  const designs = await resolveDesigns(db, v.template, args.designIds);
+  if (designs && !designs.ok) return { ok: false, error: designs.error };
+  const quantity = designs ? designs.quantity : args.quantity;
+
   const needsDesign = args.needsDesign === true;
   const fileId = needsDesign ? null : args.fileId || null;
   const file = fileId ? await db.printFile.findFirst({ where: { id: fileId, nurseryId: args.nurseryId, kind: 'ARTWORK' } }) : null;
@@ -62,7 +96,7 @@ export async function createJobOrder(
 
   const checked = validateValues(fields.value, args.values);
   if (!checked.ok) return { ok: false, fieldErrors: checked.errors };
-  const missing = missingForSubmit(pricing.value, fields.value, args.values, args.quantity, {
+  const missing = missingForSubmit(pricing.value, fields.value, args.values, quantity, {
     required: v.template.requiresArtwork,
     hasFile: Boolean(file),
     needsDesign,
@@ -70,13 +104,14 @@ export async function createJobOrder(
   if (missing.length) return { ok: false, missing };
 
   const lowResolution = file ? checkResolution(file, sizeFromValues(fields.value, checked.values)).status === 'low' : false;
-  const priced = quotePrint(pricing.value, fields.value, checked.values, args.quantity, { needsDesign, lowResolution });
+  const priced = quotePrint(pricing.value, fields.value, checked.values, quantity, { needsDesign, lowResolution });
   if (!priced.ok) return { ok: false, error: priced.error };
   const q = priced.quote;
 
-  const display = describeValues(fields.value, checked.values);
-  const name = (args.name ?? '').trim().slice(0, MAX_NAME) || defaultJobName(v.template.title, display);
-  const values = { raw: checked.values, display } as unknown as Prisma.InputJsonValue;
+  const fieldDisplay = describeValues(fields.value, checked.values);
+  const name = (args.name ?? '').trim().slice(0, MAX_NAME) || defaultJobName(v.template.title, designs?.ok ? [] : fieldDisplay);
+  const display = designs?.ok ? [designs.line, ...fieldDisplay] : fieldDisplay;
+  const values = { raw: checked.values, display, ...(designs?.ok ? { designs: designs.chosen } : {}) } as unknown as Prisma.InputJsonValue;
 
   return db.$transaction(async (tx) => {
     const job = await tx.printSavedProduct.create({ data: { nurseryId: args.nurseryId, templateId: v.templateId, name } });

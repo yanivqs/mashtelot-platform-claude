@@ -18,6 +18,7 @@ import {
   type RawValues,
 } from '@/lib/print-template';
 import { parseProfile } from '@/lib/print-preflight';
+import { GREETING_CARDS_RULE, type DesignRule } from '@/lib/print-designs';
 import { formatPrice } from '@/lib/utils';
 import {
   createTemplateAction,
@@ -78,6 +79,8 @@ export interface MetaValues {
   sortOrder: number;
   description: string | null;
   category: string | null;
+  categoryId: string | null;
+  designRule: DesignRule | null;
   imageUrl: string | null;
   unitLabel: string | null;
   leadTimeDays: number | null;
@@ -120,7 +123,38 @@ function GalleryEditor({ initialImages }: { initialImages: string[] }) {
   );
 }
 
-export function MetaForm({ meta }: { meta: MetaValues }) {
+function DesignPoolFields({ initial: rule }: { initial: DesignRule | null }) {
+  const [on, setOn] = useState(Boolean(rule));
+  const r = rule ?? GREETING_CARDS_RULE;
+  return (
+    <fieldset className="rounded-lg border border-gray-200 p-3 text-sm sm:col-span-2">
+      <legend className="px-1 font-medium text-gray-700">מאגר דוגמאות</legend>
+      <label className="flex items-center gap-2">
+        <input name="designPool" type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} className="h-4 w-4" />
+        מוצר עם מאגר דוגמאות (כמו כרטיסי ברכה): המשתלה בוחרת דוגמאות, והכמות נגזרת ממספרן
+      </label>
+      {on && (
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <label>
+            <span className="mb-1 block text-gray-700">בכפולות של (דוגמאות)</span>
+            <input name="packSize" type="number" min="1" defaultValue={r.packSize} className={field} />
+          </label>
+          <label>
+            <span className="mb-1 block text-gray-700">יח' מכל דוגמא בחבילה אחת</span>
+            <input name="firstPackPerDesign" type="number" min="1" defaultValue={r.firstPackPerDesign} className={field} />
+          </label>
+          <label>
+            <span className="mb-1 block text-gray-700">יח' מכל דוגמא משתי חבילות ומעלה</span>
+            <input name="perDesign" type="number" min="1" defaultValue={r.perDesign} className={field} />
+          </label>
+          <p className="text-xs text-gray-600 sm:col-span-3">המחיר ליחידה נקבע בתמחור של הגרסה (מחיר בסיס). את הדוגמאות מנהלים ב&quot;ניהול דוגמאות&quot; בדף המוצר.</p>
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
+export function MetaForm({ meta, categories = [] }: { meta: MetaValues; categories?: Array<{ id: string; name: string }> }) {
   const [state, action] = useActionState(updateTemplateMetaAction, initial);
   const keep1 = useKeepFormValues(state);
   return (
@@ -137,6 +171,17 @@ export function MetaForm({ meta }: { meta: MetaValues }) {
       <label className="text-sm">
         <span className="mb-1 block font-medium text-gray-700">קטגוריה</span>
         <input name="category" defaultValue={meta.category ?? ''} placeholder="תוויות / שילוט / מיתוג" className={field} />
+      </label>
+      <label className="text-sm">
+        <span className="mb-1 block font-medium text-gray-700">קטגוריה בקטלוג המשתלות</span>
+        <select name="categoryId" defaultValue={meta.categoryId ?? ''} className={field}>
+          <option value="">— בלי קטגוריה (בדף הראשי) —</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
       </label>
       <label className="text-sm">
         <span className="mb-1 block font-medium text-gray-700">סדר בקטלוג</span>
@@ -158,6 +203,7 @@ export function MetaForm({ meta }: { meta: MetaValues }) {
         <ImageUpload name="imageUrl" defaultValue={meta.imageUrl} label="תמונה ראשית" folder="misc" hint="מומלץ 1200×900" />
       </div>
       <GalleryEditor initialImages={meta.galleryImages} />
+      <DesignPoolFields initial={meta.designRule} />
       <label className="flex items-center gap-2 text-sm sm:col-span-2">
         <input name="requiresArtwork" type="checkbox" defaultChecked={meta.requiresArtwork} className="h-4 w-4" />
         נדרשת גרפיקה מאושרת לפני שחרור לייצור

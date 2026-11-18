@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { describeValues, parseFields, parsePricing, quotePrint, validateValues, type CleanValues, type PrintQuote, type RawValues, type TemplateField } from '@/lib/print-template';
-import { priceSnapshot } from '@/lib/print-jobs';
+import { priceSnapshot, resolveDesigns } from '@/lib/print-jobs';
+import { DESIGNS_LABEL_PREFIX, type ChosenDesigns } from '@/lib/print-designs';
 
 /**
  * מוצר דפוס קבוע (PT-04, נספח א.6): המשתלה מגישה מפרט (גרסת תבנית + ערכים) → בית הדפוס מאשר
@@ -111,7 +112,9 @@ export type ReorderResult = { ok: true; orderId: string; quote: PrintQuote } | {
 export function specStillValid(fields: TemplateField[], stored: { raw?: CleanValues; display?: Array<{ label: string; value: string }> } | null): CleanValues | null {
   const checked = validateValues(fields, (stored?.raw ?? {}) as RawValues);
   if (!checked.ok) return null;
-  return JSON.stringify(describeValues(fields, checked.values)) === JSON.stringify(stored?.display ?? []) ? checked.values : null;
+  // שורת הדוגמאות (במוצר דוגמאות) אינה שדה תבנית — נבדקת בנפרד
+  const shown = (stored?.display ?? []).filter((d) => !d.label.startsWith(DESIGNS_LABEL_PREFIX));
+  return JSON.stringify(describeValues(fields, checked.values)) === JSON.stringify(shown) ? checked.values : null;
 }
 
 /**
@@ -135,7 +138,11 @@ export async function orderSaved(
   if (!fields.ok || !pricing.ok) return { ok: false, error: 'הגדרת המוצר אינה תקינה — פנו לבית הדפוס' };
   const raw = specStillValid(fields.value, rev.values as { raw?: CleanValues; display?: Array<{ label: string; value: string }> } | null);
   if (!raw) return { ok: false, changed: true, error: 'המוצר השתנה מאז ההזמנה האחרונה — בדקו את הפרטים בהזמנה דומה' };
-  const priced = quotePrint(pricing.value, fields.value, raw, args.quantity);
+  // מוצר דוגמאות: אותן דוגמאות, והכמות לפי החוק (לא נבחרת בהזמנה חוזרת)
+  const storedDesigns = (rev.values as { designs?: ChosenDesigns } | null)?.designs;
+  const designs = await resolveDesigns(db, p.template, storedDesigns?.ids ?? []);
+  if (designs && !designs.ok) return { ok: false, changed: designs.changed, error: designs.error };
+  const priced = quotePrint(pricing.value, fields.value, raw, designs ? designs.quantity : args.quantity);
   if (!priced.ok) return { ok: false, error: priced.error };
   const q = priced.quote;
 
