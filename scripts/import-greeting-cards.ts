@@ -30,6 +30,14 @@ const ACTOR = 'import-greeting-cards';
 const PARENT = { slug: 'greeting-cards', name: 'כרטיסי ברכה' };
 const CHILD = { slug: 'greeting-cards-small', name: 'כרטיסי ברכה קטנים' };
 const PRODUCT_SLUG = 'greeting-cards-small';
+// מדף הקטגוריה באתר המקורי (yanivsharabi.com/category/greeting-cards-small)
+const COVER_URL = 'https://base44.app/api/apps/69fc81e6142a2a23589c415d/files/mp/public/69fc81e6142a2a23589c415d/e9300f468_3b6af24c-7661-4f45-b3d3-affe46f87bfe.jfif';
+const DESCRIPTION = [
+  'כרטיסי ברכה קטנים עם הלוגו ופרטי העסק שלכם.',
+  'גודל כרטיס סגור: 6/8 ס"מ · פתוח: 12/8 ס"מ.',
+  'מזמינים בכפולות של 8 דוגמאות: 8 דוגמאות של 400 כרטיסים, או 16 דוגמאות ומעלה של 200 כרטיסים מכל דוגמא.',
+  'אפשר לקבל את הכרטיסים בעברית או ברוסית (ציינו בהערות). כל המחירים לפני מע"מ.',
+].join('\n');
 
 const FIELDS = [
   {
@@ -58,7 +66,7 @@ function storage() {
 }
 
 /** מוריד את התמונה המקורית ומעלה לאחסון שלנו בשם קבוע לפי הקוד. מחזיר את הכתובת הציבורית. */
-async function copyImage(d: CsvDesign, cfg: { baseUrl: string; key: string }): Promise<string> {
+async function copyImage(d: Pick<CsvDesign, 'code' | 'imageUrl'>, cfg: { baseUrl: string; key: string }): Promise<string> {
   const src = await fetch(d.imageUrl, { signal: AbortSignal.timeout(30_000) });
   if (!src.ok) throw new Error(`${d.code}: הורדת התמונה נכשלה (${src.status})`);
   const type = (src.headers.get('content-type') ?? '').split(';')[0]!.trim();
@@ -109,7 +117,7 @@ async function main() {
         data: {
           title: CHILD.name,
           slug: PRODUCT_SLUG,
-          description: parsed.description,
+          description: DESCRIPTION,
           unitLabel: 'כרטיס',
           leadTimeDays: 7,
           requiresArtwork: true,
@@ -162,8 +170,14 @@ async function main() {
       for (const f of failed) console.error(' •', f);
     }
 
-    // תמונה למוצר ולקטגוריות, אם אין
-    const cover = firstImage ?? (await db.printDesign.findFirst({ where: { templateId: template!.id }, orderBy: { sortOrder: 'asc' } }))?.imageUrl ?? null;
+    // תמונה למוצר ולקטגוריות, אם אין: תמונת הקטגוריה מהאתר המקורי, ואם נכשלה — הדוגמא הראשונה
+    let cover: string | null = null;
+    try {
+      cover = await copyImage({ code: 'cover', imageUrl: COVER_URL }, cfg);
+    } catch (e) {
+      console.error('תמונת הקטגוריה:', e instanceof Error ? e.message : e);
+      cover = firstImage ?? (await db.printDesign.findFirst({ where: { templateId: template!.id }, orderBy: { sortOrder: 'asc' } }))?.imageUrl ?? null;
+    }
     if (cover) {
       await db.printTemplate.updateMany({ where: { id: template!.id, imageUrl: null }, data: { imageUrl: cover } });
       await db.printCategory.updateMany({ where: { id: { in: [parent!.id, child!.id] }, imageUrl: null }, data: { imageUrl: cover } });
