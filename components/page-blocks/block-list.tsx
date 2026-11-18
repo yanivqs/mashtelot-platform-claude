@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ScrollArea } from '@/components/storefront/scroll-row';
+import { gridColumns } from '@/lib/category-grid';
 import { ArrowLeft, Clock, Mail, MapPin, Phone } from 'lucide-react';
 import type { Nursery } from '@prisma/client';
 import { sanitizeRichHtml } from '@/lib/sanitize';
@@ -184,6 +185,8 @@ function BlockView({ b, nursery, data, level }: { b: Block; nursery: Nursery; da
     case 'categories': {
       const cats = data.categories[b.id] ?? [];
       if (cats.length === 0) return null;
+      // עם תמונה לפחות לקטגוריה אחת: רשת קוביות (מחשב) ורשת לפי ההגדרה (נייד). בלי תמונות — כמו קודם.
+      if (cats.some((c) => b.items[c.id]?.imageUrl)) return <CategoryGrid block={b} cats={cats} />;
       return (
         <section className="mx-auto max-w-6xl px-6 py-12">
           <SectionTitle title={b.title} />
@@ -363,5 +366,51 @@ export function BlockList({
         </div>
       ))}
     </div>
+  );
+}
+
+const MOBILE_COLS = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' } as const;
+const DESKTOP_COLS = { 6: 'md:grid-cols-6', 8: 'md:grid-cols-8' } as const;
+
+/**
+ * בלוק קטגוריות עם תמונות. מחשב: רשת של 8 או 6 עמודות; רגילה תופסת 2 (ריבוע), רחבה 4 (2:1),
+ * והתמונות בשורה נמתחות לאותו גובה. נייד: מספר קבוע בשורה ויחס אחיד (1:1 או 2:1). השם מתחת לתמונה.
+ */
+function CategoryGrid({ block: b, cats }: { block: BlockOf<'categories'>; cats: Array<{ id: string; slug: string; name: string }> }) {
+  const cols = gridColumns(b.desktopPerRow) as keyof typeof DESKTOP_COLS;
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-12">
+      <SectionTitle title={b.title} />
+      <ul className={`grid gap-3 md:gap-4 ${MOBILE_COLS[b.mobilePerRow]} ${DESKTOP_COLS[cols]}`} data-testid="category-grid">
+        {cats.map((c) => {
+          const s = b.items[c.id];
+          const wide = s?.size === 'wide';
+          return (
+            <li key={c.id} className={`flex ${wide ? 'md:col-span-4' : 'md:col-span-2'}`} data-size={wide ? 'wide' : 'normal'}>
+              <Link
+                href={`/catalog?category=${encodeURIComponent(c.slug)}`}
+                className="group flex w-full flex-col overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition hover:border-[var(--accent,#16a34a)]"
+              >
+                <span
+                  className={`relative block flex-1 overflow-hidden bg-brand-50 ${b.mobileRatio === 'wide' ? 'aspect-[2/1]' : 'aspect-square'} ${
+                    wide ? 'md:aspect-[2/1]' : 'md:aspect-square'
+                  }`}
+                >
+                  {s?.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={s.imageUrl} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                  ) : (
+                    <span className="absolute inset-0 flex items-center justify-center text-4xl" aria-hidden>
+                      🌿
+                    </span>
+                  )}
+                </span>
+                <span className="px-3 py-2.5 text-center font-bold text-brand-800 group-hover:text-[var(--accent-strong,#15803d)]">{c.name}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
