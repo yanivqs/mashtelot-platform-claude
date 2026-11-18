@@ -51,3 +51,15 @@ export interface EnabledChannel {
   value: string;
   isFeatured: boolean;
 }
+
+/**
+ * קישור צ'אט בוואטסאפ ממספר שנשמר כטלפון: ספרות בלבד, ומספר ישראלי שמתחיל ב-0 עובר לקידומת 972.
+ * מחזיר null כשאין מספר סביר.
+ */
+export function whatsappHref(value: string, text?: string): string | null {
+  let digits = value.replace(/\D/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  else if (digits.startsWith('0')) digits = `972${digits.slice(1)}`;
+  if (digits.length < 9 || digits.length > 15) return null;
+  return `https://wa.me/${digits}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
+}

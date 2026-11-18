@@ -17,6 +17,7 @@ import { SiteHeader } from '@/components/storefront/site-header';
 import { SiteFooter } from '@/components/storefront/site-footer';
 import { PromoPopup } from '@/components/storefront/promo-popup';
 import { BottomNav } from '@/components/storefront/bottom-nav';
+import { WhatsAppFloat } from '@/components/storefront/whatsapp-float';
 import { AccessibilityWidget } from '@/components/accessibility/accessibility-widget';
 import { A11Y_BOOT_SCRIPT } from '@/lib/a11y-settings';
 import { parseAccessibilityInfo } from '@/lib/accessibility';
@@ -106,6 +107,9 @@ export default async function TenantLayout(props: LayoutProps) {
   const salesMode = await getSalesMode(nursery.id);
   const categories = await getCategoryNav(nursery.id);
   const jsonLd = localBusinessJsonLd(nursery);
+  const a11ySide = parseAccessibilityInfo(nursery.accessibilityInfo).buttonSide;
+  // כפתור וואטסאפ צף: ערוץ וואטסאפ פעיל שבעל המשתלה סימן "כפתור צף בחנות"
+  const whatsappFloat = channels.find((c) => c.provider === 'WHATSAPP' && c.isFeatured) ?? null;
 
   return (
     <CartProvider tenant={params.tenant} salesMode={salesMode}>
@@ -126,7 +130,8 @@ export default async function TenantLayout(props: LayoutProps) {
         >
           דילוג לתוכן
         </a>
-        <AccessibilityWidget statementHref="/accessibility" reportHref="/accessibility#report" side={parseAccessibilityInfo(nursery.accessibilityInfo).buttonSide} />
+        <AccessibilityWidget statementHref="/accessibility" reportHref="/accessibility#report" side={a11ySide} />
+        {whatsappFloat && <WhatsAppFloat phone={whatsappFloat.value} nurseryName={nursery.name} side={a11ySide === 'left' ? 'right' : 'left'} />}
         <AnnouncementBar announcement={announcement} basePath="" />
         <SiteHeader
           nursery={nursery}

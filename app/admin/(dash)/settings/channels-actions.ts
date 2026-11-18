@@ -27,10 +27,12 @@ export async function saveChannels(
       CHANNEL_PROVIDERS.map((provider) => {
         const value = String(formData.get(`${provider}_value`) || '').trim();
         const isEnabled = formData.get(`${provider}_enabled`) === 'on' && value.length > 0;
+        // "מוצג" — כרגע רק לוואטסאפ: כפתור צף בחנות
+        const isFeatured = provider === 'WHATSAPP' && isEnabled && formData.get(`${provider}_featured`) === 'on';
         return prisma.nurseryChannel.upsert({
           where: { nurseryId_provider: { nurseryId, provider } },
-          create: { nurseryId, provider, value: value || '', isEnabled },
-          update: { value: value || '', isEnabled },
+          create: { nurseryId, provider, value: value || '', isEnabled, isFeatured },
+          update: { value: value || '', isEnabled, isFeatured },
         });
       }),
     );

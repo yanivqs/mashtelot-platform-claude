@@ -56,6 +56,12 @@ function ChannelRow({ provider, row }: { provider: ChannelProvider; row?: Nurser
       {value.trim() && !enabled && (
         <p className="mt-1.5 text-xs text-amber-700">הקישור שמור אבל לא מוצג באתר. סמנו את התיבה כדי להציג אותו.</p>
       )}
+      {provider === 'WHATSAPP' && (
+        <label className="mt-2 flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" name="WHATSAPP_featured" defaultChecked={row?.isFeatured ?? false} disabled={!enabled} />
+          כפתור וואטסאפ צף בחנות (בפינת המסך, בכל העמודים)
+        </label>
+      )}
     </div>
   );
 }

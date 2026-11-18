@@ -20,7 +20,7 @@ export function ProductGrid({ items, empty }: { items: ProductSummary[]; empty: 
           <Link href={`/product/${p.slug}`} className="block rounded-lg border border-gray-100 p-2 hover:border-gray-200">
             {p.image ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.image} alt={p.title} className="mb-2 aspect-square w-full rounded-md object-cover" />
+              <img src={p.image} alt={p.title} className="mb-2 aspect-square w-full rounded-md bg-white object-contain" />
             ) : (
               <div className="mb-2 aspect-square w-full rounded-md bg-gray-50" />
             )}

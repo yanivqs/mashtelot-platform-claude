@@ -58,7 +58,7 @@ export default function CartPage() {
             <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-50 text-2xl">
               {item.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
+                <img src={item.image} alt={item.title} className="h-full w-full bg-white object-contain" />
               ) : (
                 <span aria-hidden>🪴</span>
               )}

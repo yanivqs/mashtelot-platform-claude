@@ -38,14 +38,15 @@ export function ProductCard({
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <Link href={href} aria-label={title} className="relative block aspect-[4/3] overflow-hidden bg-brand-50">
+      <Link href={href} aria-label={title} className={`relative block aspect-[4/3] overflow-hidden ${image ? 'bg-white' : 'bg-brand-50'}`}>
         {image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={image}
             alt={title}
             loading="lazy"
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            // התמונה כולה בתוך המסגרת, בלי חיתוך (מוקטנת לפי הצורך)
+            className="h-full w-full object-contain p-2 transition duration-300 group-hover:scale-105"
           />
         ) : (
           <span className="flex h-full w-full items-center justify-center text-5xl" aria-hidden>

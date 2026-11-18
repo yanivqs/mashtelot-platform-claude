@@ -78,10 +78,12 @@ export function ProductPurchase({
   return (
     <div className="grid gap-8 md:grid-cols-2">
       <div>
-        <div className="flex aspect-square items-center justify-center overflow-hidden rounded-2xl bg-brand-50 text-7xl">
+        <div
+          className={`flex aspect-square items-center justify-center overflow-hidden rounded-2xl text-7xl ${image ? 'border border-gray-100 bg-white' : 'bg-brand-50'}`}
+        >
           {image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt={choice && v.name ? `${title} — ${v.name}` : title} className="h-full w-full object-cover" />
+            <img src={image} alt={choice && v.name ? `${title} — ${v.name}` : title} className="h-full w-full object-contain p-3" />
           ) : (
             <span aria-hidden>🪴</span>
           )}
@@ -98,7 +100,7 @@ export function ProductPurchase({
                 className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 ${i === imageIdx ? 'border-[var(--brand,#16a34a)]' : 'border-transparent'}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt="" className="h-full w-full object-cover" />
+                <img src={src} alt="" className="h-full w-full bg-white object-contain p-0.5" />
               </button>
             ))}
           </div>
