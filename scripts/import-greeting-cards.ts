@@ -58,6 +58,13 @@ function log(...m: unknown[]) {
   console.log(WRITE ? '' : '[dry-run]', ...m);
 }
 
+function sniffImage(b: Buffer): string | null {
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+  if (b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
+  if (b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP') return 'image/webp';
+  return null;
+}
+
 function storage() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const raw = process.env.SUPABASE_URL;
@@ -69,10 +76,11 @@ function storage() {
 async function copyImage(d: Pick<CsvDesign, 'code' | 'imageUrl'>, cfg: { baseUrl: string; key: string }): Promise<string> {
   const src = await fetch(d.imageUrl, { signal: AbortSignal.timeout(30_000) });
   if (!src.ok) throw new Error(`${d.code}: הורדת התמונה נכשלה (${src.status})`);
-  const type = (src.headers.get('content-type') ?? '').split(';')[0]!.trim();
+  const body = Buffer.from(await src.arrayBuffer());
+  // הסוג לפי התוכן (קובץ .jfif מוגש כ-octet-stream), ואם לא זוהה — לפי הכותרת
+  const type = sniffImage(body) ?? (src.headers.get('content-type') ?? '').split(';')[0]!.trim();
   const ext = EXT[type];
   if (!ext) throw new Error(`${d.code}: סוג תמונה לא נתמך (${type})`);
-  const body = Buffer.from(await src.arrayBuffer());
   if (body.length > 10 * 1024 * 1024) throw new Error(`${d.code}: התמונה גדולה מ-10MB`);
   const path = `print-designs/greeting-cards-small/${d.code.toLowerCase()}.${ext}`;
   const up = await fetch(`${cfg.baseUrl}/storage/v1/object/uploads/${path}`, {
@@ -111,6 +119,7 @@ async function main() {
     // המוצר
     let template = await db.printTemplate.findUnique({ where: { slug: PRODUCT_SLUG } });
     const created = !template;
+    const designsBefore = template ? await db.printDesign.count({ where: { templateId: template.id } }) : 0;
     log(template ? `המוצר "${CHILD.name}" קיים — לא משתנה` : `נוצר המוצר "${CHILD.name}" עם גרסה מפורסמת (0.40 ₪ לכרטיס)`);
     if (!template && WRITE) {
       template = await db.printTemplate.create({
@@ -182,11 +191,13 @@ async function main() {
       await db.printTemplate.updateMany({ where: { id: template!.id, imageUrl: null }, data: { imageUrl: cover } });
       await db.printCategory.updateMany({ where: { id: { in: [parent!.id, child!.id] }, imageUrl: null }, data: { imageUrl: cover } });
     }
-    // מוצר חדש מוצג למשתלות רק כשהכול הצליח (מוצר קיים — הסטטוס שלו לא משתנה)
-    if (created && !failed.length) {
+    // ייבוא ראשון (מוצר חדש, או מוצר שנוצר בהרצה שנכשלה ועדיין אין בו דוגמאות): מוצג למשתלות רק כשהכול הצליח.
+    // מוצר שכבר יובא — הסטטוס שלו לא משתנה.
+    const firstImport = created || designsBefore === 0;
+    if (firstImport && !failed.length) {
       await db.printTemplate.update({ where: { id: template!.id }, data: { isActive: true } });
       log('המוצר מוצג למשתלות בבית הדפוס.');
-    } else if (created) {
+    } else if (firstImport) {
       log('המוצר נשאר מוסתר עד שכל הדוגמאות ייובאו — הריצו שוב.');
     }
   } finally {
