@@ -24,6 +24,7 @@ export async function saveDesignAction(_prev: DesignFormState, formData: FormDat
     tags: parseTags(s('tags')),
     sortOrder: Math.trunc(Number(s('sortOrder') || 0)),
     isActive: formData.get('isActive') === 'on',
+    nurseryId: s('nurseryId') || null,
   });
   if (!res.ok) return { error: res.error };
   await recordAudit({
@@ -31,7 +32,7 @@ export async function saveDesignAction(_prev: DesignFormState, formData: FormDat
     action: id ? 'print.design_updated' : 'print.design_created',
     entityType: 'PrintDesign',
     entityId: res.id ?? id ?? '',
-    metadata: { templateId, code: s('code') },
+    metadata: { templateId, code: s('code'), nurseryId: s('nurseryId') || null },
   });
   revalidatePath(`/admin/print-templates/${templateId}/designs`);
   revalidatePath('/admin/print-shop', 'layout');

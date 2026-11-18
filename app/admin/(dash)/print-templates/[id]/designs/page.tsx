@@ -15,7 +15,7 @@ export default async function PrintDesignsPage(props: { params: Promise<{ id: st
   const t = await prisma.printTemplate.findUnique({ where: { id }, select: { id: true, title: true, designRule: true } });
   if (!t) notFound();
   const query = (q ?? '').trim().slice(0, 80);
-  const [designs, counts, last] = await Promise.all([
+  const [designs, counts, last, nurseries] = await Promise.all([
     prisma.printDesign.findMany({
       where: {
         templateId: t.id,
@@ -25,6 +25,7 @@ export default async function PrintDesignsPage(props: { params: Promise<{ id: st
     }),
     prisma.printDesign.groupBy({ by: ['isActive'], where: { templateId: t.id }, _count: true }),
     prisma.printDesign.findFirst({ where: { templateId: t.id }, orderBy: { sortOrder: 'desc' }, select: { sortOrder: true } }),
+    prisma.nursery.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
   ]);
   const active = counts.find((x) => x.isActive)?._count ?? 0;
   const all = counts.reduce((s, x) => s + x._count, 0);
@@ -44,7 +45,7 @@ export default async function PrintDesignsPage(props: { params: Promise<{ id: st
 
       <section className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
         <h2 className="mb-3 font-bold">דוגמא חדשה</h2>
-        <DesignForm templateId={t.id} nextSort={(last?.sortOrder ?? 0) + 10} />
+        <DesignForm templateId={t.id} nextSort={(last?.sortOrder ?? 0) + 10} nurseries={nurseries} />
       </section>
 
       <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
@@ -60,7 +61,12 @@ export default async function PrintDesignsPage(props: { params: Promise<{ id: st
         ) : (
           <ul className="divide-y divide-gray-100">
             {designs.map((d) => (
-              <DesignRow key={d.id} templateId={t.id} value={{ id: d.id, code: d.code, title: d.title, imageUrl: d.imageUrl, tags: d.tags, sortOrder: d.sortOrder, isActive: d.isActive }} />
+              <DesignRow
+                key={d.id}
+                templateId={t.id}
+                nurseries={nurseries}
+                value={{ id: d.id, code: d.code, title: d.title, imageUrl: d.imageUrl, tags: d.tags, sortOrder: d.sortOrder, isActive: d.isActive, nurseryId: d.nurseryId }}
+              />
             ))}
           </ul>
         )}

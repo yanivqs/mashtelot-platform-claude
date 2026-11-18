@@ -445,6 +445,13 @@ export default async function globalSetup() {
         },
       },
     });
+    const cardsTemplate = await db.printTemplate.findFirstOrThrow({ where: { title: E2E_CARDS_TEMPLATE } });
+    await db.printDesign.createMany({
+      data: [
+        { templateId: cardsTemplate.id, code: 'SC9100', title: 'כרטיס משתלת E2E', imageUrl: '/file.svg', tags: [], nurseryId: n.id, sortOrder: 500 },
+        { templateId: cardsTemplate.id, code: 'SC9200', title: 'כרטיס של משתלה אחרת', imageUrl: '/file.svg', tags: [], nurseryId: fl.id, sortOrder: 510 },
+      ],
+    });
     await db.user.create({
       data: { email: E2E_CARDS_OWNER.email, role: 'NURSERY_OWNER', nurseryId: n.id, passwordHash: await bcrypt.hash(E2E_CARDS_OWNER.password, 4) },
     });

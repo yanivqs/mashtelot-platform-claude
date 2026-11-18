@@ -1,39 +1,51 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { GREETING_CARDS_RULE as R, describeDesigns, designQuantity, parseDesignRule } from './print-designs';
+import { GREETING_CARDS_RULE as R, checkDesignOrder, defaultPerDesign, describeDesigns, parseDesignRule, quantityChoices, storedDesignItems } from './print-designs';
 import { parseCardsCsv } from './print-designs-csv';
 
-describe('designQuantity: multiples of 8, 400 each for one pack, 200 each beyond', () => {
+const n = (count: number, q: number) => Array.from({ length: count }, () => q);
+
+describe('checkDesignOrder: multiples of 8 designs, quantity per design in steps of 200, at least 3,200 cards', () => {
   it('blocks fewer than 8 designs', () => {
-    expect(designQuantity(R, 0)).toEqual({ ok: false, count: 0, error: 'יש לבחור לפחות 8 דוגמאות לביצוע הזמנה' });
-    expect(designQuantity(R, 7)).toMatchObject({ ok: false, error: 'יש לבחור לפחות 8 דוגמאות לביצוע הזמנה (נבחרו 7, חסרות 1)' });
+    expect(checkDesignOrder(R, [])).toMatchObject({ ok: false, error: 'יש לבחור לפחות 8 דוגמאות לביצוע הזמנה' });
+    expect(checkDesignOrder(R, n(7, 400))).toMatchObject({ ok: false, error: 'יש לבחור לפחות 8 דוגמאות לביצוע הזמנה (נבחרו 7, חסרות 1)' });
   });
 
-  it('8 designs: 400 of each, 3,200 in total', () => {
-    expect(designQuantity(R, 8)).toEqual({ ok: true, count: 8, perDesign: 400, total: 3200 });
+  it('default quantities: 8 designs → 400 each (3,200); 16 and up → 200 each', () => {
+    expect(defaultPerDesign(R, 8)).toBe(400);
+    expect(defaultPerDesign(R, 3)).toBe(400);
+    expect(defaultPerDesign(R, 16)).toBe(200);
+    expect(checkDesignOrder(R, n(8, 400))).toEqual({ ok: true, count: 8, total: 3200 });
+    expect(checkDesignOrder(R, n(16, 200))).toEqual({ ok: true, count: 16, total: 3200 });
+    expect(checkDesignOrder(R, n(24, 200))).toEqual({ ok: true, count: 24, total: 4800 });
   });
 
   it('not a multiple of 8: remove X or add 8−X', () => {
-    expect(designQuantity(R, 9)).toMatchObject({ ok: false, error: 'ניתן להזמין בכפולות של 8 דוגמאות בלבד. נבחרו 9: הסירו 1 דוגמא או הוסיפו עוד 7' });
-    expect(designQuantity(R, 15)).toMatchObject({ ok: false, error: 'ניתן להזמין בכפולות של 8 דוגמאות בלבד. נבחרו 15: הסירו 7 דוגמאות או הוסיפו עוד 1' });
-    expect(designQuantity(R, 17).ok).toBe(false);
+    expect(checkDesignOrder(R, n(9, 200))).toMatchObject({ ok: false, error: 'ניתן להזמין בכפולות של 8 דוגמאות בלבד. נבחרו 9: הסירו 1 דוגמא או הוסיפו עוד 7' });
+    expect(checkDesignOrder(R, n(15, 200))).toMatchObject({ ok: false, error: 'ניתן להזמין בכפולות של 8 דוגמאות בלבד. נבחרו 15: הסירו 7 דוגמאות או הוסיפו עוד 1' });
   });
 
-  it('16 and up: 200 of each', () => {
-    expect(designQuantity(R, 16)).toEqual({ ok: true, count: 16, perDesign: 200, total: 3200 });
-    expect(designQuantity(R, 24)).toEqual({ ok: true, count: 24, perDesign: 200, total: 4800 });
+  it('a different quantity per design, in steps of 200', () => {
+    expect(checkDesignOrder(R, [800, 600, 400, 400, 400, 200, 200, 200])).toEqual({ ok: true, count: 8, total: 3200 });
+    expect(checkDesignOrder(R, [1000, ...n(7, 400)])).toEqual({ ok: true, count: 8, total: 3800 });
+    expect(checkDesignOrder(R, [300, ...n(7, 400)])).toMatchObject({ ok: false, error: "הכמות מכל דוגמא בקפיצות של 200 (לפחות 200)" });
+    expect(checkDesignOrder(R, [0, ...n(7, 400)]).ok).toBe(false);
   });
 
-  it('parses the stored rule and rejects junk', () => {
+  it('total at least 3,200', () => {
+    expect(checkDesignOrder(R, [200, ...n(7, 400)])).toMatchObject({ ok: false, total: 3000, error: 'סך הכול לפחות 3,200 כרטיסים (כרגע 3,000). הגדילו את הכמות באחת הדוגמאות' });
+  });
+
+  it('choices, stored designs (also the first shape), rule parsing, order line', () => {
+    expect(quantityChoices(R, 1000)).toEqual([200, 400, 600, 800, 1000]);
+    expect(storedDesignItems({ ids: ['a', 'b'], quantities: [400, 600] })).toEqual([{ id: 'a', quantity: 400 }, { id: 'b', quantity: 600 }]);
+    expect(storedDesignItems({ ids: ['a'], codes: ['X'], perDesign: 200 })).toEqual([{ id: 'a', quantity: 200 }]);
+    expect(storedDesignItems(null)).toEqual([]);
     expect(parseDesignRule(R)).toEqual(R);
     expect(parseDesignRule(null)).toBeNull();
     expect(parseDesignRule({ packSize: 0, firstPackPerDesign: 400, perDesign: 200 })).toBeNull();
-    expect(parseDesignRule([1])).toBeNull();
-  });
-
-  it('describes the order line', () => {
-    expect(describeDesigns([{ code: 'SC1', title: 'א' }, { code: 'SC2', title: 'ב' }], 200)).toEqual({ label: "דוגמאות (2 × 200 יח')", value: 'SC1 א · SC2 ב' });
+    expect(describeDesigns([{ code: 'SC1', title: 'א', quantity: 400 }, { code: 'SC2', title: 'ב', quantity: 1000 }])).toEqual({ label: "דוגמאות (2, סה\"כ 1,400 יח')", value: 'SC1 א ×400 · SC2 ב ×1,000' });
   });
 });
 
