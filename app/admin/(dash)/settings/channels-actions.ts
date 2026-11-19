@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { auditAsCurrentUser } from '@/lib/audit-actor';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
@@ -42,6 +43,6 @@ export async function saveChannels(
   await auditAsCurrentUser({ nurseryId, action: 'channels.updated', entityType: 'Nursery', entityId: nurseryId });
 
   revalidatePath('/admin/settings');
-  revalidatePath('/[tenant]', 'layout');
+  refreshStore();
   return { ok: true };
 }

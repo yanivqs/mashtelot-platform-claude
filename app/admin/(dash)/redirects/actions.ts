@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
 import { recordAudit } from '@/lib/audit';
@@ -40,6 +41,7 @@ export async function saveRedirectAction(_prev: RedirectFormState, formData: For
   });
   await revalidateStorePath(nurseryId, res.from);
   revalidatePath('/admin/redirects');
+  refreshStore();
   return {
     ok: true,
     message: res.retargeted
@@ -69,6 +71,7 @@ export async function importRedirectsAction(_prev: RedirectFormState, formData: 
     metadata: { saved: res.saved, errors: res.errors.length },
   });
   revalidatePath('/admin/redirects');
+  refreshStore();
   return {
     ok: res.saved > 0,
     message: `נשמרו ${res.saved} הפניות${res.errors.length ? `, ${res.errors.length} שורות נדחו` : ''}`,
@@ -93,4 +96,5 @@ export async function deleteRedirectAction(formData: FormData): Promise<void> {
   });
   await revalidateStorePath(nurseryId, rule.fromPath);
   revalidatePath('/admin/redirects');
+  refreshStore();
 }

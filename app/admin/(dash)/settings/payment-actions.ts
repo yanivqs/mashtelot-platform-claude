@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { auditAsCurrentUser } from '@/lib/audit-actor';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
@@ -58,5 +59,6 @@ export async function savePaymentMethods(
   });
 
   revalidatePath('/admin/settings');
+  refreshStore();
   return { ok: true };
 }

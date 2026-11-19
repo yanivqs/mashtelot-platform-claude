@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { nurseryActionScope } from '@/lib/nursery-scope';
 import type { ModuleRequirement } from '@/lib/nursery-access';
 import { addNurseryImage, assignImageToProduct, deleteNurseryImage, listNurseryImages, type FolderImage } from '@/lib/nursery-images';
@@ -44,6 +45,6 @@ export async function assignFolderImage(imageId: string, productId: string): Pro
   if (res.error) return res;
   revalidateFolder();
   revalidatePath(`/admin/products/${productId}`);
-  revalidatePath('/[tenant]', 'layout');
+  refreshStore();
   return {};
 }

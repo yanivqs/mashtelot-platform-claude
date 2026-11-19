@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
@@ -88,6 +89,7 @@ export async function updatePlant(
 
   revalidatePath(`/admin/catalog/${id}`);
   revalidatePath('/admin/catalog');
+  refreshStore();
   // §6: שינוי תוכן אינו משנה את החנויות — כל משתלה מקבלת הצעת עדכון לאישור
   const behind = await productsBehind(prisma, { plantId: id });
   return {

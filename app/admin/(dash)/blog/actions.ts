@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { auditAsCurrentUser } from '@/lib/audit-actor';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
@@ -67,6 +68,7 @@ export async function saveBlogPost(_prev: BlogFormState, formData: FormData): Pr
   await auditAsCurrentUser({ nurseryId, action: existing ? 'blog.post_updated' : 'blog.post_created', entityType: 'BlogPost', entityId: saved.id, metadata: { slug, isPublished, wasPublished: existing?.isPublished ?? false } });
 
   revalidatePath('/admin/blog');
+  refreshStore();
   redirect('/admin/blog');
 }
 
@@ -77,5 +79,6 @@ export async function deleteBlogPost(formData: FormData): Promise<void> {
   const r = await prisma.blogPost.deleteMany({ where: { id, nurseryId } });
   if (r.count) await auditAsCurrentUser({ nurseryId, action: 'blog.post_deleted', entityType: 'BlogPost', entityId: id });
   revalidatePath('/admin/blog');
+  refreshStore();
   redirect('/admin/blog');
 }

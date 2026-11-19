@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
 import { assertOwnedBy } from '@/lib/ownership';
@@ -78,6 +79,7 @@ export async function createZone(
   }
 
   revalidatePath('/admin/shipping');
+  refreshStore();
   return { ok: true };
 }
 
@@ -96,6 +98,7 @@ export async function updateZonePostcodes(_prev: ShippingZoneState, formData: Fo
   ]);
   await recordAudit({ nurseryId, actorEmail: user.email, action: 'shipping.zone_postcodes_updated', entityType: 'ShippingZone', entityId: id, metadata: { count: postcodes.value.length } });
   revalidatePath('/admin/shipping');
+  refreshStore();
   return { ok: true };
 }
 
@@ -105,6 +108,7 @@ export async function toggleZone(formData: FormData): Promise<void> {
   const row = await prisma.shippingZone.findUnique({ where: { id }, select: { isEnabled: true } });
   await prisma.shippingZone.update({ where: { id }, data: { isEnabled: !row!.isEnabled } });
   revalidatePath('/admin/shipping');
+  refreshStore();
 }
 
 export async function deleteZone(formData: FormData): Promise<void> {
@@ -112,4 +116,5 @@ export async function deleteZone(formData: FormData): Promise<void> {
   await assertOwnsZone(id);
   await prisma.shippingZone.delete({ where: { id } });
   revalidatePath('/admin/shipping');
+  refreshStore();
 }

@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { requireNurseryAction } from '@/lib/nursery-scope';
@@ -23,7 +24,7 @@ async function resolveNurseryId(): Promise<string> {
 function revalidateCategories() {
   revalidatePath('/admin/products/categories');
   revalidatePath('/admin/products');
-  revalidatePath('/[tenant]', 'layout');
+  refreshStore();
 }
 
 export interface NurseryCategoryState {
@@ -114,6 +115,7 @@ export async function updateNurseryCategory(
   });
   revalidateCategories();
   revalidatePath(`/admin/products/categories/${id}`);
+  refreshStore();
   return { ok: true };
 }
 

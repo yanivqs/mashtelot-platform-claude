@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
@@ -39,6 +40,7 @@ export async function addCatalogItem(formData: FormData): Promise<void> {
 
   revalidatePath('/admin/products/browse');
   revalidatePath('/admin/products');
+  refreshStore();
   // ממשיכים מיד להשלמת תמונה ותיאור
   if (createdId) redirect(`/admin/products/${createdId}?new=1`);
 }

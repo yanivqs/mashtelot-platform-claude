@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
@@ -155,6 +156,7 @@ export async function updateProduct(
 
     revalidatePath('/admin/products');
     revalidatePath(`/admin/products/${id}`);
+    refreshStore();
     return { ok: true };
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'שגיאה בעדכון' };
@@ -214,6 +216,7 @@ export async function createCustomProduct(
   await syncProductCategories(product.id, nurseryId, formData.getAll('categoryIds').map(String));
 
   revalidatePath('/admin/products');
+  refreshStore();
   redirect('/admin/products');
 }
 
@@ -224,9 +227,9 @@ export async function deleteProduct(formData: FormData): Promise<void> {
   const r = await removeProduct(prisma, nurseryId, id);
   if (r.ok) {
     await recordAudit({ nurseryId, actorEmail, action: r.mode === 'archived' ? 'product.archived' : 'product.deleted', entityType: 'NurseryProduct', entityId: id, metadata: { title: r.title } });
-    revalidateStore(nurseryId);
   }
   revalidatePath('/admin/products');
+  refreshStore();
   redirect('/admin/products');
 }
 
@@ -238,12 +241,8 @@ export async function duplicateProductAction(formData: FormData): Promise<void> 
   if (!r.ok) redirect('/admin/products');
   await recordAudit({ nurseryId, actorEmail, action: 'product.duplicated', entityType: 'NurseryProduct', entityId: r.id, metadata: { from: id, title: r.title } });
   revalidatePath('/admin/products');
+  refreshStore();
   redirect(`/admin/products/${r.id}`);
-}
-
-async function revalidateStore(nurseryId: string): Promise<void> {
-  const n = await prisma.nursery.findUnique({ where: { id: nurseryId }, select: { subdomain: true } });
-  if (n) revalidatePath(`/${n.subdomain}`, 'layout');
 }
 
 /** "תמיד במלאי" ישירות מרשימת המלאי — זמין למכירה בלי קשר לכמות. */
@@ -263,4 +262,5 @@ export async function toggleAlwaysInStock(formData: FormData): Promise<void> {
   });
   revalidatePath('/admin/products');
   revalidatePath(`/admin/products/${id}`);
+  refreshStore();
 }

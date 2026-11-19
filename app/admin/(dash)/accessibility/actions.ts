@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import type { AccessibilityReportStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { recordAudit } from '@/lib/audit';
@@ -34,8 +35,9 @@ export async function saveAccessibilityInfoAction(_prev: InfoState, fd: FormData
   });
   await prisma.nursery.update({ where: { id: s.nurseryId }, data: { accessibilityInfo: { ...info } } });
   await recordAudit({ nurseryId: s.nurseryId, actorEmail: s.user.email, action: 'accessibility.info_updated', entityType: 'Nursery', entityId: s.nurseryId });
-  revalidatePath('/[tenant]', 'layout');
+  refreshStore();
   revalidatePath('/admin/accessibility');
+  refreshStore();
   return { ok: true };
 }
 
@@ -57,5 +59,6 @@ export async function updateReportAction(id: string, fd: FormData): Promise<{ er
   });
   revalidatePath('/admin/accessibility');
   revalidatePath('/admin', 'layout');
+  refreshStore();
   return {};
 }
