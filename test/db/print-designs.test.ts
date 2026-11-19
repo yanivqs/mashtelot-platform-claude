@@ -48,48 +48,65 @@ async function cardsProduct(designs = 17) {
   return { templateId: t.id, versionId: v.id, ids: ds.map((d) => d.id) };
 }
 
-const base = () => ({ nurseryId: f.A.nurseryId, userId: null, actorEmail: 'a@x', values: { business_details: 'משתלה · 03' } });
+const base = (nurseryId = f.A.nurseryId) => ({ nurseryId, userId: null, actorEmail: 'a@x', values: { business_details: 'משתלה · 03' } });
+const items = (ids: string[], q: number | number[]) => ids.map((id, i) => ({ id, quantity: Array.isArray(q) ? q[i]! : q }));
 
 describe('createJobOrder with designs', () => {
-  it('8 designs: 400 of each; the browser quantity is ignored; designs are stored on the order', async () => {
+  it('8 designs × 400: total from the server (browser quantity ignored); designs and quantities stored on the order', async () => {
     const p = await cardsProduct();
-    const r = await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 1, designIds: p.ids.slice(0, 8) });
+    const r = await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 1, designs: items(p.ids.slice(0, 8), 400) });
     if (!r.ok) throw new Error(JSON.stringify(r));
     expect(r.quote.quantity).toBe(3200);
     expect(r.quote.total).toBe(1280);
     const item = await prisma.printOrderItem.findFirstOrThrow({ where: { printOrderId: r.orderId } });
-    const values = item.values as { display: Array<{ label: string; value: string }>; designs: { ids: string[]; codes: string[]; perDesign: number } };
-    expect(values.designs).toMatchObject({ perDesign: 400, codes: ['SC100', 'SC101', 'SC102', 'SC103', 'SC104', 'SC105', 'SC106', 'SC107'] });
-    expect(values.display[0]).toMatchObject({ label: "דוגמאות (8 × 400 יח')" });
+    expect(item.quantity).toBe(3200);
+    const values = item.values as { display: Array<{ label: string; value: string }>; designs: { ids: string[]; codes: string[]; quantities: number[] } };
+    expect(values.designs.codes).toEqual(['SC100', 'SC101', 'SC102', 'SC103', 'SC104', 'SC105', 'SC106', 'SC107']);
+    expect(values.designs.quantities).toEqual([400, 400, 400, 400, 400, 400, 400, 400]);
+    expect(values.display[0]).toMatchObject({ label: "דוגמאות (8, סה\"כ 3,200 יח')" });
+    expect(values.display[0]!.value).toContain('SC100 דוגמא 0 ×400');
     expect(values.display[1]).toEqual({ label: 'פרטי עסק', value: 'משתלה · 03' });
   });
 
-  it('16 designs: 200 of each; not a multiple of 8 or fewer than 8 — rejected with the rule', async () => {
+  it('different quantity per design; the rule is enforced on the server; no logo needed', async () => {
     const p = await cardsProduct();
-    const r = await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 0, designIds: p.ids.slice(0, 16) });
+    const mixed = [1000, 600, 400, 400, 400, 200, 200, 200];
+    const r = await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 0, designs: items(p.ids.slice(0, 8), mixed) });
     if (!r.ok) throw new Error(JSON.stringify(r));
-    expect(r.quote.quantity).toBe(3200);
-    expect(await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 3200, designIds: p.ids.slice(0, 9) })).toMatchObject({ ok: false, error: expect.stringContaining('בכפולות של 8') });
-    expect(await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 3200, designIds: p.ids.slice(0, 7) })).toMatchObject({ ok: false, error: expect.stringContaining('לפחות 8') });
-    expect(await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 3200, designIds: [...p.ids.slice(0, 7), p.ids[0]!] })).toMatchObject({ ok: false });
+    expect(r.quote.quantity).toBe(3400);
+    expect(r.quote.total).toBe(1360);
+    const v = (id: string[], q: number | number[]) => createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 3200, designs: items(id, q) });
+    expect(await v(p.ids.slice(0, 9), 400)).toMatchObject({ ok: false, error: expect.stringContaining('בכפולות של 8') });
+    expect(await v(p.ids.slice(0, 7), 400)).toMatchObject({ ok: false, error: expect.stringContaining('לפחות 8') });
+    expect(await v(p.ids.slice(0, 8), 300)).toMatchObject({ ok: false, error: expect.stringContaining('בקפיצות של 200') });
+    expect(await v(p.ids.slice(0, 8), 200)).toMatchObject({ ok: false, error: expect.stringContaining('לפחות 3,200') });
+    expect(await v([...p.ids.slice(0, 7), p.ids[0]!], 400)).toMatchObject({ ok: false });
+    expect(await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 3200, designs: null })).toMatchObject({ ok: false });
   });
 
-  it('a design of another product, or an inactive one, is rejected', async () => {
-    const a = await cardsProduct(8);
+  it('a design of another product, an inactive one, or one dedicated to another nursery — rejected', async () => {
+    const a = await cardsProduct(9);
     const b = await cardsProduct(8);
-    expect(await createJobOrder(prisma, { ...base(), templateVersionId: a.versionId, quantity: 0, designIds: [...a.ids.slice(0, 7), b.ids[0]!] })).toMatchObject({ ok: false, error: expect.stringContaining('אינן זמינות') });
+    expect(await createJobOrder(prisma, { ...base(), templateVersionId: a.versionId, quantity: 0, designs: items([...a.ids.slice(0, 7), b.ids[0]!], 400) })).toMatchObject({ ok: false, error: expect.stringContaining('אינן זמינות') });
+    // הדוגמא התשיעית ייעודית למשתלה B
+    await prisma.printDesign.update({ where: { id: a.ids[8]! }, data: { nurseryId: f.B.nurseryId } });
+    const withOwn = items([...a.ids.slice(1, 8), a.ids[8]!], 400);
+    expect(await createJobOrder(prisma, { ...base(), templateVersionId: a.versionId, quantity: 0, designs: withOwn })).toMatchObject({ ok: false, error: expect.stringContaining('אינן זמינות') });
+    const own = await createJobOrder(prisma, { ...base(f.B.nurseryId), templateVersionId: a.versionId, quantity: 0, designs: withOwn });
+    expect(own.ok).toBe(true);
     await prisma.printDesign.update({ where: { id: a.ids[0]! }, data: { isActive: false } });
-    expect(await createJobOrder(prisma, { ...base(), templateVersionId: a.versionId, quantity: 0, designIds: a.ids })).toMatchObject({ ok: false });
+    expect(await createJobOrder(prisma, { ...base(), templateVersionId: a.versionId, quantity: 0, designs: items(a.ids.slice(0, 8), 400) })).toMatchObject({ ok: false });
   });
 
-  it('reorder: same designs, quantity recomputed by the rule (not the requested quantity)', async () => {
+  it('reorder: same designs and quantities, total recomputed (not the requested quantity)', async () => {
     const p = await cardsProduct();
-    const r = await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 0, designIds: p.ids.slice(0, 16) });
+    const q = [...Array<number>(15).fill(200), 600];
+    const r = await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 0, designs: items(p.ids.slice(0, 16), q) });
     if (!r.ok) throw new Error(JSON.stringify(r));
     const again = await orderSaved(prisma, { nurseryId: f.A.nurseryId, userId: null, savedProductId: r.savedProductId, quantity: 5 });
     if (!again.ok) throw new Error(JSON.stringify(again));
-    expect(again.quote.quantity).toBe(3200);
-    expect(again.quote.total).toBe(1280);
+    expect(again.quote.quantity).toBe(3600);
+    expect(again.quote.total).toBe(1440);
     // דוגמא שהושבתה — ההזמנה החוזרת נעצרת
     await prisma.printDesign.update({ where: { id: p.ids[3]! }, data: { isActive: false } });
     expect(await orderSaved(prisma, { nurseryId: f.A.nurseryId, userId: null, savedProductId: r.savedProductId, quantity: 5 })).toMatchObject({ ok: false, changed: true });

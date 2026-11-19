@@ -69,6 +69,8 @@ export interface DesignInput {
   tags: string[];
   sortOrder: number;
   isActive: boolean;
+  /** דוגמא ייעודית למשתלה (רק היא רואה אותה); null — לכל המשתלות */
+  nurseryId?: string | null;
 }
 
 /** תגיות מטקסט חופשי: מופרדות בפסיק, בלי כפילויות, עד 12 תגיות של עד 30 תווים */
@@ -87,7 +89,8 @@ export function validateDesign(d: DesignInput): string | null {
 export async function saveDesign(db: PrismaClient, templateId: string, id: string | null, d: DesignInput): Promise<AdminResult> {
   const err = validateDesign(d);
   if (err) return { ok: false, error: err };
-  const data = { code: d.code.toUpperCase(), title: d.title.trim(), imageUrl: d.imageUrl, tags: d.tags, sortOrder: d.sortOrder, isActive: d.isActive };
+  if (d.nurseryId && !(await db.nursery.count({ where: { id: d.nurseryId } }))) return { ok: false, error: 'המשתלה לא נמצאה' };
+  const data = { code: d.code.toUpperCase(), title: d.title.trim(), imageUrl: d.imageUrl, tags: d.tags, sortOrder: d.sortOrder, isActive: d.isActive, nurseryId: d.nurseryId ?? null };
   try {
     if (id) {
       const r = await db.printDesign.updateMany({ where: { id, templateId }, data });

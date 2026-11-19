@@ -11,32 +11,61 @@ import {
   type RawValues,
 } from '@/lib/print-template';
 import { checkResolution } from '@/lib/print-preflight';
-import { describeDesigns, designQuantity, parseDesignRule, type ChosenDesigns } from '@/lib/print-designs';
+import { checkDesignOrder, describeDesigns, parseDesignRule, type ChosenDesigns } from '@/lib/print-designs';
+
+export interface DesignItem {
+  id: string;
+  quantity: number;
+}
+
+/** פריטי דוגמאות מהדפדפן: [{ id, quantity }] */
+export function parseDesignItems(v: unknown): DesignItem[] | null {
+  if (!Array.isArray(v) || v.length > 500) return null;
+  const out: DesignItem[] = [];
+  for (const x of v) {
+    const o = x as { id?: unknown; quantity?: unknown } | null;
+    if (!o || typeof o.id !== 'string') return null;
+    out.push({ id: o.id, quantity: Number(o.quantity) });
+  }
+  return out;
+}
 
 export type ResolvedDesigns =
   | { ok: true; chosen: ChosenDesigns; quantity: number; line: { label: string; value: string } }
   | { ok: false; error: string; changed?: boolean };
 
 /**
- * מוצר עם מאגר דוגמאות: הדוגמאות נבדקות מול המאגר הפעיל של המוצר, והכמות נגזרת מהחוק — לא מהדפדפן.
- * null — המוצר אינו מוצר דוגמאות.
+ * מוצר עם מאגר דוגמאות: הדוגמאות נבדקות מול המאגר הפעיל של המוצר — הכלליות, וייעודיות רק למשתלה שלהן —
+ * והכמויות נבדקות לפי החוק. הסכום מחושב בשרת. null — המוצר אינו מוצר דוגמאות.
  */
-export async function resolveDesigns(db: PrismaClient, template: { id: string; designRule: unknown }, ids: unknown): Promise<ResolvedDesigns | null> {
+export async function resolveDesigns(
+  db: PrismaClient,
+  template: { id: string; designRule: unknown },
+  items: DesignItem[] | null,
+  nurseryId: string,
+): Promise<ResolvedDesigns | null> {
   const rule = parseDesignRule(template.designRule);
   if (!rule) return null;
-  const list = Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : [];
-  if (new Set(list).size !== list.length || list.length > 500) return { ok: false, error: 'בחירת הדוגמאות אינה תקינה — רעננו את הדף' };
-  const q = designQuantity(rule, list.length);
-  if (!q.ok) return { ok: false, error: q.error };
-  const rows = await db.printDesign.findMany({ where: { templateId: template.id, isActive: true, id: { in: list } }, select: { id: true, code: true, title: true } });
-  if (rows.length !== list.length) return { ok: false, changed: true, error: 'חלק מהדוגמאות שנבחרו כבר אינן זמינות — רעננו את הדף ובחרו שוב' };
+  if (!items) return { ok: false, error: 'בחירת הדוגמאות אינה תקינה — רעננו את הדף' };
+  const ids = items.map((i) => i.id);
+  if (new Set(ids).size !== ids.length) return { ok: false, error: 'בחירת הדוגמאות אינה תקינה — רעננו את הדף' };
+  const check = checkDesignOrder(
+    rule,
+    items.map((i) => i.quantity),
+  );
+  if (!check.ok) return { ok: false, error: check.error };
+  const rows = await db.printDesign.findMany({
+    where: { templateId: template.id, isActive: true, id: { in: ids }, OR: [{ nurseryId: null }, { nurseryId }] },
+    select: { id: true, code: true, title: true },
+  });
+  if (rows.length !== ids.length) return { ok: false, changed: true, error: 'חלק מהדוגמאות שנבחרו כבר אינן זמינות — רעננו את הדף ובחרו שוב' };
   const byId = new Map(rows.map((r) => [r.id, r]));
-  const ordered = list.map((id) => byId.get(id)!);
+  const ordered = items.map((i) => ({ ...byId.get(i.id)!, quantity: i.quantity }));
   return {
     ok: true,
-    quantity: q.total,
-    chosen: { ids: ordered.map((d) => d.id), codes: ordered.map((d) => d.code), perDesign: q.perDesign },
-    line: describeDesigns(ordered, q.perDesign),
+    quantity: check.total,
+    chosen: { ids: ordered.map((d) => d.id), codes: ordered.map((d) => d.code), quantities: ordered.map((d) => d.quantity) },
+    line: describeDesigns(ordered),
   };
 }
 
@@ -75,8 +104,8 @@ export async function createJobOrder(
     /** "אין לי קובץ, אני צריך גם עיצוב" — גובר על קובץ */
     needsDesign?: boolean;
     name?: string | null;
-    /** מוצר עם מאגר דוגמאות: הדוגמאות שנבחרו (הכמות נגזרת מהן) */
-    designIds?: string[] | null;
+    /** מוצר עם מאגר דוגמאות: הדוגמאות שנבחרו והכמות מכל אחת */
+    designs?: DesignItem[] | null;
   },
 ): Promise<JobOrderResult> {
   const v = await db.printTemplateVersion.findUnique({ where: { id: args.templateVersionId }, include: { template: true } });
@@ -85,7 +114,7 @@ export async function createJobOrder(
   const pricing = parsePricing(v.pricing);
   if (!fields.ok || !pricing.ok) return { ok: false, error: 'הגדרת המוצר אינה תקינה — פנו לבית הדפוס' };
 
-  const designs = await resolveDesigns(db, v.template, args.designIds);
+  const designs = await resolveDesigns(db, v.template, args.designs ?? null, args.nurseryId);
   if (designs && !designs.ok) return { ok: false, error: designs.error };
   const quantity = designs ? designs.quantity : args.quantity;
 
@@ -97,7 +126,8 @@ export async function createJobOrder(
   const checked = validateValues(fields.value, args.values);
   if (!checked.ok) return { ok: false, fieldErrors: checked.errors };
   const missing = missingForSubmit(pricing.value, fields.value, args.values, quantity, {
-    required: v.template.requiresArtwork,
+    // מוצר דוגמאות: הלוגו רשות (בית הדפוס מכין את הכרטיס עם פרטי העסק)
+    required: v.template.requiresArtwork && !designs,
     hasFile: Boolean(file),
     needsDesign,
   });

@@ -21,7 +21,7 @@ export interface ProductCard {
 export async function loadProductCards(where: Prisma.PrintTemplateWhereInput): Promise<ProductCard[]> {
   const versions = await prisma.printTemplateVersion.findMany({
     where: { status: 'PUBLISHED', template: { isActive: true, ...where } },
-    include: { template: { include: { _count: { select: { designs: { where: { isActive: true } } } } } } },
+    include: { template: { include: { _count: { select: { designs: { where: { isActive: true, nurseryId: null } } } } } } },
     orderBy: [{ template: { sortOrder: 'asc' } }, { template: { createdAt: 'asc' } }],
   });
   return versions.flatMap((v) => {

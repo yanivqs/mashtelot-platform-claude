@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { useMemo, useRef, useState, useTransition } from 'react';
-import { CheckCircle2, FileText, Search, X, ZoomIn } from 'lucide-react';
+import { CheckCircle2, FileText, Search, Sparkles, X, ZoomIn } from 'lucide-react';
 import { TemplateFields } from '@/components/print/template-fields';
 import { PrintFileUpload } from '@/components/print/file-upload';
 import { missingForSubmit, quotePrint, validateValues, type RawValues } from '@/lib/print-template';
-import { designQuantity, type DesignRule } from '@/lib/print-designs';
+import { checkDesignOrder, defaultPerDesign, quantityChoices, type DesignRule } from '@/lib/print-designs';
 import { formatPrice } from '@/lib/utils';
 import type { CalculatorProduct } from '@/components/print/calculator';
 import { createJobOrderAction } from '@/app/admin/(dash)/print-shop/actions';
@@ -18,17 +18,23 @@ export interface PickerDesign {
   title: string;
   imageUrl: string;
   tags: string[];
+  /** דוגמא ייעודית שהוכנה למשתלה הזו */
+  own?: boolean;
 }
 
 const input = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500';
 const units = (n: number) => n.toLocaleString('he-IL');
+const OWN_TAG = '__own';
 
 /**
- * הזמנה ממאגר דוגמאות (כרטיסי ברכה): בוחרים דוגמאות בכפולות של החבילה, והכמות נגזרת מהן.
+ * הזמנה ממאגר דוגמאות (כרטיסי ברכה): בוחרים דוגמאות בכפולות של החבילה ואת הכמות מכל אחת.
+ * פס ההזמנה קבוע בתחתית המסך: מה נבחר, כמה מכל דוגמא, סך הכול, מחיר ומה עוד חסר.
  * ההודעות והמחיר מחושבים כאן לנוחות; השרת בודק ומחשב שוב בשליחה.
  */
 export function DesignPicker({ product: t, designs, rule }: { product: CalculatorProduct; designs: PickerDesign[]; rule: DesignRule }) {
   const [selected, setSelected] = useState<string[]>([]);
+  // כמות שנבחרה ידנית לדוגמא; בלי בחירה — ברירת המחדל לפי מספר הדוגמאות
+  const [chosenQty, setChosenQty] = useState<Record<string, number>>({});
   const [tag, setTag] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [onlySelected, setOnlySelected] = useState(false);
@@ -39,12 +45,13 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
   const [notes, setNotes] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<{ name: string; total: number; quoteOnly: boolean; count: number; perDesign: number; quantity: number } | null>(null);
+  const [done, setDone] = useState<{ name: string; total: number; quoteOnly: boolean; count: number; quantity: number } | null>(null);
   const [pending, start] = useTransition();
   const dialog = useRef<HTMLDialogElement>(null);
   const detailsRef = useRef<HTMLHeadingElement>(null);
 
   const byId = useMemo(() => new Map(designs.map((d) => [d.id, d])), [designs]);
+  const hasOwn = designs.some((d) => d.own);
   const tags = useMemo(() => {
     const m = new Map<string, number>();
     for (const d of designs) for (const x of d.tags) m.set(x, (m.get(x) ?? 0) + 1);
@@ -53,19 +60,24 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
   const q = query.trim().toLowerCase();
   const chosen = new Set(selected);
   const visible = designs.filter(
-    (d) => (!tag || d.tags.includes(tag)) && (!q || d.code.toLowerCase().includes(q) || d.title.toLowerCase().includes(q)) && (!onlySelected || chosen.has(d.id)),
+    (d) =>
+      (!tag || (tag === OWN_TAG ? d.own : d.tags.includes(tag))) &&
+      (!q || d.code.toLowerCase().includes(q) || d.title.toLowerCase().includes(q)) &&
+      (!onlySelected || chosen.has(d.id)),
   );
 
-  const qty = designQuantity(rule, selected.length);
+  const fallback = defaultPerDesign(rule, selected.length);
+  const qtyOf = (id: string) => chosenQty[id] ?? fallback;
+  const items = selected.map((id) => ({ id, quantity: qtyOf(id) }));
+  const check = checkDesignOrder(
+    rule,
+    items.map((i) => i.quantity),
+  );
+  const choices = quantityChoices(rule);
   const checked = validateValues(t.fields, values);
-  const priced = qty.ok && checked.ok ? quotePrint(t.pricing, t.fields, checked.values, qty.total) : null;
-  const quote = priced?.ok ? priced.quote : null;
-  // המחיר להצגה גם לפני מילוי פרטי העסק
-  const preview = qty.ok ? quotePrint(t.pricing, [], {}, qty.total) : null;
-  const previewTotal = preview?.ok && !preview.quote.quoteOnly ? preview.quote.total : null;
-  const missing = qty.ok ? missingForSubmit(t.pricing, t.fields, values, qty.total, { required: t.requiresArtwork, hasFile: Boolean(file), needsDesign: false }) : [qty.error];
-  const fileMissingLabel = 'יש להעלות קובץ, או לסמן שצריך גם עיצוב';
-  const missingShown = missing.map((m) => (m === fileMissingLabel ? 'יש להעלות קובץ לוגו' : m));
+  const priced = quotePrint(t.pricing, [], {}, Math.max(1, check.total));
+  const price = check.ok && priced.ok && !priced.quote.quoteOnly ? priced.quote.total : null;
+  const missing = check.ok ? missingForSubmit(t.pricing, t.fields, values, check.total, { required: false, hasFile: Boolean(file), needsDesign: false }) : [check.error];
 
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   const openZoom = (d: PickerDesign) => {
@@ -82,10 +94,14 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
         </div>
         <p className="mt-3 font-medium">{done.name}</p>
         <p className="mt-1 text-sm text-gray-700">
-          {done.count} דוגמאות × {units(done.perDesign)} יח' = {units(done.quantity)} כרטיסים
+          {done.count} דוגמאות · {units(done.quantity)} כרטיסים
         </p>
-        {!done.quoteOnly && <p className="mt-2 text-lg font-bold">{formatPrice(done.total)} <span className="text-sm font-normal text-gray-600">לפני מע״מ</span></p>}
-        <p className="mt-2 text-sm text-gray-600">בית הדפוס ישלח הגהה עם הלוגו לאישורך לפני ההדפסה.</p>
+        {!done.quoteOnly && (
+          <p className="mt-2 text-lg font-bold">
+            {formatPrice(done.total)} <span className="text-sm font-normal text-gray-600">לפני מע״מ</span>
+          </p>
+        )}
+        <p className="mt-2 text-sm text-gray-600">בית הדפוס ישלח הגהה של הכרטיס לאישורך לפני ההדפסה.</p>
         <Link href="/admin/print-shop/jobs" className="mt-4 inline-block rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
           לעבודות שלי
         </Link>
@@ -95,11 +111,11 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
 
   const submit = () => {
     setError(null);
-    if (!qty.ok) return setError(qty.error);
+    if (!check.ok) return setError(check.error);
     start(async () => {
-      const res = await createJobOrderAction({ templateVersionId: t.versionId, values, quantity: qty.total, notes, fileId: file?.id ?? null, designIds: selected });
+      const res = await createJobOrderAction({ templateVersionId: t.versionId, values, quantity: check.total, notes, fileId: file?.id ?? null, designs: items });
       if (res.ok) {
-        setDone({ name: res.name!, total: res.total ?? 0, quoteOnly: res.quoteOnly!, count: qty.count, perDesign: qty.perDesign, quantity: qty.total });
+        setDone({ name: res.name!, total: res.total ?? 0, quoteOnly: res.quoteOnly!, count: check.count, quantity: check.total });
       } else {
         setFieldErrors(res.fieldErrors ?? {});
         setError(res.error ?? (res.missing ?? []).join(' · ') ?? 'שגיאה');
@@ -108,7 +124,8 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
   };
 
   return (
-    <div className="space-y-5 pb-28">
+    // ריווח בתחתית, כדי שהפס הקבוע לא יסתיר את סוף הדף
+    <div className="space-y-5 pb-72">
       {step === 'pick' ? (
         <>
           <div className="space-y-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
@@ -124,7 +141,7 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
               </label>
             </div>
             <div className="flex flex-wrap gap-2" role="group" aria-label="סינון לפי תגית">
-              {[null, ...tags.map(([x]) => x)].map((x) => (
+              {[null, ...(hasOwn ? [OWN_TAG] : []), ...tags.map(([x]) => x)].map((x) => (
                 <button
                   key={x ?? 'all'}
                   type="button"
@@ -132,8 +149,7 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
                   onClick={() => setTag(x)}
                   className={`rounded-full border px-3 py-1 text-sm ${tag === x ? 'border-brand-700 bg-brand-700 text-white' : 'border-gray-200 bg-white text-gray-700 hover:border-brand-300'}`}
                 >
-                  {x ?? `הכול (${designs.length})`}
-                  {x ? ` (${tags.find(([y]) => y === x)?.[1]})` : ''}
+                  {x === null ? `הכול (${designs.length})` : x === OWN_TAG ? `הוכנו עבורכם (${designs.filter((d) => d.own).length})` : `${x} (${tags.find(([y]) => y === x)?.[1]})`}
                 </button>
               ))}
             </div>
@@ -159,6 +175,12 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
                           {d.code}
                         </span>
                         <span className="line-clamp-2 text-gray-700">{d.title}</span>
+                        {d.own && (
+                          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">
+                            <Sparkles className="h-3 w-3" aria-hidden />
+                            הוכנה עבורכם
+                          </span>
+                        )}
                       </span>
                     </span>
                   </label>
@@ -181,32 +203,10 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
               חזרה לבחירת הדוגמאות
             </button>
           </div>
-          <div>
-            <p className="mb-2 text-sm font-medium text-gray-700">
-              הדוגמאות שבחרת ({selected.length}){qty.ok ? ` · ${units(qty.perDesign)} יח' מכל דוגמא` : ''}
-            </p>
-            <ul className="flex flex-wrap gap-2" data-testid="design-selected">
-              {selected.map((id) => {
-                const d = byId.get(id);
-                if (!d) return null;
-                return (
-                  <li key={id} className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 p-1 pl-2 text-xs">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={d.imageUrl} alt="" className="h-10 w-10 rounded bg-white object-contain" />
-                    <span dir="ltr">{d.code}</span>
-                    <button type="button" onClick={() => toggle(id)} className="rounded p-1 text-gray-600 hover:bg-gray-200" aria-label={`הסרת ${d.code}`}>
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
 
           <div className="space-y-2 text-sm">
-            <p className="font-medium text-gray-700">
-              קובץ לוגו{t.requiresArtwork ? <span className="text-rose-600"> *</span> : ' (לא חובה)'}
-            </p>
+            <p className="font-medium text-gray-700">קובץ לוגו (לא חובה)</p>
+            <p className="text-xs text-gray-600">אם אין לכם קובץ, בית הדפוס יכין את הכרטיס לפי פרטי העסק וישלח הגהה לאישור.</p>
             <PrintFileUpload label={file ? 'החלפת הלוגו' : 'העלאת לוגו'} withThumbnail start={() => startDraftArtworkUpload({ templateVersionId: t.versionId })} onDone={(f) => f && setFile(f)} />
             {file && (
               <div className="flex items-center gap-2 rounded-lg bg-gray-50 p-2" data-testid="print-file">
@@ -217,6 +217,9 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
                   <FileText className="h-6 w-6 text-gray-500" />
                 )}
                 <span className="min-w-0 flex-1 break-all">{file.name}</span>
+                <button type="button" onClick={() => setFile(null)} className="text-xs text-red-700 hover:underline">
+                  הסרה
+                </button>
               </div>
             )}
           </div>
@@ -230,53 +233,91 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
         </div>
       )}
 
-      {/* פס קבוע: מצב הבחירה, הכמות והמחיר */}
-      <div className="sticky bottom-0 z-20 -mx-1 rounded-xl border border-gray-200 bg-white p-3 shadow-lg" data-testid="design-bar">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-0 flex-1 text-sm" aria-live="polite">
-            <p className="font-bold">נבחרו {selected.length} דוגמאות</p>
-            {qty.ok ? (
-              <p className="text-gray-700" data-testid="design-status">
-                {units(qty.perDesign)} מכל דוגמא · {units(qty.total)} יח'
-                {previewTotal !== null && (
+      {/* פס ההזמנה: קבוע בתחתית המסך (ליד התפריט הצדדי במחשב) */}
+      <section aria-label="ההזמנה שלי" className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] backdrop-blur md:right-60" data-testid="design-bar">
+        <div className="mx-auto max-w-5xl space-y-2 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="min-w-0 flex-1 text-sm" aria-live="polite">
+              <p className="font-bold">
+                נבחרו {selected.length} דוגמאות{check.total > 0 ? ` · ${units(check.total)} כרטיסים` : ''}
+                {price !== null && (
                   <>
                     {' · '}
-                    <span className="font-bold text-gray-900">{formatPrice(quote && !quote.quoteOnly ? quote.total : previewTotal)}</span> לפני מע״מ
+                    {formatPrice(price)} <span className="font-normal text-gray-600">לפני מע״מ</span>
                   </>
                 )}
               </p>
+              {check.ok ? (
+                <p className="text-green-800" data-testid="design-status">
+                  ההזמנה תקינה{step === 'details' && missing.length > 0 ? ` · עוד חסר: ${missing.join(' · ')}` : ''}
+                </p>
+              ) : (
+                <p className="text-amber-800" data-testid="design-status">
+                  {check.error}
+                </p>
+              )}
+            </div>
+            {step === 'pick' ? (
+              <button
+                type="button"
+                disabled={!check.ok}
+                onClick={() => {
+                  setStep('details');
+                  window.scrollTo({ top: 0 });
+                  setTimeout(() => detailsRef.current?.focus(), 0);
+                }}
+                className="rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                המשך להזמנה
+              </button>
             ) : (
-              <p className="text-amber-800" data-testid="design-status">
-                {qty.error}
-              </p>
+              <button
+                type="button"
+                disabled={missing.length > 0 || pending || !checked.ok}
+                onClick={submit}
+                className="rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {pending ? 'שולח...' : 'שליחת ההזמנה'}
+              </button>
             )}
-            {step === 'details' && qty.ok && missingShown.length > 0 && <p className="text-xs text-gray-600">עוד חסר: {missingShown.join(' · ')}</p>}
           </div>
-          {step === 'pick' ? (
-            <button
-              type="button"
-              disabled={!qty.ok}
-              onClick={() => {
-                setStep('details');
-                setTimeout(() => detailsRef.current?.focus(), 0);
-              }}
-              className="rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              המשך להזמנה
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={missing.length > 0 || pending}
-              onClick={submit}
-              className="rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {pending ? 'שולח...' : 'שליחת ההזמנה'}
-            </button>
+          {selected.length > 0 && (
+            <ul className="flex max-h-36 gap-2 overflow-x-auto pb-1" data-testid="design-selected">
+              {selected.map((id) => {
+                const d = byId.get(id);
+                if (!d) return null;
+                return (
+                  <li key={id} className="flex shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white p-1 pl-1.5 text-xs" data-testid={`selected-${d.code}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={d.imageUrl} alt="" className="h-10 w-10 rounded bg-white object-contain" />
+                    <span dir="ltr" className="font-medium">
+                      {d.code}
+                    </span>
+                    <label className="flex items-center gap-1">
+                      <span className="sr-only">כמות מ-{d.code}</span>
+                      <select
+                        value={qtyOf(id)}
+                        onChange={(e) => setChosenQty((p) => ({ ...p, [id]: Number(e.target.value) }))}
+                        className="rounded border border-gray-200 bg-white px-1 py-0.5 text-xs"
+                      >
+                        {(choices.includes(qtyOf(id)) ? choices : [...choices, qtyOf(id)].sort((a, b) => a - b)).map((n) => (
+                          <option key={n} value={n}>
+                            {units(n)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button type="button" onClick={() => toggle(id)} className="rounded p-1 text-gray-600 hover:bg-gray-100" aria-label={`הסרת ${d.code}`}>
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
+          {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-      </div>
+      </section>
 
       <dialog ref={dialog} onClose={() => setZoom(null)} className="max-h-[90vh] w-[min(92vw,640px)] rounded-xl p-0 backdrop:bg-black/60" aria-label={zoom ? `${zoom.code} ${zoom.title}` : 'הגדלה'}>
         {zoom && (

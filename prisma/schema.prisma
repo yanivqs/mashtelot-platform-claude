@@ -49,63 +49,64 @@ model UserRecoveryCode {
 }
 
 model Nursery {
-  id              String                 @id @default(uuid())
-  name            String
-  subdomain       String                 @unique
-  customDomain    String?                @unique @map("custom_domain")
-  logoUrl         String?                @map("logo_url")
-  primaryColor    String?                @default("#16a34a") @map("primary_color")
-  phoneNumber     String?                @map("phone_number")
-  ownerEmail      String                 @map("owner_email")
-  isActive        Boolean                @default(true) @map("is_active")
+  id                    String                 @id @default(uuid())
+  name                  String
+  subdomain             String                 @unique
+  customDomain          String?                @unique @map("custom_domain")
+  logoUrl               String?                @map("logo_url")
+  primaryColor          String?                @default("#16a34a") @map("primary_color")
+  phoneNumber           String?                @map("phone_number")
+  ownerEmail            String                 @map("owner_email")
+  isActive              Boolean                @default(true) @map("is_active")
   /// §2.03: מחזור חיים. isActive נשמר לתאימות ומסונכרן ב-trigger (פעילה ⇔ ACTIVE)
-  status          NurseryStatus          @default(ACTIVE)
-  aboutText       String?                @map("about_text")
-  addressLine     String?                @map("address_line")
-  city            String?
-  mapLink         String?                @map("map_link")
-  contactEmail    String?                @map("contact_email")
-  openingHours    Json?                  @map("opening_hours")
-  themeConfig     Json?                  @map("theme_config")
-  pickupEnabled   Boolean                @default(true) @map("pickup_enabled")
-  deliveryEnabled Boolean                @default(true) @map("delivery_enabled")
-  deliveryNote    String?                @map("delivery_note")
-  createdAt       DateTime               @default(now()) @map("created_at")
-  updatedAt       DateTime               @updatedAt @map("updated_at")
-  coupons         Coupon[]
-  customerLoyalty CustomerLoyalty[]
-  customers       Customer[]
-  customerOtps    CustomerOtp[]
-  customerGroups  CustomerGroup[]
-  loyaltySettings LoyaltySettings?
-  loyaltyEntries  LoyaltyEntry[]
-  emailJobs       EmailJob[]
-  modules         NurseryModule[]
-  staticPages     StaticPage[]
-  nurseryProducts NurseryProduct[]
-  orders          Order[]
-  paymentMethods  NurseryPaymentMethod[]
-  redirects       Redirect[]
-  productVariants ProductVariant[]
-  syncDecisions   CatalogSyncDecision[]
-  printSaved      PrintSavedProduct[]
-  printFiles      PrintFile[]
-  printArtworks   PrintArtwork[]
-  printOrders     PrintOrder[]
-  promotions      Promotion[]
-  users           User[]
-  auditEvents     AuditEvent[]
-  aiUsage         AiUsage[]
-  channels        NurseryChannel[]
-  shippingZones   ShippingZone[]
-  categories      NurseryCategory[]
-  blogPosts       BlogPost[]
-  stockMovements  StockMovement[]
-  pageLayouts     PageLayout[]
-  images          NurseryImage[]
-  account         NurseryAccount?
+  status                NurseryStatus          @default(ACTIVE)
+  aboutText             String?                @map("about_text")
+  addressLine           String?                @map("address_line")
+  city                  String?
+  mapLink               String?                @map("map_link")
+  contactEmail          String?                @map("contact_email")
+  openingHours          Json?                  @map("opening_hours")
+  themeConfig           Json?                  @map("theme_config")
+  pickupEnabled         Boolean                @default(true) @map("pickup_enabled")
+  deliveryEnabled       Boolean                @default(true) @map("delivery_enabled")
+  deliveryNote          String?                @map("delivery_note")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  coupons               Coupon[]
+  customerLoyalty       CustomerLoyalty[]
+  customers             Customer[]
+  customerOtps          CustomerOtp[]
+  customerGroups        CustomerGroup[]
+  loyaltySettings       LoyaltySettings?
+  loyaltyEntries        LoyaltyEntry[]
+  emailJobs             EmailJob[]
+  modules               NurseryModule[]
+  staticPages           StaticPage[]
+  nurseryProducts       NurseryProduct[]
+  orders                Order[]
+  paymentMethods        NurseryPaymentMethod[]
+  redirects             Redirect[]
+  productVariants       ProductVariant[]
+  syncDecisions         CatalogSyncDecision[]
+  printSaved            PrintSavedProduct[]
+  printFiles            PrintFile[]
+  printArtworks         PrintArtwork[]
+  printOrders           PrintOrder[]
+  printDesigns          PrintDesign[]
+  promotions            Promotion[]
+  users                 User[]
+  auditEvents           AuditEvent[]
+  aiUsage               AiUsage[]
+  channels              NurseryChannel[]
+  shippingZones         ShippingZone[]
+  categories            NurseryCategory[]
+  blogPosts             BlogPost[]
+  stockMovements        StockMovement[]
+  pageLayouts           PageLayout[]
+  images                NurseryImage[]
+  account               NurseryAccount?
   newsletterSubscribers NewsletterSubscriber[]
-  accessibilityInfo     Json?                 @map("accessibility_info")
+  accessibilityInfo     Json?                  @map("accessibility_info")
   accessibilityReports  AccessibilityReport[]
 
   @@map("nurseries")
@@ -283,17 +284,17 @@ model NewsletterSubscriber {
 }
 
 model NurseryModule {
-  id        String   @id @default(uuid())
-  nurseryId String   @map("nursery_id")
-  moduleKey String   @map("module_key")
-  isEnabled Boolean  @default(false) @map("is_enabled")
-  config    Json?
+  id         String   @id @default(uuid())
+  nurseryId  String   @map("nursery_id")
+  moduleKey  String   @map("module_key")
+  isEnabled  Boolean  @default(false) @map("is_enabled")
+  config     Json?
   /// עלות הקמה ועלות חודשית של המודול במשתלה זו (חשבונות משתלות)
-  setupFee   Decimal @default(0) @map("setup_fee") @db.Decimal(10, 2)
-  monthlyFee Decimal @default(0) @map("monthly_fee") @db.Decimal(10, 2)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  nursery   Nursery  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  setupFee   Decimal  @default(0) @map("setup_fee") @db.Decimal(10, 2)
+  monthlyFee Decimal  @default(0) @map("monthly_fee") @db.Decimal(10, 2)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  nursery    Nursery  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
 
   @@unique([nurseryId, moduleKey])
   @@map("nursery_modules")
@@ -1275,11 +1276,15 @@ model PrintDesign {
   tags       String[]      @default([])
   sortOrder  Int           @default(0) @map("sort_order")
   isActive   Boolean       @default(true) @map("is_active")
+  /// דוגמא ייעודית: מוצגת רק למשתלה הזו (למשל כרטיס עם הלוגו והפרטים שלה). ריק — לכל המשתלות
+  nurseryId  String?       @map("nursery_id")
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")
   template   PrintTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  nursery    Nursery?      @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
 
   @@unique([templateId, code])
+  @@index([nurseryId])
   @@map("print_designs")
 }
 

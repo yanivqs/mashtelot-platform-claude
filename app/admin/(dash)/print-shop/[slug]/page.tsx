@@ -80,12 +80,17 @@ export default async function PrintProductPage({ params, searchParams }: { param
     pricing: pricing.value,
   };
   const designRule = parseDesignRule(t.designRule);
+  // דוגמאות כלליות, ודוגמאות שהוכנו למשתלה הזו (ראשונות)
   const designs = designRule
-    ? await prisma.printDesign.findMany({
-        where: { templateId: t.id, isActive: true },
-        orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
-        select: { id: true, code: true, title: true, imageUrl: true, tags: true },
-      })
+    ? (
+        await prisma.printDesign.findMany({
+          where: { templateId: t.id, isActive: true, OR: [{ nurseryId: null }, { nurseryId }] },
+          orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
+          select: { id: true, code: true, title: true, imageUrl: true, tags: true, nurseryId: true },
+        })
+      )
+        .map(({ nurseryId: owner, ...d }) => ({ ...d, own: owner === nurseryId }))
+        .sort((x, y) => Number(y.own) - Number(x.own))
     : [];
   const cat = t.printCategory;
   const back = cat ? { href: `/admin/print-shop/c/${cat.slug}`, label: `חזרה ל${cat.name}` } : { href: '/admin/print-shop', label: 'לכל מוצרי הדפוס' };

@@ -16,7 +16,10 @@ export interface DesignValues {
   tags: string[];
   sortOrder: number;
   isActive: boolean;
+  nurseryId: string | null;
 }
+
+export type NurseryOption = { id: string; name: string };
 
 function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -27,7 +30,7 @@ function Submit({ label }: { label: string }) {
   );
 }
 
-export function DesignForm({ templateId, value, nextSort = 0 }: { templateId: string; value?: DesignValues; nextSort?: number }) {
+export function DesignForm({ templateId, value, nextSort = 0, nurseries }: { templateId: string; value?: DesignValues; nextSort?: number; nurseries: NurseryOption[] }) {
   const [state, action] = useActionState(saveDesignAction, initial);
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-2" key={value ? undefined : state.message}>
@@ -49,6 +52,18 @@ export function DesignForm({ templateId, value, nextSort = 0 }: { templateId: st
         <span className="mb-1 block font-medium text-gray-700">סדר</span>
         <input name="sortOrder" type="number" min="0" defaultValue={value?.sortOrder ?? nextSort} className={field} />
       </label>
+      <label className="text-sm sm:col-span-2">
+        <span className="mb-1 block font-medium text-gray-700">למי מוצגת הדוגמא</span>
+        <select name="nurseryId" defaultValue={value?.nurseryId ?? ''} className={field}>
+          <option value="">לכל המשתלות</option>
+          {nurseries.map((n) => (
+            <option key={n.id} value={n.id}>
+              רק ל{n.name} (דוגמא ייעודית)
+            </option>
+          ))}
+        </select>
+        <span className="mt-1 block text-xs text-gray-600">דוגמא ייעודית — למשל כרטיס עם הלוגו והפרטים של המשתלה. היא מופיעה רק לה, ראשונה במאגר, עם הסימון &quot;הוכנה עבורכם&quot;.</span>
+      </label>
       <div className="sm:col-span-2">
         <ImageUpload name="imageUrl" defaultValue={value?.imageUrl ?? null} label="תמונת הדוגמא" folder="misc" hint="מומלץ 1200×1200, רקע לבן" />
       </div>
@@ -66,7 +81,8 @@ export function DesignForm({ templateId, value, nextSort = 0 }: { templateId: st
 }
 
 /** שורה ברשימה; טופס העריכה נטען רק כשפותחים אותה */
-export function DesignRow({ templateId, value }: { templateId: string; value: DesignValues }) {
+export function DesignRow({ templateId, value, nurseries }: { templateId: string; value: DesignValues; nurseries: NurseryOption[] }) {
+  const owner = value.nurseryId ? nurseries.find((n) => n.id === value.nurseryId)?.name : null;
   const [open, setOpen] = useState(false);
   return (
     <li className="px-4 py-3" data-testid={`admin-design-${value.code}`}>
@@ -80,6 +96,7 @@ export function DesignRow({ templateId, value }: { templateId: string; value: De
             </span>{' '}
             · {value.title}
             {!value.isActive && <span className="mr-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">מושבתת</span>}
+            {owner && <span className="mr-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-900">רק ל{owner}</span>}
           </p>
           {value.tags.length > 0 && <p className="text-xs text-gray-600">{value.tags.join(' · ')}</p>}
         </div>
@@ -90,7 +107,7 @@ export function DesignRow({ templateId, value }: { templateId: string; value: De
       </div>
       {open && (
         <div className="mt-3 rounded-lg bg-gray-50 p-3">
-          <DesignForm templateId={templateId} value={value} />
+          <DesignForm templateId={templateId} value={value} nurseries={nurseries} />
         </div>
       )}
     </li>
