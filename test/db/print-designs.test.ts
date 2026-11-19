@@ -79,7 +79,7 @@ describe('createJobOrder with designs', () => {
     expect(await v(p.ids.slice(0, 9), 400)).toMatchObject({ ok: false, error: expect.stringContaining('בכפולות של 8') });
     expect(await v(p.ids.slice(0, 7), 400)).toMatchObject({ ok: false, error: expect.stringContaining('לפחות 8') });
     expect(await v(p.ids.slice(0, 8), 300)).toMatchObject({ ok: false, error: expect.stringContaining('בקפיצות של 200') });
-    expect(await v(p.ids.slice(0, 8), 200)).toMatchObject({ ok: false, error: expect.stringContaining('לפחות 3,200') });
+    expect(await v(p.ids.slice(0, 8), 200)).toMatchObject({ ok: false, error: expect.stringContaining('מינימום הזמנה לכרטיסים היא 3,200') });
     expect(await v([...p.ids.slice(0, 7), p.ids[0]!], 400)).toMatchObject({ ok: false });
     expect(await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 3200, designs: null })).toMatchObject({ ok: false });
   });

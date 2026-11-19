@@ -76,7 +76,7 @@ export default async function PrintTemplatePage(props: { params: Promise<{ id: s
       {designRule && (
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-100 bg-brand-50 p-5">
           <p className="text-sm text-brand-900">
-            מוצר עם מאגר דוגמאות: {t._count.designs} דוגמאות. בכפולות של {designRule.packSize} — {designRule.firstPackPerDesign.toLocaleString('he-IL')} יח' מכל דוגמא בחבילה אחת, {designRule.perDesign.toLocaleString('he-IL')} מכל דוגמא מעבר לכך.
+            מוצר עם מאגר דוגמאות: {t._count.designs} דוגמאות. בכפולות של {designRule.packSize}, ברירת מחדל {designRule.perDesign.toLocaleString('he-IL')} יח' מכל דוגמא; בחבילה אחת בלבד — {designRule.firstPackPerDesign.toLocaleString('he-IL')} יח' מכל דוגמא.
           </p>
           <Link href={`/admin/print-templates/${t.id}/designs`} className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
             ניהול דוגמאות

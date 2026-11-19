@@ -1,13 +1,14 @@
 /**
  * מוצר דפוס עם מאגר דוגמאות (כרטיסי ברכה): בעל המשתלה בוחר דוגמאות ואת הכמות מכל אחת.
  * חוק (החלטות בעלים 2026-11-19): הדוגמאות בכפולות של 8; הכמות מכל דוגמא בקפיצות של 200;
- * סך הכול לפחות 3,200 כרטיסים. ברירת המחדל: 400 מכל דוגמא כשנבחרו עד 8, ו-200 מ-16 ומעלה.
+ * סך הכול לפחות 3,200 כרטיסים. ברירת המחדל: 200 מכל דוגמא (עדכון 2026-11-19); עם 8 דוגמאות בלבד
+ * מציעים להגדיל ל-400 מכל אחת או להוסיף עוד 8 דוגמאות.
  * טהור — משותף לשרת, לדפדפן ולבדיקות.
  */
 export interface DesignRule {
   /** הדוגמאות נבחרות בכפולות של מספר זה */
   packSize: number;
-  /** כמות ברירת מחדל לכל דוגמא כשנבחרה חבילה אחת בלבד (וגם: מינימום ההזמנה = packSize × זה) */
+  /** הכמות לכל דוגמא שנדרשת כשנבחרה חבילה אחת בלבד (מינימום ההזמנה = packSize × זה) */
   firstPackPerDesign: number;
   /** כמות ברירת מחדל לכל דוגמא מהחבילה השנייה ומעלה, וגם הקפיצה בבחירת הכמות */
   perDesign: number;
@@ -36,8 +37,8 @@ export function parseDesignRule(json: unknown): DesignRule | null {
 /** מינימום כרטיסים בהזמנה */
 export const minTotal = (rule: DesignRule) => rule.packSize * rule.firstPackPerDesign;
 
-/** הכמות שמוצעת לכל דוגמא, לפי מספר הדוגמאות שנבחרו */
-export const defaultPerDesign = (rule: DesignRule, count: number) => (count <= rule.packSize ? rule.firstPackPerDesign : rule.perDesign);
+/** הכמות שמוצעת לכל דוגמא שנבחרה */
+export const defaultPerDesign = (rule: DesignRule) => rule.perDesign;
 
 /** הכמויות שאפשר לבחור לדוגמא: קפיצות של perDesign */
 export function quantityChoices(rule: DesignRule, upTo = 10_000): number[] {
@@ -48,7 +49,11 @@ export function quantityChoices(rule: DesignRule, upTo = 10_000): number[] {
 
 const fmt = (n: number) => n.toLocaleString('he-IL');
 
-export type DesignOrderCheck = { ok: true; count: number; total: number } | { ok: false; count: number; total: number; error: string };
+/**
+ * short — חבילה אחת שסך הכמות בה מתחת למינימום: אפשר להגדיל את הכמות מכל דוגמא ל-firstPackPerDesign
+ * או להוסיף עוד חבילת דוגמאות.
+ */
+export type DesignOrderCheck = { ok: true; count: number; total: number } | { ok: false; count: number; total: number; error: string; short?: boolean };
 
 /** בדיקת ההזמנה לפי החוק: מספר הדוגמאות, הכמות מכל אחת והסכום. מחזירה את ההודעה שמסבירה מה לתקן. */
 export function checkDesignOrder(rule: DesignRule, quantities: readonly number[]): DesignOrderCheck {
@@ -76,6 +81,15 @@ export function checkDesignOrder(rule: DesignRule, quantities: readonly number[]
     return { ok: false, count, total, error: `הכמות מכל דוגמא בקפיצות של ${fmt(rule.perDesign)} (לפחות ${fmt(rule.perDesign)})` };
   }
   const min = minTotal(rule);
+  if (total < min && count === pack) {
+    return {
+      ok: false,
+      count,
+      total,
+      short: true,
+      error: `מינימום הזמנה לכרטיסים היא ${fmt(min)} יח'. יש להוסיף עוד ${pack} דוגמאות או לחילופין להגדיל כמות ל-${fmt(rule.firstPackPerDesign)} יח' לדוגמא`,
+    };
+  }
   if (total < min) {
     return { ok: false, count, total, error: `סך הכול לפחות ${fmt(min)} כרטיסים (כרגע ${fmt(total)}). הגדילו את הכמות באחת הדוגמאות` };
   }

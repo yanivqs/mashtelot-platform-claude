@@ -12,10 +12,8 @@ describe('checkDesignOrder: multiples of 8 designs, quantity per design in steps
     expect(checkDesignOrder(R, n(7, 400))).toMatchObject({ ok: false, error: 'יש לבחור לפחות 8 דוגמאות לביצוע הזמנה (נבחרו 7, חסרות 1)' });
   });
 
-  it('default quantities: 8 designs → 400 each (3,200); 16 and up → 200 each', () => {
-    expect(defaultPerDesign(R, 8)).toBe(400);
-    expect(defaultPerDesign(R, 3)).toBe(400);
-    expect(defaultPerDesign(R, 16)).toBe(200);
+  it('default 200 per design; 8 × 400, 16 × 200 and 24 × 200 are valid', () => {
+    expect(defaultPerDesign(R)).toBe(200);
     expect(checkDesignOrder(R, n(8, 400))).toEqual({ ok: true, count: 8, total: 3200 });
     expect(checkDesignOrder(R, n(16, 200))).toEqual({ ok: true, count: 16, total: 3200 });
     expect(checkDesignOrder(R, n(24, 200))).toEqual({ ok: true, count: 24, total: 4800 });
@@ -34,7 +32,9 @@ describe('checkDesignOrder: multiples of 8 designs, quantity per design in steps
   });
 
   it('total at least 3,200', () => {
-    expect(checkDesignOrder(R, [200, ...n(7, 400)])).toMatchObject({ ok: false, total: 3000, error: 'סך הכול לפחות 3,200 כרטיסים (כרגע 3,000). הגדילו את הכמות באחת הדוגמאות' });
+    const short = "מינימום הזמנה לכרטיסים היא 3,200 יח'. יש להוסיף עוד 8 דוגמאות או לחילופין להגדיל כמות ל-400 יח' לדוגמא";
+    expect(checkDesignOrder(R, n(8, 200))).toMatchObject({ ok: false, total: 1600, short: true, error: short });
+    expect(checkDesignOrder(R, [200, ...n(7, 400)])).toMatchObject({ ok: false, total: 3000, short: true, error: short });
   });
 
   it('choices, stored designs (also the first shape), rule parsing, order line', () => {

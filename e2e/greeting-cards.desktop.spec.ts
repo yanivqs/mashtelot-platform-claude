@@ -46,8 +46,16 @@ test('greeting cards: pick designs, quantity per design in the fixed order bar, 
   await expect(page.getByTestId('design-selected').locator('li')).toHaveCount(7);
   await expect(status).toHaveText('יש לבחור לפחות 8 דוגמאות לביצוע הזמנה (נבחרו 7, חסרות 1)');
 
-  // 8: ברירת מחדל 400 מכל דוגמא, 3,200 כרטיסים, 0.40 ₪ לכרטיס
+  // 8: ברירת מחדל 200 מכל דוגמא — מתחת למינימום; הודעה עם שתי אפשרויות
   await pick(page, 7, 8);
+  await expect(bar).toContainText('נבחרו 8 דוגמאות · 1,600 כרטיסים');
+  await expect(status).toHaveText("מינימום הזמנה לכרטיסים היא 3,200 יח'. יש להוסיף עוד 8 דוגמאות או לחילופין להגדיל כמות ל-400 יח' לדוגמא");
+  await expect(next).toBeDisabled();
+  const options = page.getByTestId('design-short');
+  await options.getByRole('button', { name: 'הוספת דוגמאות' }).click();
+  await expect(page.getByTestId('design-SC9100').getByRole('checkbox')).toBeFocused();
+  await options.getByRole('button', { name: "הגדל כמות ל-400 יח'" }).click();
+  await expect(options).toHaveCount(0);
   await expect(bar).toContainText('נבחרו 8 דוגמאות · 3,200 כרטיסים');
   await expect(bar).toContainText('1,280');
   await expect(status).toHaveText('ההזמנה תקינה');
@@ -55,7 +63,7 @@ test('greeting cards: pick designs, quantity per design in the fixed order bar, 
 
   // כמות לכל דוגמא, בקפיצות של 200; סך הכול לפחות 3,200
   await bar.getByLabel('כמות מ-SC9000').selectOption('200');
-  await expect(status).toHaveText('סך הכול לפחות 3,200 כרטיסים (כרגע 3,000). הגדילו את הכמות באחת הדוגמאות');
+  await expect(status).toContainText('מינימום הזמנה לכרטיסים היא 3,200');
   await expect(next).toBeDisabled();
   await bar.getByLabel('כמות מ-SC9001').selectOption('1000');
   await expect(bar).toContainText('3,600 כרטיסים');
@@ -68,10 +76,11 @@ test('greeting cards: pick designs, quantity per design in the fixed order bar, 
   await pick(page, 7, 9);
   await expect(status).toHaveText('ניתן להזמין בכפולות של 8 דוגמאות בלבד. נבחרו 9: הסירו 1 דוגמא או הוסיפו עוד 7');
 
-  // 16: דוגמא בלי כמות שנבחרה — 200; הכמויות שנבחרו נשמרות (200 + 1,000 + 14 × 200 = 4,000)
+  // 16: דוגמא חדשה — 200; הכמויות שנקבעו נשמרות (200 + 1,000 + 6 × 400 + 8 × 200 = 5,200)
   await pick(page, 9, 16);
-  await expect(bar).toContainText('נבחרו 16 דוגמאות · 4,000 כרטיסים');
-  await expect(bar.getByLabel('כמות מ-SC9005')).toHaveValue('200');
+  await expect(bar).toContainText('נבחרו 16 דוגמאות · 5,200 כרטיסים');
+  await expect(bar.getByLabel('כמות מ-SC9005')).toHaveValue('400');
+  await expect(bar.getByLabel('כמות מ-SC9010')).toHaveValue('200');
 
   // הפס נשאר על המסך גם בגלילה לסוף המאגר
   await grid.locator('li').last().scrollIntoViewIfNeeded();
@@ -89,14 +98,14 @@ test('greeting cards: pick designs, quantity per design in the fixed order bar, 
   await page.getByLabel('הערות לבית הדפוס').fill('בעברית בבקשה');
   await expect(send).toBeEnabled();
   await send.click();
-  await expect(page.getByTestId('print-confirmation')).toContainText('16 דוגמאות · 4,000 כרטיסים');
-  await expect(page.getByTestId('print-confirmation')).toContainText('1,600');
+  await expect(page.getByTestId('print-confirmation')).toContainText('16 דוגמאות · 5,200 כרטיסים');
+  await expect(page.getByTestId('print-confirmation')).toContainText('2,080');
 
   // בית הדפוס רואה בתור ההזמנות את הדוגמאות ואת הכמות מכל אחת
   await login(page, E2E_SUPER9);
   await page.goto(`${ADMIN}/admin/print-orders`);
   const order = page.locator('div.rounded-xl').filter({ hasText: 'משתלת הכרטיסים · 03-5555555' }).first();
-  await expect(order).toContainText('דוגמאות (16, סה"כ 4,000 יח\')');
+  await expect(order).toContainText('דוגמאות (16, סה"כ 5,200 יח\')');
   await expect(order).toContainText('×1,000');
   await expect(order).toContainText('SC9015');
   await expect(order).not.toContainText('SC9016');
