@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { prisma } from '@/lib/prisma';
 import { auditAsCurrentUser } from '@/lib/audit-actor';
 import { getSessionUser } from '@/lib/auth';
@@ -61,14 +62,9 @@ function cleanBlocks(blocks: Block[]): Block[] {
   return blocks.map((b) => (b.type === 'text' || b.type === 'imageText' ? { ...b, html: sanitizeRichHtml(b.html) } : b));
 }
 
-async function revalidateStore(nurseryId: string, target: LayoutTarget) {
-  const nursery = await prisma.nursery.findUnique({ where: { id: nurseryId }, select: { subdomain: true } });
-  if (!nursery) return;
-  if (target.kind === 'home') revalidatePath(`/${nursery.subdomain}`);
-  else {
-    const page = await prisma.staticPage.findFirst({ where: { id: target.staticPageId, nurseryId }, select: { slug: true } });
-    if (page) revalidatePath(`/${nursery.subdomain}/${page.slug}`);
-  }
+/** פרסום והחזרה לגרסה קודמת משנים את החנות */
+async function revalidateStore(): Promise<void> {
+  refreshStore();
 }
 
 /** `refresh: false` — שמירת טיוטה אוטומטית לא מרעננת את מסך העורך (העורך מחזיק את המצב). */
@@ -134,7 +130,7 @@ export async function publishAction(_prev: BuilderState, formData: FormData): Pr
       entityId: targetKey(target),
       metadata: { version: v.version, publishAt: publishAt.toISOString() },
     });
-    await revalidateStore(nurseryId, target);
+    await revalidateStore();
     return when === 'schedule' ? `גרסה ${v.version} תוזמנה לפרסום ✓` : `גרסה ${v.version} פורסמה ✓`;
   });
 }
@@ -167,7 +163,7 @@ export async function setActiveAction(_prev: BuilderState, formData: FormData): 
   return run(formData, async ({ nurseryId, target }) => {
     await setLayoutActive(prisma, nurseryId, target, isActive);
     await auditAsCurrentUser({ nurseryId, action: isActive ? 'page_layout.enabled' : 'page_layout.disabled', entityType: 'PageLayout', entityId: targetKey(target) });
-    await revalidateStore(nurseryId, target);
+    await revalidateStore();
     return isActive ? 'הדף מוצג מהבלוקים' : 'החנות חזרה לתצוגה הרגילה';
   });
 }

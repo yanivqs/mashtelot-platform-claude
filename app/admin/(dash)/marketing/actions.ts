@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { auditAsCurrentUser } from '@/lib/audit-actor';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
@@ -83,6 +84,7 @@ export async function createCoupon(
   });
   await auditAsCurrentUser({ nurseryId, action: 'coupon.created', entityType: 'Coupon', entityId: coupon.id, metadata: { code, discountPct: pct, usageLimit, perCustomerLimit } });
   revalidatePath('/admin/marketing');
+  refreshStore();
   return { ok: true };
 }
 
@@ -93,6 +95,7 @@ export async function toggleCoupon(formData: FormData): Promise<void> {
   await prisma.coupon.update({ where: { id }, data: { isActive: !row!.isActive } });
   await auditAsCurrentUser({ nurseryId: row!.nurseryId, action: row!.isActive ? 'coupon.disabled' : 'coupon.enabled', entityType: 'Coupon', entityId: id, metadata: { code: row!.code } });
   revalidatePath('/admin/marketing');
+  refreshStore();
 }
 
 export async function deleteCoupon(formData: FormData): Promise<void> {
@@ -101,6 +104,7 @@ export async function deleteCoupon(formData: FormData): Promise<void> {
   const gone = await prisma.coupon.delete({ where: { id } });
   await auditAsCurrentUser({ nurseryId: gone.nurseryId, action: 'coupon.deleted', entityType: 'Coupon', entityId: id, metadata: { code: gone.code } });
   revalidatePath('/admin/marketing');
+  refreshStore();
 }
 
 export async function createPromotion(
@@ -119,6 +123,7 @@ export async function createPromotion(
   });
   await auditAsCurrentUser({ nurseryId, action: 'promotion.created', entityType: 'Promotion', entityId: promo.id, metadata: { title } });
   revalidatePath('/admin/marketing');
+  refreshStore();
   return { ok: true };
 }
 
@@ -129,6 +134,7 @@ export async function togglePromotion(formData: FormData): Promise<void> {
   await prisma.promotion.update({ where: { id }, data: { isActive: !row!.isActive } });
   await auditAsCurrentUser({ nurseryId: row!.nurseryId, action: row!.isActive ? 'promotion.disabled' : 'promotion.enabled', entityType: 'Promotion', entityId: id });
   revalidatePath('/admin/marketing');
+  refreshStore();
 }
 
 export async function deletePromotion(formData: FormData): Promise<void> {
@@ -137,6 +143,7 @@ export async function deletePromotion(formData: FormData): Promise<void> {
   const gonePromo = await prisma.promotion.delete({ where: { id } });
   await auditAsCurrentUser({ nurseryId: gonePromo.nurseryId, action: 'promotion.deleted', entityType: 'Promotion', entityId: id });
   revalidatePath('/admin/marketing');
+  refreshStore();
 }
 
 /**
@@ -159,11 +166,11 @@ export async function saveAnnouncement(_prev: MarketingState, formData: FormData
     linkText: String(formData.get('linkText') || ''),
     tone: formData.get('tone'),
   });
-  const nursery = await prisma.nursery.findUniqueOrThrow({ where: { id: nurseryId }, select: { themeConfig: true, subdomain: true } });
+  const nursery = await prisma.nursery.findUniqueOrThrow({ where: { id: nurseryId }, select: { themeConfig: true } });
   const themeConfig = { ...((nursery.themeConfig ?? {}) as Record<string, unknown>), announcement };
   await prisma.nursery.update({ where: { id: nurseryId }, data: { themeConfig: themeConfig as unknown as Prisma.InputJsonValue } });
   await auditAsCurrentUser({ nurseryId, action: 'announcement.updated', entityType: 'Nursery', entityId: nurseryId, metadata: { enabled: announcement.enabled, text: announcement.text, href: announcement.href } });
   revalidatePath('/admin/marketing');
-  revalidatePath(`/${nursery.subdomain}`, 'layout');
+  refreshStore();
   return { ok: true };
 }

@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import type { Prisma } from '@prisma/client';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -20,6 +21,6 @@ export async function setManagedHomeAction(nurseryId: string, on: boolean): Prom
     update: { config },
   });
   await recordAudit({ nurseryId, actorEmail: user.email, action: on ? 'page_layout.managed_enabled' : 'page_layout.managed_disabled', entityType: 'Nursery', entityId: nurseryId });
-  revalidatePath(`/${nursery.subdomain}`);
   revalidatePath(`/admin/nurseries/${nurseryId}/home-design`);
+  refreshStore();
 }

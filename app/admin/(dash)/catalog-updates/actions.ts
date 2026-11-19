@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
 import { recordAudit } from '@/lib/audit';
@@ -16,6 +17,7 @@ function revalidateAll() {
   revalidatePath('/admin/catalog-updates');
   revalidatePath('/admin/products');
   revalidatePath('/admin');
+  refreshStore();
 }
 
 /** אישור הצעה: שדות שסומנו — מתעדכנים; שדות שלא סומנו — נשמרים מקומית ולא יוצעו עוד (Q1-א). */

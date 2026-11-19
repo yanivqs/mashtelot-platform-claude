@@ -4,6 +4,7 @@ import { createHash } from 'crypto';
 import { parse } from 'csv-parse/sync';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
@@ -117,5 +118,6 @@ export async function commitImport(jobId: string, _formData: FormData): Promise<
   }
 
   revalidatePath('/admin/catalog');
+  refreshStore();
   redirect('/admin/catalog/import');
 }

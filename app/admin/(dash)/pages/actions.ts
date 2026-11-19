@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { auditAsCurrentUser } from '@/lib/audit-actor';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
@@ -40,6 +41,7 @@ export async function savePage(
   await auditAsCurrentUser({ nurseryId, action: 'page.saved', entityType: 'StaticPage', entityId: String(formData.get('id') || '') || null, metadata: { slug: String(formData.get('slug') || ''), isPublished: formData.get('isPublished') === 'on' } });
 
   revalidatePath('/admin/pages');
+  refreshStore();
   redirect('/admin/pages');
 }
 
@@ -50,5 +52,6 @@ export async function deletePage(formData: FormData): Promise<void> {
   await deleteStaticPage(prisma, nurseryId, id);
   await auditAsCurrentUser({ nurseryId, action: 'page.deleted', entityType: 'StaticPage', entityId: id });
   revalidatePath('/admin/pages');
+  refreshStore();
   redirect('/admin/pages');
 }

@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
 import { syncMasterCategoriesToAllNurseries } from '@/lib/category-provision';
@@ -37,6 +38,7 @@ export async function createCategory(
   await syncMasterCategoriesToAllNurseries();
   revalidatePath('/admin/catalog/categories');
   revalidatePath('/admin/catalog');
+  refreshStore();
   return { ok: true };
 }
 
@@ -46,4 +48,5 @@ export async function deleteCategory(formData: FormData): Promise<void> {
   await prisma.plantCategory.delete({ where: { id } });
   revalidatePath('/admin/catalog/categories');
   revalidatePath('/admin/catalog');
+  refreshStore();
 }

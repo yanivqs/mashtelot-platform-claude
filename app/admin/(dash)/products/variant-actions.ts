@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
 import { recordAudit } from '@/lib/audit';
@@ -57,6 +58,7 @@ export async function saveVariantAction(_prev: VariantFormState, formData: FormD
     metadata: { productId, name: input.name, price: input.price, stock: input.stockQuantity },
   });
   revalidatePath('/admin/products');
+  refreshStore();
   return { ok: true, message: variantId ? 'נשמר ✓' : 'הווריאנט נוסף ✓' };
 }
 
@@ -76,6 +78,7 @@ export async function deleteVariantAction(_prev: VariantFormState, formData: For
     metadata: { productId },
   });
   revalidatePath('/admin/products');
+  refreshStore();
   return {
     ok: true,
     message: res.deleted ? 'נמחק ✓' : 'לווריאנט יש היסטוריית הזמנות/מלאי — הוא הושבת ולא נמחק',

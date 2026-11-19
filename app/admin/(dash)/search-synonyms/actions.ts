@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
 import { recordAudit } from '@/lib/audit';
@@ -40,6 +41,7 @@ export async function addSynonymGroup(_prev: SynonymFormState, formData: FormDat
     metadata: { terms: v.terms },
   });
   revalidatePath('/admin/search-synonyms');
+  refreshStore();
   return { ok: true };
 }
 
@@ -60,6 +62,7 @@ export async function updateSynonymGroup(_prev: SynonymFormState, formData: Form
     metadata: { terms: v.terms },
   });
   revalidatePath('/admin/search-synonyms');
+  refreshStore();
   return { ok: true, value: v.terms.join(', ') };
 }
 
@@ -77,4 +80,5 @@ export async function deleteSynonymGroup(formData: FormData): Promise<void> {
     metadata: { terms: group.terms },
   });
   revalidatePath('/admin/search-synonyms');
+  refreshStore();
 }

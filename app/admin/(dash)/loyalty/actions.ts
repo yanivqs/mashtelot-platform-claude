@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { prisma } from '@/lib/prisma';
 import { nurseryActionScope } from '@/lib/nursery-scope';
 import { recordAudit } from '@/lib/audit';
@@ -25,5 +26,6 @@ export async function saveLoyaltySettings(_prev: LoyaltyState, fd: FormData): Pr
   await prisma.loyaltySettings.upsert({ where: { nurseryId: s.nurseryId }, create: { nurseryId: s.nurseryId, ...v.value }, update: v.value });
   await recordAudit({ nurseryId: s.nurseryId, actorEmail: s.user.email, action: 'loyalty.settings_updated', entityType: 'Nursery', entityId: s.nurseryId, metadata: { ...v.value } });
   revalidatePath('/admin/loyalty');
+  refreshStore();
   return { ok: true };
 }

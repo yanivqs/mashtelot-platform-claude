@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireUser, hashPassword } from '@/lib/auth';
@@ -76,6 +77,7 @@ export async function createNursery(
   }
 
   revalidatePath('/admin/nurseries');
+  refreshStore();
   return { ok: true };
 }
 
@@ -213,6 +215,7 @@ export async function updateNursery(
   revalidatePath('/admin/nurseries');
   revalidatePath(`/admin/nurseries/${id}`);
   revalidatePath('/admin/settings');
+  refreshStore();
   return { ok: true };
 }
 
@@ -254,4 +257,5 @@ export async function setNurseryStatus(formData: FormData): Promise<void> {
   await prisma.nursery.update({ where: { id }, data: { status } });
   await recordAudit({ nurseryId: id, actorEmail: user.email, action: 'nursery.status_changed', entityType: 'Nursery', entityId: id, metadata: { from: nursery.status, to: status } });
   revalidatePath('/admin/nurseries');
+  refreshStore();
 }

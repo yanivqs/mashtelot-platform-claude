@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { refreshStore } from '@/lib/store-refresh';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryAction } from '@/lib/nursery-scope';
 import { assertOwnedBy } from '@/lib/ownership';
@@ -56,6 +57,7 @@ export async function moveProductInCategory(formData: FormData): Promise<void> {
   await renumber(categoryId, order);
 
   revalidatePath(`/admin/products/categories/${categoryId}`);
+  refreshStore();
 }
 
 export async function removeProductFromCategory(formData: FormData): Promise<void> {
@@ -68,6 +70,7 @@ export async function removeProductFromCategory(formData: FormData): Promise<voi
   await renumber(categoryId, await directOrder(categoryId));
   revalidatePath(`/admin/products/categories/${categoryId}`);
   revalidatePath('/admin/products');
+  refreshStore();
 }
 
 export async function addProductToCategory(formData: FormData): Promise<void> {
@@ -84,6 +87,7 @@ export async function addProductToCategory(formData: FormData): Promise<void> {
   }
   revalidatePath(`/admin/products/categories/${categoryId}`);
   revalidatePath('/admin/products');
+  refreshStore();
 }
 
 /** הצגה/הסתרה של מוצר בחנות ישירות מדף הקטגוריה. */
@@ -106,5 +110,5 @@ export async function toggleProductActive(formData: FormData): Promise<void> {
   if (categoryId) revalidatePath(`/admin/products/categories/${categoryId}`);
   revalidatePath('/admin/products');
   revalidatePath(`/admin/products/${productId}`);
-  revalidatePath('/[tenant]', 'layout');
+  refreshStore();
 }
