@@ -33,7 +33,7 @@ const OWN_TAG = '__own';
  */
 export function DesignPicker({ product: t, designs, rule }: { product: CalculatorProduct; designs: PickerDesign[]; rule: DesignRule }) {
   const [selected, setSelected] = useState<string[]>([]);
-  // כמות שנבחרה ידנית לדוגמא; בלי בחירה — ברירת המחדל לפי מספר הדוגמאות
+  // כמות שנבחרה ידנית לדוגמא; בלי בחירה — ברירת המחדל (200)
   const [chosenQty, setChosenQty] = useState<Record<string, number>>({});
   const [tag, setTag] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -66,7 +66,7 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
       (!onlySelected || chosen.has(d.id)),
   );
 
-  const fallback = defaultPerDesign(rule, selected.length);
+  const fallback = defaultPerDesign(rule);
   const qtyOf = (id: string) => chosenQty[id] ?? fallback;
   const items = selected.map((id) => ({ id, quantity: qtyOf(id) }));
   const check = checkDesignOrder(
@@ -78,6 +78,25 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
   const priced = quotePrint(t.pricing, [], {}, Math.max(1, check.total));
   const price = check.ok && priced.ok && !priced.quote.quoteOnly ? priced.quote.total : null;
   const missing = check.ok ? missingForSubmit(t.pricing, t.fields, values, check.total, { required: false, hasFile: Boolean(file), needsDesign: false }) : [check.error];
+
+  const gridRef = useRef<HTMLUListElement>(null);
+  /** חבילה אחת מתחת למינימום: הגדלת כל דוגמא לכמות הנדרשת */
+  const raiseToPack = () =>
+    setChosenQty((p) => {
+      const next = { ...p };
+      for (const id of selected) next[id] = Math.max(qtyOf(id), rule.firstPackPerDesign);
+      return next;
+    });
+  /** חבילה אחת מתחת למינימום: חזרה למאגר כדי להוסיף דוגמאות */
+  const addMore = () => {
+    setOnlySelected(false);
+    setTag(null);
+    setQuery('');
+    setTimeout(() => {
+      gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      gridRef.current?.querySelector<HTMLInputElement>('input[type="checkbox"]:not(:checked)')?.focus({ preventScroll: true });
+    }, 0);
+  };
 
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   const openZoom = (d: PickerDesign) => {
@@ -158,7 +177,7 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
           <p className="text-sm text-gray-600" aria-live="polite">
             מוצגות {visible.length} דוגמאות
           </p>
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" data-testid="design-grid">
+          <ul ref={gridRef} className="scroll-mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" data-testid="design-grid">
             {visible.map((d) => {
               const on = chosen.has(d.id);
               return (
@@ -255,6 +274,17 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
                 <p className="text-amber-800" data-testid="design-status">
                   {check.error}
                 </p>
+              )}
+              {!check.ok && check.short && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-2" role="group" aria-label="בחר את האפשרות הרצויה" data-testid="design-short">
+                  <span className="text-gray-700">בחר את האפשרות הרצויה:</span>
+                  <button type="button" onClick={raiseToPack} className="rounded-lg border border-brand-700 bg-brand-50 px-3 py-1 text-sm font-medium text-brand-800 hover:bg-brand-100">
+                    הגדל כמות ל-{units(rule.firstPackPerDesign)} יח'
+                  </button>
+                  <button type="button" onClick={addMore} className="rounded-lg border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-800 hover:bg-gray-50">
+                    הוספת דוגמאות
+                  </button>
+                </div>
               )}
             </div>
             {step === 'pick' ? (
