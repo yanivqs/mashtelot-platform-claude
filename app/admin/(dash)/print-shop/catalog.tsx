@@ -52,9 +52,15 @@ export interface CategoryTile {
   slug: string;
   name: string;
   imageUrl: string | null;
+  /** לאן הקישור מוביל: דף הקטגוריה, או ישר למוצר כשהוא היחיד בה */
+  href: string;
 }
 
-/** קטגוריות פעילות שיש בהן (ישירות או בתת-קטגוריה) מוצר זמין. */
+/**
+ * קטגוריות פעילות שיש בהן (ישירות או בתת-קטגוריה) מוצר זמין. קטגוריה בלי תתי-קטגוריות ועם מוצר
+ * אחד בלבד (כמו "כרטיסי ברכה בינוניים") מובילה ישר למוצר ומציגה את התמונה שלו — כדי לחסוך דף ביניים
+ * עם כרטיס יחיד, וכדי שהחלפת התמונה הראשית של המוצר תיראה בקטלוג.
+ */
 export async function loadCategoryTiles(parentId: string | null): Promise<CategoryTile[]> {
   const live: Prisma.PrintTemplateWhereInput = { isActive: true, versions: { some: { status: 'PUBLISHED' } } };
   const cats = await prisma.printCategory.findMany({
@@ -64,9 +70,21 @@ export async function loadCategoryTiles(parentId: string | null): Promise<Catego
       OR: [{ templates: { some: live } }, { children: { some: { isActive: true, templates: { some: live } } } }],
     },
     orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-    select: { id: true, slug: true, name: true, imageUrl: true },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      imageUrl: true,
+      _count: { select: { children: { where: { isActive: true, templates: { some: live } } } } },
+      templates: { where: live, select: { id: true, slug: true, imageUrl: true }, take: 2 },
+    },
   });
-  return cats;
+  return cats.map(({ _count, templates, ...c }) => {
+    const only = _count.children === 0 && templates.length === 1 ? templates[0]! : null;
+    return only
+      ? { ...c, imageUrl: only.imageUrl ?? c.imageUrl, href: `/admin/print-shop/${only.slug ?? only.id}` }
+      : { ...c, href: `/admin/print-shop/c/${c.slug}` };
+  });
 }
 
 const cardClass = 'group flex flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm hover:border-brand-300';
@@ -77,7 +95,7 @@ export function CategoryGrid({ tiles }: { tiles: CategoryTile[] }) {
     <ul className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="print-categories">
       {tiles.map((c) => (
         <li key={c.id}>
-          <Link href={`/admin/print-shop/c/${c.slug}`} className={cardClass}>
+          <Link href={c.href} className={cardClass}>
             {c.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={c.imageUrl} alt="" className="h-40 w-full bg-white object-contain p-2" />

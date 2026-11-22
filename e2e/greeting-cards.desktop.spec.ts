@@ -21,9 +21,10 @@ test('greeting cards: pick designs, quantity per design in the fixed order bar, 
   await login(page, E2E_CARDS_OWNER);
   await page.goto(`${ADMIN}/admin/print-shop`);
   await page.getByTestId('print-categories').getByRole('link', { name: /כרטיסי ברכה E2E/ }).click();
+  // תת-קטגוריה עם מוצר אחד מובילה ישר אליו, והחזרה היא לקטגוריה שמעליה
   await page.getByTestId('print-categories').getByRole('link', { name: /כרטיסים קטנים E2E/ }).click();
-  await page.getByRole('link', { name: new RegExp(`^${E2E_CARDS_TEMPLATE} 17 דוגמאות`) }).click();
   await expect(page.getByRole('heading', { level: 1, name: E2E_CARDS_TEMPLATE })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'חזרה לכרטיסי ברכה E2E' })).toBeVisible();
 
   // דוגמא ייעודית: רק של המשתלה הזו, ראשונה ומסומנת; של משתלה אחרת — לא מוצגת
   const grid = page.getByTestId('design-grid');

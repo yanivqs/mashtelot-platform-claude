@@ -93,7 +93,13 @@ export default async function PrintProductPage({ params, searchParams }: { param
         .sort((x, y) => Number(y.own) - Number(x.own))
     : [];
   const cat = t.printCategory;
-  const back = cat ? { href: `/admin/print-shop/c/${cat.slug}`, label: `חזרה ל${cat.name}` } : { href: '/admin/print-shop', label: 'לכל מוצרי הדפוס' };
+  // קטגוריה שהמוצר הוא היחיד בה מובילה ישר אליו (catalog.tsx), ולכן החזרה היא לקטגוריה שמעליה
+  const alone =
+    cat &&
+    (await prisma.printTemplate.count({ where: { categoryId: cat.id, isActive: true, versions: { some: { status: 'PUBLISHED' } } } })) === 1 &&
+    (await prisma.printCategory.count({ where: { parentId: cat.id, isActive: true } })) === 0;
+  const up = alone ? cat.parent : cat;
+  const back = up ? { href: `/admin/print-shop/c/${up.slug}`, label: `חזרה ל${up.name}` } : { href: '/admin/print-shop', label: 'לכל מוצרי הדפוס' };
 
   return (
     <div className="max-w-5xl space-y-6">
@@ -106,7 +112,8 @@ export default async function PrintProductPage({ params, searchParams }: { param
           <h1 className="text-2xl font-bold">{t.title}</h1>
           {t.description && <p className="mt-2 max-w-3xl whitespace-pre-line text-sm text-gray-600">{t.description}</p>}
           <p className="mt-3 rounded-lg bg-brand-50 p-3 text-sm text-brand-900">
-            {describeRule(designRule)} הלוגו ופרטי העסק מודפסים על הכרטיס.
+            {describeRule(designRule)}
+            {t.requiresArtwork && ' הלוגו ופרטי העסק מודפסים על הכרטיס.'}
           </p>
         </div>
       ) : (
