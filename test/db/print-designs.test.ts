@@ -8,7 +8,7 @@ import { createTemplate, publishDraft, saveDraft } from '@/lib/print-templates-a
 import { createJobOrder } from '@/lib/print-jobs';
 import { orderSaved } from '@/lib/print-saved';
 import { deleteCategory, saveCategory, saveDesign } from '@/lib/print-catalog-admin';
-import { GREETING_CARDS_RULE } from '@/lib/print-designs';
+import { GREETING_CARDS_MEDIUM_RULE, GREETING_CARDS_RULE, type DesignRule } from '@/lib/print-designs';
 import { createTenantFixtures, destroyTenantFixtures, type TenantFixtures } from './fixtures';
 
 let f: TenantFixtures;
@@ -33,12 +33,12 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-async function cardsProduct(designs = 17) {
+async function cardsProduct(designs = 17, rule: DesignRule = GREETING_CARDS_RULE, unitPrice = 0.4) {
   const t = await createTemplate(prisma, { title: `כרטיסים ${templateIds.length}`, description: null, category: null, imageUrl: null, unitLabel: null, leadTimeDays: null, requiresArtwork: false, isActive: false }, null);
   templateIds.push(t.id);
-  await saveDraft(prisma, t.id, { fields: FIELDS, pricing: PRICING });
+  await saveDraft(prisma, t.id, { fields: FIELDS, pricing: { ...PRICING, basePrice: unitPrice } });
   await publishDraft(prisma, t.id, null);
-  await prisma.printTemplate.update({ where: { id: t.id }, data: { isActive: true, designRule: { ...GREETING_CARDS_RULE } } });
+  await prisma.printTemplate.update({ where: { id: t.id }, data: { isActive: true, designRule: { ...rule } } });
   for (let i = 0; i < designs; i += 1) {
     const r = await saveDesign(prisma, t.id, null, { code: `SC${100 + i}`, title: `דוגמא ${i}`, imageUrl: 'https://x.example/a.jpg', tags: [], sortOrder: i, isActive: true });
     if (!r.ok) throw new Error(r.error);
@@ -110,6 +110,17 @@ describe('createJobOrder with designs', () => {
     // דוגמא שהושבתה — ההזמנה החוזרת נעצרת
     await prisma.printDesign.update({ where: { id: p.ids[3]! }, data: { isActive: false } });
     expect(await orderSaved(prisma, { nurseryId: f.A.nurseryId, userId: null, savedProductId: r.savedProductId, quantity: 5 })).toMatchObject({ ok: false, changed: true });
+  });
+});
+
+describe('medium greeting cards', () => {
+  it('11 designs of 50 (not a multiple of 10) at 1.30 ₪; 9 designs rejected', async () => {
+    const p = await cardsProduct(12, GREETING_CARDS_MEDIUM_RULE, 1.3);
+    const r = await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 0, designs: items(p.ids.slice(0, 11), [...Array<number>(10).fill(50), 100]) });
+    if (!r.ok) throw new Error(JSON.stringify(r));
+    expect(r.quote.quantity).toBe(600);
+    expect(r.quote.total).toBe(780);
+    expect(await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 0, designs: items(p.ids.slice(0, 9), 50) })).toMatchObject({ ok: false, error: expect.stringContaining('לפחות 10') });
   });
 });
 
