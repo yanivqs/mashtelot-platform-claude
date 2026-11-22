@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { GREETING_CARDS_MEDIUM_RULE, GREETING_CARDS_RULE as R, checkDesignOrder, defaultPerDesign, describeDesigns, describeRule, parseDesignRule, quantityChoices, storedDesignItems } from './print-designs';
-import { MEDIUM_CODE_RE, parseCardsCsv } from './print-designs-csv';
+import { GREETING_CARDS_LARGE_RULE, GREETING_CARDS_SPECIAL_LOGO_RULE, GREETING_CARDS_SPECIAL_PLAIN_RULE, GREETING_CARDS_MEDIUM_RULE, GREETING_CARDS_RULE as R, checkDesignOrder, defaultPerDesign, describeDesigns, describeRule, parseDesignRule, quantityChoices, storedDesignItems } from './print-designs';
+import { MEDIUM_CODE_RE, SPECIAL_CODE_RE, parseCardsCsv } from './print-designs-csv';
 
 const n = (count: number, q: number) => Array.from({ length: count }, () => q);
 
@@ -94,6 +94,56 @@ describe('medium greeting cards: at least 10 designs, any number, 50 per design 
     expect(parseDesignRule({ packSize: 8, designMultiple: 8, firstPackPerDesign: 400, perDesign: 200 })).toEqual(R);
     expect(describeRule(M)).toBe("בוחרים לפחות 10 דוגמאות, 50 יח' מכל דוגמא (אפשר להגדיל בקפיצות של 50). מינימום הזמנה 500 כרטיסים.");
     expect(describeRule(R)).toContain('בכפולות של 8');
+  });
+});
+
+describe('large greeting cards: at least 12 designs in multiples of 2, 26 per design in steps of 26', () => {
+  const L = GREETING_CARDS_LARGE_RULE;
+
+  it('12, 14 and 20 designs are valid; 11 is blocked; 13 asks to remove or add one; steps of 26', () => {
+    expect(checkDesignOrder(L, n(12, 26))).toEqual({ ok: true, count: 12, total: 312 });
+    expect(checkDesignOrder(L, n(14, 26))).toEqual({ ok: true, count: 14, total: 364 });
+    expect(checkDesignOrder(L, [...n(19, 26), 52])).toEqual({ ok: true, count: 20, total: 546 });
+    expect(checkDesignOrder(L, n(11, 26))).toMatchObject({ ok: false, error: 'יש לבחור לפחות 12 דוגמאות לביצוע הזמנה (נבחרו 11, חסרות 1)' });
+    expect(checkDesignOrder(L, n(13, 26))).toMatchObject({ ok: false, error: 'ניתן להזמין בכפולות של 2 דוגמאות בלבד. נבחרו 13: הסירו 1 דוגמא או הוסיפו עוד 1' });
+    expect(checkDesignOrder(L, [...n(11, 26), 30])).toMatchObject({ ok: false, error: 'הכמות מכל דוגמא בקפיצות של 26 (לפחות 26)' });
+    expect(quantityChoices(L).slice(0, 3)).toEqual([26, 52, 78]);
+    expect(parseDesignRule({ ...L })).toEqual(L);
+    expect(describeRule(L)).toBe("בוחרים לפחות 12 דוגמאות בכפולות של 2, 26 יח' מכל דוגמא (אפשר להגדיל בקפיצות של 26). מינימום הזמנה 312 כרטיסים.");
+  });
+});
+
+describe('special greeting cards', () => {
+  it('with logo: at least 6 designs, any number, 65 per design in steps of 65', () => {
+    const L = GREETING_CARDS_SPECIAL_LOGO_RULE;
+    expect(checkDesignOrder(L, n(6, 65))).toEqual({ ok: true, count: 6, total: 390 });
+    expect(checkDesignOrder(L, n(7, 65))).toEqual({ ok: true, count: 7, total: 455 });
+    expect(checkDesignOrder(L, n(5, 65))).toMatchObject({ ok: false, error: 'יש לבחור לפחות 6 דוגמאות לביצוע הזמנה (נבחרו 5, חסרות 1)' });
+    expect(checkDesignOrder(L, [...n(5, 65), 100])).toMatchObject({ ok: false, error: 'הכמות מכל דוגמא בקפיצות של 65 (לפחות 65)' });
+  });
+
+  it('without logo: any number of designs, 20 per design in steps of 20, at least 240 in total', () => {
+    const P = GREETING_CARDS_SPECIAL_PLAIN_RULE;
+    expect(checkDesignOrder(P, n(12, 20))).toEqual({ ok: true, count: 12, total: 240 });
+    expect(checkDesignOrder(P, [240])).toEqual({ ok: true, count: 1, total: 240 });
+    expect(checkDesignOrder(P, [...n(2, 100), 40])).toEqual({ ok: true, count: 3, total: 240 });
+    expect(checkDesignOrder(P, n(11, 20))).toMatchObject({ ok: false, error: 'סך הכול לפחות 240 כרטיסים (כרגע 220). הוסיפו דוגמאות או הגדילו את הכמות באחת הדוגמאות' });
+    expect(checkDesignOrder(P, [20])).not.toHaveProperty('short');
+    expect(checkDesignOrder(P, [...n(11, 20), 30])).toMatchObject({ ok: false, error: 'הכמות מכל דוגמא בקפיצות של 20 (לפחות 20)' });
+    expect(checkDesignOrder(P, [])).toMatchObject({ ok: false });
+    expect(parseDesignRule({ ...P })).toEqual(P);
+    expect(parseDesignRule({ ...P, minTotal: '' })).toEqual({ packSize: 1, firstPackPerDesign: 20, perDesign: 20 });
+    expect(parseDesignRule({ packSize: 6, firstPackPerDesign: 65, perDesign: 65, minTotal: 390 })).toEqual({ packSize: 6, firstPackPerDesign: 65, perDesign: 65 });
+    expect(describeRule(P)).toBe("בוחרים דוגמאות כרצונכם, 20 יח' מכל דוגמא (אפשר להגדיל בקפיצות של 20). מינימום הזמנה 240 כרטיסים בסך הכול.");
+  });
+
+  it('the data file: 24 designs with SP codes, local images and tags', () => {
+    const r = parseCardsCsv(readFileSync(join(__dirname, '..', 'data', 'greeting-cards-special.csv'), 'utf8'), { codeRe: SPECIAL_CODE_RE });
+    expect(r.notes).toEqual([]);
+    expect(r.designs).toHaveLength(24);
+    expect(r.designs[0]).toMatchObject({ code: 'SP101', title: 'באהבה - לבבות אדומים', imageUrl: 'file:SP101.jpg', tags: ['באהבה', 'רומנטיקה'] });
+    expect(r.designs.map((d) => d.code)).not.toContain('SP105');
+    expect(r.designs.every((d) => d.tags.length > 0)).toBe(true);
   });
 });
 

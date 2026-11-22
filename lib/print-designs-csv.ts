@@ -24,6 +24,8 @@ export interface CsvImport {
 export const SMALL_CODE_RE = /(?<![A-Z])(SC\d{4,})(?!\d)/i;
 /** קוד של כרטיסי ברכה בינוניים: שתיים-שלוש אותיות וארבע ספרות (BD2016, LV1003, HLT8009) */
 export const MEDIUM_CODE_RE = /(?<![A-Z0-9])([A-Z]{2,3}\d{4})(?![0-9])/i;
+/** קוד של כרטיסי ברכה מיוחדים: SP101 */
+export const SPECIAL_CODE_RE = /(?<![A-Z0-9])(SP\d{3})(?![0-9])/i;
 
 /** השם בלי הקוד: "BD2016 - יום הולדת" → "יום הולדת"; "hearts - LV1003 - i love you" → "hearts - i love you" */
 function titleWithoutCode(name: string, code: RegExp): string {
@@ -98,7 +100,8 @@ export function parseCardsCsv(text: string, opts: { codeRe?: RegExp } = {}): Csv
         continue;
       }
     }
-    if (!/^https:\/\//.test(imageUrl)) {
+    // file: — קובץ מקומי מתיקיית התמונות שמועברת לסקריפט הייבוא
+    if (!/^(https:\/\/|file:)/.test(imageUrl)) {
       notes.push(`${code} בלי תמונה — דולג`);
       continue;
     }

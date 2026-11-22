@@ -223,7 +223,8 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
             </button>
           </div>
 
-          <div className="space-y-2 text-sm">
+          {/* מוצר בלי הדפסת לוגו (למשל כרטיסים מיוחדים ללא לוגו): אין העלאה */}
+          {t.requiresArtwork && <div className="space-y-2 text-sm">
             <p className="font-medium text-gray-700">קובץ לוגו (לא חובה)</p>
             <p className="text-xs text-gray-600">אם אין לכם קובץ, בית הדפוס יכין את הכרטיס לפי פרטי העסק וישלח הגהה לאישור.</p>
             <PrintFileUpload label={file ? 'החלפת הלוגו' : 'העלאת לוגו'} withThumbnail start={() => startDraftArtworkUpload({ templateVersionId: t.versionId })} onDone={(f) => f && setFile(f)} />
@@ -241,7 +242,7 @@ export function DesignPicker({ product: t, designs, rule }: { product: Calculato
                 </button>
               </div>
             )}
-          </div>
+          </div>}
 
           <TemplateFields fields={t.fields} values={values} errors={fieldErrors} onChange={(k, v) => setValues((p) => ({ ...p, [k]: v }))} />
 
