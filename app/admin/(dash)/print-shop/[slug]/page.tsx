@@ -6,7 +6,7 @@ import { parseFields, parsePricing, type CleanValues } from '@/lib/print-templat
 import { PrintCalculator, type CalculatorPrefill } from '@/components/print/calculator';
 import type { PreflightResult } from '@/lib/print-preflight';
 import { DesignPicker } from '@/components/print/design-picker';
-import { parseDesignRule } from '@/lib/print-designs';
+import { describeRule, parseDesignRule } from '@/lib/print-designs';
 import { ProductGallery } from './gallery';
 
 export const dynamic = 'force-dynamic';
@@ -106,9 +106,7 @@ export default async function PrintProductPage({ params, searchParams }: { param
           <h1 className="text-2xl font-bold">{t.title}</h1>
           {t.description && <p className="mt-2 max-w-3xl whitespace-pre-line text-sm text-gray-600">{t.description}</p>}
           <p className="mt-3 rounded-lg bg-brand-50 p-3 text-sm text-brand-900">
-            בוחרים דוגמאות בכפולות של {designRule.packSize}, {designRule.perDesign.toLocaleString('he-IL')} יח' מכל דוגמא (אפשר להגדיל בכל דוגמא). מינימום הזמנה{' '}
-            {(designRule.packSize * designRule.firstPackPerDesign).toLocaleString('he-IL')} כרטיסים: {designRule.packSize * 2} דוגמאות ומעלה, או {designRule.packSize} דוגמאות של{' '}
-            {designRule.firstPackPerDesign.toLocaleString('he-IL')} יח'. הלוגו ופרטי העסק מודפסים על הכרטיס.
+            {describeRule(designRule)} הלוגו ופרטי העסק מודפסים על הכרטיס.
           </p>
         </div>
       ) : (

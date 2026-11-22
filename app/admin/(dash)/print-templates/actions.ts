@@ -76,7 +76,7 @@ export async function updateTemplateMetaAction(_prev: TemplateFormState, formDat
   // מוצר עם מאגר דוגמאות: הכמות נגזרת ממספר הדוגמאות שנבחרו
   const designPool = formData.get('designPool') === 'on';
   const designRule = designPool
-    ? parseDesignRule({ packSize: formData.get('packSize'), firstPackPerDesign: formData.get('firstPackPerDesign'), perDesign: formData.get('perDesign') })
+    ? parseDesignRule({ packSize: formData.get('packSize'), designMultiple: formData.get('designMultiple'), firstPackPerDesign: formData.get('firstPackPerDesign'), perDesign: formData.get('perDesign') })
     : null;
   if (designPool && !designRule) return { error: 'חוק הדוגמאות: יש למלא מספרים שלמים חיוביים' };
   if (meta.categoryId && !(await prisma.printCategory.count({ where: { id: meta.categoryId } }))) return { error: 'הקטגוריה לא נמצאה' };

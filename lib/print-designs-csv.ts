@@ -20,7 +20,16 @@ export interface CsvImport {
 }
 
 // בשם קובץ התמונה הקוד צמוד לקו תחתון ("c4471cb9f_SC9599-6.jpg"), ולכן לא \b
-const CODE_RE = /(?<![A-Z])(SC\d{4,})(?!\d)/i;
+/** קוד של כרטיסי ברכה קטנים: SC9599 */
+export const SMALL_CODE_RE = /(?<![A-Z])(SC\d{4,})(?!\d)/i;
+/** קוד של כרטיסי ברכה בינוניים: שתיים-שלוש אותיות וארבע ספרות (BD2016, LV1003, HLT8009) */
+export const MEDIUM_CODE_RE = /(?<![A-Z0-9])([A-Z]{2,3}\d{4})(?![0-9])/i;
+
+/** השם בלי הקוד: "BD2016 - יום הולדת" → "יום הולדת"; "hearts - LV1003 - i love you" → "hearts - i love you" */
+function titleWithoutCode(name: string, code: RegExp): string {
+  const withSeparators = new RegExp(`\\s*[-–—:]*\\s*${code.source}\\s*[-–—:]*\\s*`, code.flags);
+  return name.replace(withSeparators, ' - ').replace(/^[\s\-–—:]+|[\s\-–—:]+$/g, '');
+}
 
 const stripHtml = (s: string) =>
   s
@@ -46,7 +55,8 @@ const cleanText = (s: string) =>
  * ניקוי (החלטת בעלים): דוגמא כפולה (אותו קוד ואותו שם) נכנסת פעם אחת; קוד שחוזר עם שם אחר מקבל
  * את הקוד שבשם קובץ התמונה, אם הוא פנוי (SC9598 "שרטוט פרח 6" → SC9599). אפשרויות גודל בקובץ — מתעלמים.
  */
-export function parseCardsCsv(text: string): CsvImport {
+export function parseCardsCsv(text: string, opts: { codeRe?: RegExp } = {}): CsvImport {
+  const CODE_RE = opts.codeRe ?? SMALL_CODE_RE;
   const rows = parse(text.replace(/^﻿/, ''), { columns: true, skip_empty_lines: true, relax_quotes: true }) as Array<Record<string, string>>;
   const notes: string[] = [];
   const byCode = new Map<string, CsvDesign>();
@@ -60,7 +70,7 @@ export function parseCardsCsv(text: string): CsvImport {
       notes.push(`שורה ${index + 2} בלי קוד — דולגה`);
       return;
     }
-    const title = cleanText(name.replace(CODE_RE, '').replace(/^[\s\-–—:]+/, '')) || code;
+    const title = cleanText(titleWithoutCode(name, CODE_RE)) || code;
     if (!description && row.description) description = cleanText(row.description) || null;
     pending.push({ row, code, title, index });
   });
@@ -72,6 +82,9 @@ export function parseCardsCsv(text: string): CsvImport {
     const existing = byCode.get(code);
     if (existing) {
       if (existing.title === p.title) {
+        // התגיות מאוחדות: לפעמים רק באחת השורות הכפולות יש תגית
+        const more = (p.row.filterTags ?? '').split('|').map((t) => t.trim()).filter(Boolean);
+        existing.tags = [...new Set([...existing.tags, ...more])];
         notes.push(`${code} מופיע פעמיים — נכנס פעם אחת`);
         continue;
       }

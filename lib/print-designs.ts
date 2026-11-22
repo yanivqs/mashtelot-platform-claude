@@ -3,11 +3,14 @@
  * חוק (החלטות בעלים 2026-11-19): הדוגמאות בכפולות של 8; הכמות מכל דוגמא בקפיצות של 200;
  * סך הכול לפחות 3,200 כרטיסים. ברירת המחדל: 200 מכל דוגמא (עדכון 2026-11-19); עם 8 דוגמאות בלבד
  * מציעים להגדיל ל-400 מכל אחת או להוסיף עוד 8 דוגמאות.
+ * כרטיסי ברכה בינוניים (2026-11-22): לפחות 10 דוגמאות, כל מספר מ-10 ומעלה, 50 מכל דוגמא בקפיצות של 50.
  * טהור — משותף לשרת, לדפדפן ולבדיקות.
  */
 export interface DesignRule {
-  /** הדוגמאות נבחרות בכפולות של מספר זה */
+  /** מספר הדוגמאות המינימלי בהזמנה (וגם הכפולה, אלא אם designMultiple קובע אחרת) */
   packSize: number;
+  /** מספר הדוגמאות חייב להתחלק במספר זה; 1 — כל מספר מ-packSize ומעלה. ברירת מחדל: packSize */
+  designMultiple?: number;
   /** הכמות לכל דוגמא שנדרשת כשנבחרה חבילה אחת בלבד (מינימום ההזמנה = packSize × זה) */
   firstPackPerDesign: number;
   /** כמות ברירת מחדל לכל דוגמא מהחבילה השנייה ומעלה, וגם הקפיצה בבחירת הכמות */
@@ -15,6 +18,10 @@ export interface DesignRule {
 }
 
 export const GREETING_CARDS_RULE: DesignRule = { packSize: 8, firstPackPerDesign: 400, perDesign: 200 };
+export const GREETING_CARDS_MEDIUM_RULE: DesignRule = { packSize: 10, designMultiple: 1, firstPackPerDesign: 50, perDesign: 50 };
+
+/** הכפולה של מספר הדוגמאות */
+export const designMultiple = (rule: DesignRule) => rule.designMultiple ?? rule.packSize;
 
 /** הכמות הגדולה ביותר לדוגמא אחת */
 export const MAX_PER_DESIGN = 20_000;
@@ -31,7 +38,9 @@ export function parseDesignRule(json: unknown): DesignRule | null {
   const packSize = posInt(o.packSize, 100);
   const firstPackPerDesign = posInt(o.firstPackPerDesign, 1_000_000);
   const perDesign = posInt(o.perDesign, 1_000_000);
-  return packSize && firstPackPerDesign && perDesign ? { packSize, firstPackPerDesign, perDesign } : null;
+  if (!packSize || !firstPackPerDesign || !perDesign) return null;
+  const multiple = o.designMultiple === undefined || o.designMultiple === null ? null : posInt(o.designMultiple, 100);
+  return multiple === null || multiple === packSize ? { packSize, firstPackPerDesign, perDesign } : { packSize, designMultiple: multiple, firstPackPerDesign, perDesign };
 }
 
 /** מינימום כרטיסים בהזמנה */
@@ -68,13 +77,14 @@ export function checkDesignOrder(rule: DesignRule, quantities: readonly number[]
       error: count === 0 ? `יש לבחור לפחות ${pack} דוגמאות לביצוע הזמנה` : `יש לבחור לפחות ${pack} דוגמאות לביצוע הזמנה (נבחרו ${count}, חסרות ${pack - count})`,
     };
   }
-  const extra = count % pack;
+  const mult = designMultiple(rule);
+  const extra = mult > 1 ? count % mult : 0;
   if (extra !== 0) {
     return {
       ok: false,
       count,
       total,
-      error: `ניתן להזמין בכפולות של ${pack} דוגמאות בלבד. נבחרו ${count}: הסירו ${extra} ${extra === 1 ? 'דוגמא' : 'דוגמאות'} או הוסיפו עוד ${pack - extra}`,
+      error: `ניתן להזמין בכפולות של ${mult} דוגמאות בלבד. נבחרו ${count}: הסירו ${extra} ${extra === 1 ? 'דוגמא' : 'דוגמאות'} או הוסיפו עוד ${mult - extra}`,
     };
   }
   if (quantities.some((q) => !Number.isInteger(q) || q < rule.perDesign || q > MAX_PER_DESIGN || q % rule.perDesign !== 0)) {
@@ -94,6 +104,17 @@ export function checkDesignOrder(rule: DesignRule, quantities: readonly number[]
     return { ok: false, count, total, error: `סך הכול לפחות ${fmt(min)} כרטיסים (כרגע ${fmt(total)}). הגדילו את הכמות באחת הדוגמאות` };
   }
   return { ok: true, count, total };
+}
+
+/** הסבר החוק למשתלה, בראש דף המוצר */
+export function describeRule(rule: DesignRule): string {
+  const mult = designMultiple(rule);
+  const min = fmt(minTotal(rule));
+  if (rule.firstPackPerDesign === rule.perDesign) {
+    const multiple = mult > 1 ? ` בכפולות של ${mult}` : '';
+    return `בוחרים לפחות ${rule.packSize} דוגמאות${multiple}, ${fmt(rule.perDesign)} יח' מכל דוגמא (אפשר להגדיל בקפיצות של ${fmt(rule.perDesign)}). מינימום הזמנה ${min} כרטיסים.`;
+  }
+  return `בוחרים דוגמאות בכפולות של ${mult}, ${fmt(rule.perDesign)} יח' מכל דוגמא (אפשר להגדיל בכל דוגמא). מינימום הזמנה ${min} כרטיסים: ${rule.packSize * 2} דוגמאות ומעלה, או ${rule.packSize} דוגמאות של ${fmt(rule.firstPackPerDesign)} יח'.`;
 }
 
 /** תחילית התווית של שורת הדוגמאות במפרט — כדי להבדיל אותה משדות התבנית */

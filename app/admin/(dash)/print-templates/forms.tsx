@@ -134,20 +134,25 @@ function DesignPoolFields({ initial: rule }: { initial: DesignRule | null }) {
         מוצר עם מאגר דוגמאות (כמו כרטיסי ברכה): המשתלה בוחרת דוגמאות, והכמות נגזרת ממספרן
       </label>
       {on && (
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label>
-            <span className="mb-1 block text-gray-700">בכפולות של (דוגמאות)</span>
+            <span className="mb-1 block text-gray-700">מינימום דוגמאות</span>
             <input name="packSize" type="number" min="1" defaultValue={r.packSize} className={field} />
           </label>
           <label>
-            <span className="mb-1 block text-gray-700">יח' מכל דוגמא בחבילה אחת</span>
+            <span className="mb-1 block text-gray-700">מספר הדוגמאות בכפולות של</span>
+            <input name="designMultiple" type="number" min="1" defaultValue={r.designMultiple ?? r.packSize} className={field} aria-describedby="design-multiple-help" />
+          </label>
+          <label>
+            <span className="mb-1 block text-gray-700">יח' מכל דוגמא במינימום הדוגמאות</span>
             <input name="firstPackPerDesign" type="number" min="1" defaultValue={r.firstPackPerDesign} className={field} />
           </label>
           <label>
-            <span className="mb-1 block text-gray-700">יח' מכל דוגמא משתי חבילות ומעלה</span>
+            <span className="mb-1 block text-gray-700">ברירת מחדל וקפיצות (יח' לדוגמא)</span>
             <input name="perDesign" type="number" min="1" defaultValue={r.perDesign} className={field} />
           </label>
-          <p className="text-xs text-gray-600 sm:col-span-3">המחיר ליחידה נקבע בתמחור של הגרסה (מחיר בסיס). את הדוגמאות מנהלים ב&quot;ניהול דוגמאות&quot; בדף המוצר.</p>
+          <p id="design-multiple-help" className="text-xs text-gray-600 sm:col-span-2 lg:col-span-4">
+            כפולות 1 — כל מספר דוגמאות מהמינימום ומעלה. מינימום ההזמנה בכרטיסים = מינימום הדוגמאות × היח&apos; לדוגמא במינימום. המחיר ליחידה נקבע בתמחור של הגרסה (מחיר בסיס). את הדוגמאות מנהלים ב&quot;ניהול דוגמאות&quot; בדף המוצר.</p>
         </div>
       )}
     </fieldset>
