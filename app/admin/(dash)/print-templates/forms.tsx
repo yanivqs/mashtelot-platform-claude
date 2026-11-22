@@ -151,8 +151,12 @@ function DesignPoolFields({ initial: rule }: { initial: DesignRule | null }) {
             <span className="mb-1 block text-gray-700">ברירת מחדל וקפיצות (יח' לדוגמא)</span>
             <input name="perDesign" type="number" min="1" defaultValue={r.perDesign} className={field} />
           </label>
+          <label>
+            <span className="mb-1 block text-gray-700">מינימום כרטיסים בסך הכול (לא חובה)</span>
+            <input name="minTotal" type="number" min="1" defaultValue={r.minTotal ?? ''} className={field} />
+          </label>
           <p id="design-multiple-help" className="text-xs text-gray-600 sm:col-span-2 lg:col-span-4">
-            כפולות 1 — כל מספר דוגמאות מהמינימום ומעלה. מינימום ההזמנה בכרטיסים = מינימום הדוגמאות × היח&apos; לדוגמא במינימום. המחיר ליחידה נקבע בתמחור של הגרסה (מחיר בסיס). את הדוגמאות מנהלים ב&quot;ניהול דוגמאות&quot; בדף המוצר.</p>
+            כפולות 1 — כל מספר דוגמאות מהמינימום ומעלה. מינימום ההזמנה בכרטיסים = מינימום הדוגמאות × היח&apos; לדוגמא במינימום, אלא אם נקבע מינימום כרטיסים בסך הכול. המחיר ליחידה נקבע בתמחור של הגרסה (מחיר בסיס). את הדוגמאות מנהלים ב&quot;ניהול דוגמאות&quot; בדף המוצר.</p>
         </div>
       )}
     </fieldset>

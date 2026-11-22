@@ -4,6 +4,7 @@
  * סך הכול לפחות 3,200 כרטיסים. ברירת המחדל: 200 מכל דוגמא (עדכון 2026-11-19); עם 8 דוגמאות בלבד
  * מציעים להגדיל ל-400 מכל אחת או להוסיף עוד 8 דוגמאות.
  * כרטיסי ברכה בינוניים (2026-11-22): לפחות 10 דוגמאות, כל מספר מ-10 ומעלה, 50 מכל דוגמא בקפיצות של 50.
+ * כרטיסי ברכה מיוחדים ללא לוגו (2026-11-22): כל מספר דוגמאות, 20 מכל דוגמא בקפיצות של 20, לפחות 240 בסך הכול.
  * טהור — משותף לשרת, לדפדפן ולבדיקות.
  */
 export interface DesignRule {
@@ -15,11 +16,15 @@ export interface DesignRule {
   firstPackPerDesign: number;
   /** כמות ברירת מחדל לכל דוגמא מהחבילה השנייה ומעלה, וגם הקפיצה בבחירת הכמות */
   perDesign: number;
+  /** מינימום כרטיסים בסך הכול, כשאינו packSize × firstPackPerDesign */
+  minTotal?: number;
 }
 
 export const GREETING_CARDS_RULE: DesignRule = { packSize: 8, firstPackPerDesign: 400, perDesign: 200 };
 export const GREETING_CARDS_MEDIUM_RULE: DesignRule = { packSize: 10, designMultiple: 1, firstPackPerDesign: 50, perDesign: 50 };
 export const GREETING_CARDS_LARGE_RULE: DesignRule = { packSize: 12, designMultiple: 2, firstPackPerDesign: 26, perDesign: 26 };
+export const GREETING_CARDS_SPECIAL_LOGO_RULE: DesignRule = { packSize: 6, designMultiple: 1, firstPackPerDesign: 65, perDesign: 65 };
+export const GREETING_CARDS_SPECIAL_PLAIN_RULE: DesignRule = { packSize: 1, firstPackPerDesign: 20, perDesign: 20, minTotal: 240 };
 
 /** הכפולה של מספר הדוגמאות */
 export const designMultiple = (rule: DesignRule) => rule.designMultiple ?? rule.packSize;
@@ -41,11 +46,13 @@ export function parseDesignRule(json: unknown): DesignRule | null {
   const perDesign = posInt(o.perDesign, 1_000_000);
   if (!packSize || !firstPackPerDesign || !perDesign) return null;
   const multiple = o.designMultiple === undefined || o.designMultiple === null ? null : posInt(o.designMultiple, 100);
-  return multiple === null || multiple === packSize ? { packSize, firstPackPerDesign, perDesign } : { packSize, designMultiple: multiple, firstPackPerDesign, perDesign };
+  const rule: DesignRule = multiple === null || multiple === packSize ? { packSize, firstPackPerDesign, perDesign } : { packSize, designMultiple: multiple, firstPackPerDesign, perDesign };
+  const total = o.minTotal === undefined || o.minTotal === null || o.minTotal === '' ? null : posInt(o.minTotal, 10_000_000);
+  return total !== null && total !== packSize * firstPackPerDesign ? { ...rule, minTotal: total } : rule;
 }
 
 /** מינימום כרטיסים בהזמנה */
-export const minTotal = (rule: DesignRule) => rule.packSize * rule.firstPackPerDesign;
+export const minTotal = (rule: DesignRule) => rule.minTotal ?? rule.packSize * rule.firstPackPerDesign;
 
 /** הכמות שמוצעת לכל דוגמא שנבחרה */
 export const defaultPerDesign = (rule: DesignRule) => rule.perDesign;
@@ -92,7 +99,7 @@ export function checkDesignOrder(rule: DesignRule, quantities: readonly number[]
     return { ok: false, count, total, error: `הכמות מכל דוגמא בקפיצות של ${fmt(rule.perDesign)} (לפחות ${fmt(rule.perDesign)})` };
   }
   const min = minTotal(rule);
-  if (total < min && count === pack) {
+  if (total < min && count === pack && rule.minTotal === undefined) {
     return {
       ok: false,
       count,
@@ -102,7 +109,7 @@ export function checkDesignOrder(rule: DesignRule, quantities: readonly number[]
     };
   }
   if (total < min) {
-    return { ok: false, count, total, error: `סך הכול לפחות ${fmt(min)} כרטיסים (כרגע ${fmt(total)}). הגדילו את הכמות באחת הדוגמאות` };
+    return { ok: false, count, total, error: `סך הכול לפחות ${fmt(min)} כרטיסים (כרגע ${fmt(total)}). הוסיפו דוגמאות או הגדילו את הכמות באחת הדוגמאות` };
   }
   return { ok: true, count, total };
 }
@@ -111,6 +118,9 @@ export function checkDesignOrder(rule: DesignRule, quantities: readonly number[]
 export function describeRule(rule: DesignRule): string {
   const mult = designMultiple(rule);
   const min = fmt(minTotal(rule));
+  if (rule.minTotal !== undefined && rule.packSize === 1) {
+    return `בוחרים דוגמאות כרצונכם, ${fmt(rule.perDesign)} יח' מכל דוגמא (אפשר להגדיל בקפיצות של ${fmt(rule.perDesign)}). מינימום הזמנה ${min} כרטיסים בסך הכול.`;
+  }
   if (rule.firstPackPerDesign === rule.perDesign) {
     const multiple = mult > 1 ? ` בכפולות של ${mult}` : '';
     return `בוחרים לפחות ${rule.packSize} דוגמאות${multiple}, ${fmt(rule.perDesign)} יח' מכל דוגמא (אפשר להגדיל בקפיצות של ${fmt(rule.perDesign)}). מינימום הזמנה ${min} כרטיסים.`;

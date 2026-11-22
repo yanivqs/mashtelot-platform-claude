@@ -8,7 +8,7 @@ import { createTemplate, publishDraft, saveDraft } from '@/lib/print-templates-a
 import { createJobOrder } from '@/lib/print-jobs';
 import { orderSaved } from '@/lib/print-saved';
 import { deleteCategory, saveCategory, saveDesign } from '@/lib/print-catalog-admin';
-import { GREETING_CARDS_LARGE_RULE, GREETING_CARDS_MEDIUM_RULE, GREETING_CARDS_RULE, type DesignRule } from '@/lib/print-designs';
+import { GREETING_CARDS_LARGE_RULE, GREETING_CARDS_SPECIAL_PLAIN_RULE, GREETING_CARDS_MEDIUM_RULE, GREETING_CARDS_RULE, type DesignRule } from '@/lib/print-designs';
 import { createTenantFixtures, destroyTenantFixtures, type TenantFixtures } from './fixtures';
 
 let f: TenantFixtures;
@@ -33,10 +33,10 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-async function cardsProduct(designs = 17, rule: DesignRule = GREETING_CARDS_RULE, unitPrice = 0.4) {
+async function cardsProduct(designs = 17, rule: DesignRule = GREETING_CARDS_RULE, unitPrice = 0.4, fields: typeof FIELDS = FIELDS) {
   const t = await createTemplate(prisma, { title: `כרטיסים ${templateIds.length}`, description: null, category: null, imageUrl: null, unitLabel: null, leadTimeDays: null, requiresArtwork: false, isActive: false }, null);
   templateIds.push(t.id);
-  await saveDraft(prisma, t.id, { fields: FIELDS, pricing: { ...PRICING, basePrice: unitPrice } });
+  await saveDraft(prisma, t.id, { fields, pricing: { ...PRICING, basePrice: unitPrice } });
   await publishDraft(prisma, t.id, null);
   await prisma.printTemplate.update({ where: { id: t.id }, data: { isActive: true, designRule: { ...rule } } });
   for (let i = 0; i < designs; i += 1) {
@@ -132,6 +132,18 @@ describe('large greeting cards', () => {
     expect(r.quote.quantity).toBe(312);
     expect(r.quote.total).toBe(780);
     expect(await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 0, designs: items(p.ids.slice(0, 13), 26) })).toMatchObject({ ok: false, error: expect.stringContaining('בכפולות של 2') });
+  });
+});
+
+describe('special greeting cards without a logo', () => {
+  it('no fields: 12 designs × 20 = 240 cards at 2.50 ₪ = 600 ₪; 220 cards rejected', async () => {
+    const p = await cardsProduct(12, GREETING_CARDS_SPECIAL_PLAIN_RULE, 2.5, []);
+    const plain = { ...base(), values: {} };
+    const r = await createJobOrder(prisma, { ...plain, templateVersionId: p.versionId, quantity: 0, designs: items(p.ids, 20) });
+    if (!r.ok) throw new Error(JSON.stringify(r));
+    expect(r.quote.quantity).toBe(240);
+    expect(r.quote.total).toBe(600);
+    expect(await createJobOrder(prisma, { ...plain, templateVersionId: p.versionId, quantity: 0, designs: items(p.ids.slice(0, 11), 20) })).toMatchObject({ ok: false, error: expect.stringContaining('לפחות 240') });
   });
 });
 

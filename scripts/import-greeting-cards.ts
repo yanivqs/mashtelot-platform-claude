@@ -4,6 +4,8 @@
  *   --set=small  (ברירת מחדל) כרטיסי ברכה קטנים — data/greeting-cards-small.csv (2026-11-19)
  *   --set=medium כרטיסי ברכה בינוניים — data/greeting-cards-medium.csv (2026-11-22)
  *   --set=large  כרטיסי ברכה גדולים — אותן דוגמאות של הבינוניים (2026-11-22)
+ *   --set=special-logo / --set=special-plain  כרטיסי ברכה מיוחדים עם לוגו / ללא לוגו — data/greeting-cards-special.csv,
+ *                התמונות מתיקייה מקומית: --images-dir=<תיקייה> (ברירת מחדל D:/כרטיסי ברכה/site/SC) (2026-11-22)
  *
  *   npx vite-node -c vitest.config.ts scripts/import-greeting-cards.ts -- --set=medium                 # dry-run (ברירת מחדל)
  *   npx vite-node -c vitest.config.ts scripts/import-greeting-cards.ts -- --set=medium --write         # כתיבה (יעד מקומי)
@@ -18,11 +20,11 @@
  */
 import 'dotenv/config';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { PrismaClient } from '@prisma/client';
 import { describeTarget } from './seed-guard';
-import { MEDIUM_CODE_RE, SMALL_CODE_RE, parseCardsCsv, type CsvDesign } from '@/lib/print-designs-csv';
-import { GREETING_CARDS_LARGE_RULE, GREETING_CARDS_MEDIUM_RULE, GREETING_CARDS_RULE, type DesignRule } from '@/lib/print-designs';
+import { MEDIUM_CODE_RE, SMALL_CODE_RE, SPECIAL_CODE_RE, parseCardsCsv, type CsvDesign } from '@/lib/print-designs-csv';
+import { GREETING_CARDS_LARGE_RULE, GREETING_CARDS_MEDIUM_RULE, GREETING_CARDS_RULE, GREETING_CARDS_SPECIAL_LOGO_RULE, GREETING_CARDS_SPECIAL_PLAIN_RULE, type DesignRule } from '@/lib/print-designs';
 import { publishDraft, saveDraft } from '@/lib/print-templates-admin';
 
 const args = process.argv.slice(2);
@@ -30,6 +32,7 @@ const WRITE = args.includes('--write');
 const ACTIVATE = args.includes('--activate');
 const ACTOR = 'import-greeting-cards';
 const PARENT = { slug: 'greeting-cards', name: 'כרטיסי ברכה' };
+const IMAGES_DIR = args.find((a) => a.startsWith('--images-dir='))?.slice('--images-dir='.length) ?? 'D:/כרטיסי ברכה/site/SC';
 const BASE44 = 'https://base44.app/api/apps/69fc81e6142a2a23589c415d/files/mp/public/69fc81e6142a2a23589c415d/';
 
 const FIELDS = [
@@ -52,10 +55,16 @@ interface CardSet {
   rule: DesignRule;
   /** מחיר לכרטיס לפני מע"מ */
   unitPrice: number;
-  /** תמונת הקטגוריה באתר המקורי */
+  /** תמונת הקטגוריה באתר המקורי (או file:<שם> מתיקיית התמונות) */
   cover: string;
   description: string;
+  /** תת-קטגוריה משותפת לכמה מוצרים; ברירת מחדל: תת-קטגוריה בשם המוצר */
+  category?: { slug: string; name: string; sortOrder: number };
+  /** false — בלי הדפסת לוגו: אין שדה פרטי עסק ואין העלאת קובץ */
+  withLogo?: boolean;
 }
+
+const SPECIAL_CATEGORY = { slug: 'greeting-cards-special', name: 'כרטיסי ברכה מיוחדים', sortOrder: 30 };
 
 const SETS: Record<string, CardSet> = {
   small: {
@@ -110,14 +119,59 @@ const SETS: Record<string, CardSet> = {
       'כל כרטיס מגיע עם מעטפה וצלופן. כל המחירים לפני מע"מ.',
     ].join('\n'),
   },
+  // כרטיסי ברכה מיוחדים (לכה סלקטיבית), 2.50 ₪ לכרטיס לפני מע"מ (החלטת בעלים 2026-11-22). שני מוצרים באותה
+  // תת-קטגוריה: עם לוגו בגב הכרטיס (6 דוגמאות × 65) וללא לוגו (240 כרטיסים בסך הכול, 20 מכל דוגמא)
+  'special-logo': {
+    csv: 'greeting-cards-special.csv',
+    codeRe: SPECIAL_CODE_RE,
+    slug: 'greeting-cards-special-logo',
+    name: 'כרטיסי ברכה מיוחדים עם לוגו',
+    sortOrder: 0,
+    category: SPECIAL_CATEGORY,
+    rule: GREETING_CARDS_SPECIAL_LOGO_RULE,
+    unitPrice: 2.5,
+    cover: 'file:SP101.jpg',
+    description: [
+      'כרטיסי ברכה בעלי עיצוב גראפי מיוחד ומרשים,',
+      'שעוברים תהליך השבחה של ציפוי לכה סלקטיבית בולטת,',
+      'דבר המקנה לכרטיס גם מרקם של אלמנטים מובלטים ומבריקים.',
+      'השבחה זו מוסיפה נופך ועניין מיוחד לכרטיס.',
+      'הלוגו ופרטי העסק שלכם מודפסים בגב הכרטיס.',
+      'מזמינים לפחות 6 דוגמאות, 65 כרטיסים מכל דוגמא (אפשר יותר, בקפיצות של 65).',
+      'כל כרטיס מגיע עם מעטפה וצלופן. כל המחירים לפני מע"מ.',
+    ].join('\n'),
+  },
+  'special-plain': {
+    csv: 'greeting-cards-special.csv',
+    codeRe: SPECIAL_CODE_RE,
+    slug: 'greeting-cards-special-plain',
+    name: 'כרטיסי ברכה מיוחדים ללא לוגו',
+    sortOrder: 10,
+    category: SPECIAL_CATEGORY,
+    withLogo: false,
+    rule: GREETING_CARDS_SPECIAL_PLAIN_RULE,
+    unitPrice: 2.5,
+    cover: 'file:SP101.jpg',
+    description: [
+      'כרטיסי ברכה בעלי עיצוב גראפי מיוחד ומרשים,',
+      'שעוברים תהליך השבחה של ציפוי לכה סלקטיבית בולטת,',
+      'דבר המקנה לכרטיס גם מרקם של אלמנטים מובלטים ומבריקים.',
+      'השבחה זו מוסיפה נופך ועניין מיוחד לכרטיס.',
+      'ללא הדפסת לוגו.',
+      'בוחרים דוגמאות כרצונכם, 20 כרטיסים מכל דוגמא (אפשר יותר, בקפיצות של 20). מינימום הזמנה 240 כרטיסים בסך הכול.',
+      'כל כרטיס מגיע עם מעטפה וצלופן. כל המחירים לפני מע"מ.',
+    ].join('\n'),
+  },
 };
 
 const setArg = args.find((a) => a.startsWith('--set='))?.slice('--set='.length) ?? 'small';
 const SET = SETS[setArg];
-if (!SET) throw new Error(`--set לא מוכר: ${setArg} (small / medium / large)`);
+if (!SET) throw new Error(`--set לא מוכר: ${setArg} (${Object.keys(SETS).join(' / ')})`);
 if (!(SET.unitPrice > 0)) throw new Error(`אין מחיר ל-${setArg}`);
 const CSV = join(__dirname, '..', 'data', SET.csv);
-const CHILD = { slug: SET.slug, name: SET.name };
+const CHILD = SET.category ? { slug: SET.category.slug, name: SET.category.name } : { slug: SET.slug, name: SET.name };
+const CHILD_SORT = SET.category?.sortOrder ?? SET.sortOrder;
+const WITH_LOGO = SET.withLogo !== false;
 const PRODUCT_SLUG = SET.slug;
 const COVER_URL = SET.cover;
 const DESCRIPTION = SET.description;
@@ -157,11 +211,19 @@ async function copyImage(d: Pick<CsvDesign, 'code' | 'imageUrl'>, cfg: { baseUrl
 }
 
 async function copyImageOnce(d: Pick<CsvDesign, 'code' | 'imageUrl'>, cfg: { baseUrl: string; key: string }): Promise<string> {
-  const src = await fetch(d.imageUrl, { signal: AbortSignal.timeout(120_000) });
-  if (!src.ok) throw new Error(`${d.code}: הורדת התמונה נכשלה (${src.status})`);
-  let body = Buffer.from(await src.arrayBuffer());
+  let body: Buffer;
+  let header = '';
+  if (d.imageUrl.startsWith('file:')) {
+    // basename — רק קובץ מתוך תיקיית התמונות
+    body = readFileSync(join(IMAGES_DIR, basename(d.imageUrl.slice('file:'.length))));
+  } else {
+    const src = await fetch(d.imageUrl, { signal: AbortSignal.timeout(120_000) });
+    if (!src.ok) throw new Error(`${d.code}: הורדת התמונה נכשלה (${src.status})`);
+    body = Buffer.from(await src.arrayBuffer());
+    header = src.headers.get('content-type') ?? '';
+  }
   // הסוג לפי התוכן (קובץ .jfif מוגש כ-octet-stream), ואם לא זוהה — לפי הכותרת
-  let type = sniffImage(body) ?? (src.headers.get('content-type') ?? '').split(';')[0]!.trim();
+  let type = sniffImage(body) ?? header.split(';')[0]!.trim();
   // תמונה כבדה (למשל PNG של 5.7MB): מוקטנת ל-1600px ב-JPEG — ההעלאה שלה נתקעה, וגם התצוגה ברשת כבדה
   if (body.length > 1.5 * 1024 * 1024 && EXT[type]) {
     const sharp = (await import('sharp')).default;
@@ -175,7 +237,7 @@ async function copyImageOnce(d: Pick<CsvDesign, 'code' | 'imageUrl'>, cfg: { bas
   const up = await fetch(`${cfg.baseUrl}/storage/v1/object/uploads/${path}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${cfg.key}`, apikey: cfg.key, 'Content-Type': type, 'Cache-Control': 'max-age=31536000', 'x-upsert': 'true' },
-    body,
+    body: new Uint8Array(body),
     signal: AbortSignal.timeout(120_000),
   });
   if (!up.ok) throw new Error(`${d.code}: העלאה לאחסון נכשלה (${up.status}) ${await up.text().catch(() => '')}`);
@@ -203,29 +265,29 @@ async function main() {
     if (!parent && WRITE) parent = await db.printCategory.create({ data: { ...PARENT, sortOrder: 0 } });
     let child = await db.printCategory.findUnique({ where: { slug: CHILD.slug } });
     log(child ? `תת-קטגוריה "${CHILD.name}" קיימת` : `נוצרת תת-קטגוריה "${CHILD.name}"`);
-    if (!child && WRITE) child = await db.printCategory.create({ data: { ...CHILD, parentId: parent!.id, sortOrder: SET.sortOrder } });
+    if (!child && WRITE) child = await db.printCategory.create({ data: { ...CHILD, parentId: parent!.id, sortOrder: CHILD_SORT } });
 
     // המוצר
     let template = await db.printTemplate.findUnique({ where: { slug: PRODUCT_SLUG } });
     const created = !template;
     const designsBefore = template ? await db.printDesign.count({ where: { templateId: template.id } }) : 0;
-    log(template ? `המוצר "${CHILD.name}" קיים — לא משתנה` : `נוצר המוצר "${CHILD.name}" עם גרסה מפורסמת (${SET.unitPrice.toFixed(2)} ₪ לכרטיס)`);
+    log(template ? `המוצר "${SET.name}" קיים — לא משתנה` : `נוצר המוצר "${SET.name}" עם גרסה מפורסמת (${SET.unitPrice.toFixed(2)} ₪ לכרטיס)`);
     if (!template && WRITE) {
       template = await db.printTemplate.create({
         data: {
-          title: CHILD.name,
+          title: SET.name,
           slug: PRODUCT_SLUG,
           description: DESCRIPTION,
           unitLabel: 'כרטיס',
           leadTimeDays: 7,
-          requiresArtwork: true,
+          requiresArtwork: WITH_LOGO,
           isActive: false,
           categoryId: child!.id,
           designRule: { ...SET.rule },
           versions: { create: { version: 1, status: 'DRAFT', fields: [], pricing: PRICING, createdBy: ACTOR } },
         },
       });
-      const saved = await saveDraft(db, template.id, { fields: FIELDS, pricing: PRICING, production: null, notes: `ייבוא ${SET.name}` });
+      const saved = await saveDraft(db, template.id, { fields: WITH_LOGO ? FIELDS : [], pricing: PRICING, production: null, notes: `ייבוא ${SET.name}` });
       if (!saved.ok) throw new Error(`שמירת הטיוטה נכשלה: ${saved.errors.join(', ')}`);
       const pub = await publishDraft(db, template.id, ACTOR);
       if (!pub.ok) throw new Error(`הפרסום נכשל: ${pub.errors.join(', ')}`);
