@@ -8,7 +8,7 @@ import { createTemplate, publishDraft, saveDraft } from '@/lib/print-templates-a
 import { createJobOrder } from '@/lib/print-jobs';
 import { orderSaved } from '@/lib/print-saved';
 import { deleteCategory, saveCategory, saveDesign } from '@/lib/print-catalog-admin';
-import { GREETING_CARDS_MEDIUM_RULE, GREETING_CARDS_RULE, type DesignRule } from '@/lib/print-designs';
+import { GREETING_CARDS_LARGE_RULE, GREETING_CARDS_MEDIUM_RULE, GREETING_CARDS_RULE, type DesignRule } from '@/lib/print-designs';
 import { createTenantFixtures, destroyTenantFixtures, type TenantFixtures } from './fixtures';
 
 let f: TenantFixtures;
@@ -121,6 +121,17 @@ describe('medium greeting cards', () => {
     expect(r.quote.quantity).toBe(600);
     expect(r.quote.total).toBe(780);
     expect(await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 0, designs: items(p.ids.slice(0, 9), 50) })).toMatchObject({ ok: false, error: expect.stringContaining('לפחות 10') });
+  });
+});
+
+describe('large greeting cards', () => {
+  it('12 designs of 26 at 2.50 ₪ = 312 cards, 780 ₪; 13 designs rejected (multiples of 2)', async () => {
+    const p = await cardsProduct(14, GREETING_CARDS_LARGE_RULE, 2.5);
+    const r = await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 0, designs: items(p.ids.slice(0, 12), 26) });
+    if (!r.ok) throw new Error(JSON.stringify(r));
+    expect(r.quote.quantity).toBe(312);
+    expect(r.quote.total).toBe(780);
+    expect(await createJobOrder(prisma, { ...base(), templateVersionId: p.versionId, quantity: 0, designs: items(p.ids.slice(0, 13), 26) })).toMatchObject({ ok: false, error: expect.stringContaining('בכפולות של 2') });
   });
 });
 

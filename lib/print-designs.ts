@@ -19,6 +19,7 @@ export interface DesignRule {
 
 export const GREETING_CARDS_RULE: DesignRule = { packSize: 8, firstPackPerDesign: 400, perDesign: 200 };
 export const GREETING_CARDS_MEDIUM_RULE: DesignRule = { packSize: 10, designMultiple: 1, firstPackPerDesign: 50, perDesign: 50 };
+export const GREETING_CARDS_LARGE_RULE: DesignRule = { packSize: 12, designMultiple: 2, firstPackPerDesign: 26, perDesign: 26 };
 
 /** הכפולה של מספר הדוגמאות */
 export const designMultiple = (rule: DesignRule) => rule.designMultiple ?? rule.packSize;

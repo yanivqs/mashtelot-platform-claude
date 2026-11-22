@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { GREETING_CARDS_MEDIUM_RULE, GREETING_CARDS_RULE as R, checkDesignOrder, defaultPerDesign, describeDesigns, describeRule, parseDesignRule, quantityChoices, storedDesignItems } from './print-designs';
+import { GREETING_CARDS_LARGE_RULE, GREETING_CARDS_MEDIUM_RULE, GREETING_CARDS_RULE as R, checkDesignOrder, defaultPerDesign, describeDesigns, describeRule, parseDesignRule, quantityChoices, storedDesignItems } from './print-designs';
 import { MEDIUM_CODE_RE, parseCardsCsv } from './print-designs-csv';
 
 const n = (count: number, q: number) => Array.from({ length: count }, () => q);
@@ -94,6 +94,22 @@ describe('medium greeting cards: at least 10 designs, any number, 50 per design 
     expect(parseDesignRule({ packSize: 8, designMultiple: 8, firstPackPerDesign: 400, perDesign: 200 })).toEqual(R);
     expect(describeRule(M)).toBe("בוחרים לפחות 10 דוגמאות, 50 יח' מכל דוגמא (אפשר להגדיל בקפיצות של 50). מינימום הזמנה 500 כרטיסים.");
     expect(describeRule(R)).toContain('בכפולות של 8');
+  });
+});
+
+describe('large greeting cards: at least 12 designs in multiples of 2, 26 per design in steps of 26', () => {
+  const L = GREETING_CARDS_LARGE_RULE;
+
+  it('12, 14 and 20 designs are valid; 11 is blocked; 13 asks to remove or add one; steps of 26', () => {
+    expect(checkDesignOrder(L, n(12, 26))).toEqual({ ok: true, count: 12, total: 312 });
+    expect(checkDesignOrder(L, n(14, 26))).toEqual({ ok: true, count: 14, total: 364 });
+    expect(checkDesignOrder(L, [...n(19, 26), 52])).toEqual({ ok: true, count: 20, total: 546 });
+    expect(checkDesignOrder(L, n(11, 26))).toMatchObject({ ok: false, error: 'יש לבחור לפחות 12 דוגמאות לביצוע הזמנה (נבחרו 11, חסרות 1)' });
+    expect(checkDesignOrder(L, n(13, 26))).toMatchObject({ ok: false, error: 'ניתן להזמין בכפולות של 2 דוגמאות בלבד. נבחרו 13: הסירו 1 דוגמא או הוסיפו עוד 1' });
+    expect(checkDesignOrder(L, [...n(11, 26), 30])).toMatchObject({ ok: false, error: 'הכמות מכל דוגמא בקפיצות של 26 (לפחות 26)' });
+    expect(quantityChoices(L).slice(0, 3)).toEqual([26, 52, 78]);
+    expect(parseDesignRule({ ...L })).toEqual(L);
+    expect(describeRule(L)).toBe("בוחרים לפחות 12 דוגמאות בכפולות של 2, 26 יח' מכל דוגמא (אפשר להגדיל בקפיצות של 26). מינימום הזמנה 312 כרטיסים.");
   });
 });
 

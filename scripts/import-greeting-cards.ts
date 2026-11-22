@@ -3,6 +3,7 @@
  * עם מאגר דוגמאות, והדוגמאות מקובץ CSV שיוצא מהאתר המקורי.
  *   --set=small  (ברירת מחדל) כרטיסי ברכה קטנים — data/greeting-cards-small.csv (2026-11-19)
  *   --set=medium כרטיסי ברכה בינוניים — data/greeting-cards-medium.csv (2026-11-22)
+ *   --set=large  כרטיסי ברכה גדולים — אותן דוגמאות של הבינוניים (2026-11-22)
  *
  *   npx vite-node -c vitest.config.ts scripts/import-greeting-cards.ts -- --set=medium                 # dry-run (ברירת מחדל)
  *   npx vite-node -c vitest.config.ts scripts/import-greeting-cards.ts -- --set=medium --write         # כתיבה (יעד מקומי)
@@ -21,7 +22,7 @@ import { join } from 'node:path';
 import { PrismaClient } from '@prisma/client';
 import { describeTarget } from './seed-guard';
 import { MEDIUM_CODE_RE, SMALL_CODE_RE, parseCardsCsv, type CsvDesign } from '@/lib/print-designs-csv';
-import { GREETING_CARDS_MEDIUM_RULE, GREETING_CARDS_RULE, type DesignRule } from '@/lib/print-designs';
+import { GREETING_CARDS_LARGE_RULE, GREETING_CARDS_MEDIUM_RULE, GREETING_CARDS_RULE, type DesignRule } from '@/lib/print-designs';
 import { publishDraft, saveDraft } from '@/lib/print-templates-admin';
 
 const args = process.argv.slice(2);
@@ -91,11 +92,30 @@ const SETS: Record<string, CardSet> = {
       'הכרטיס מגיע ללא מעטפה וצלופן. כל המחירים לפני מע"מ.',
     ].join('\n'),
   },
+  // אותן דוגמאות כמו הבינוניים, בגודל גדול (החלטת בעלים 2026-11-22)
+  large: {
+    csv: 'greeting-cards-medium.csv',
+    codeRe: MEDIUM_CODE_RE,
+    slug: 'greeting-cards-large',
+    name: 'כרטיסי ברכה גדולים',
+    sortOrder: 20,
+    rule: GREETING_CARDS_LARGE_RULE,
+    // 2.50 ₪ לכרטיס לפני מע"מ — 65 ₪ ל-26 כרטיסים (החלטת בעלים 2026-11-22)
+    unitPrice: 2.5,
+    cover: `${BASE44}dc40f5995_f6e6ee75-17e5-409b-8b73-d33de5e06351.png`,
+    description: [
+      'כרטיסי ברכה גדולים עם הלוגו ופרטי העסק שלכם.',
+      'גודל כרטיס סגור: 16/11 ס"מ · פתוח: 16/22 ס"מ.',
+      'מזמינים לפחות 12 דוגמאות (אפשר להוסיף בכפולות של 2), 26 כרטיסים מכל דוגמא (אפשר יותר, בקפיצות של 26).',
+      'כל כרטיס מגיע עם מעטפה וצלופן. כל המחירים לפני מע"מ.',
+    ].join('\n'),
+  },
 };
 
 const setArg = args.find((a) => a.startsWith('--set='))?.slice('--set='.length) ?? 'small';
 const SET = SETS[setArg];
-if (!SET) throw new Error(`--set לא מוכר: ${setArg} (small / medium)`);
+if (!SET) throw new Error(`--set לא מוכר: ${setArg} (small / medium / large)`);
+if (!(SET.unitPrice > 0)) throw new Error(`אין מחיר ל-${setArg}`);
 const CSV = join(__dirname, '..', 'data', SET.csv);
 const CHILD = { slug: SET.slug, name: SET.name };
 const PRODUCT_SLUG = SET.slug;
