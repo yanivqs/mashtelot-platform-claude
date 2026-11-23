@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { Leaf, Store, Search, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { tenantOrigin } from '@/lib/seo';
+import { PlatformContactForm } from '@/components/platform-contact-form';
 
 const ROOT_DOMAIN = process.env.ROOT_DOMAIN || 'localhost:3000';
 const ORIGIN = `${ROOT_DOMAIN.startsWith('localhost') ? 'http' : 'https'}://${ROOT_DOMAIN}`;
@@ -77,13 +78,13 @@ export default async function LandingPage() {
             נהלו מחירים, מלאי ותוכן ייחודי - ותנו ל-Google למצוא אתכם.
           </p>
           <div className="mt-10 flex items-center justify-center gap-4">
-            <Link
-              href="mailto:hello@mashtelot.net"
+            <a
+              href="#contact"
               className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-6 py-3 font-medium text-white transition hover:bg-brand-800"
             >
-              פתחו חנות למשתלה
+              צור קשר
               <ArrowLeft className="h-4 w-4" />
-            </Link>
+            </a>
             {demoNursery && (
               <a
                 href={tenantOrigin(demoNursery)}
@@ -106,6 +107,17 @@ export default async function LandingPage() {
               <p className="mt-2 text-sm leading-relaxed text-gray-600">{body}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* צור קשר */}
+      <section id="contact" className="scroll-mt-8 bg-gray-50">
+        <div className="mx-auto max-w-3xl px-6 py-20">
+          <h2 className="text-center text-3xl font-bold text-brand-900">רוצים חנות למשתלה שלכם?</h2>
+          <p className="mt-3 text-center text-gray-600">השאירו פרטים ונחזור אליכם.</p>
+          <div className="mt-8">
+            <PlatformContactForm />
+          </div>
         </div>
       </section>
 
