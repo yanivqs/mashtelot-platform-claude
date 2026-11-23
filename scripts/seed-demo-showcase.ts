@@ -177,47 +177,59 @@ async function main() {
         for (const u of [p.customImageUrl, ...p.galleryImageUrls, ...p.variants.flatMap((v) => v.imageUrls)]) await img(u);
         continue;
       }
-      const created = await db.nurseryProduct.create({
-        data: {
-          nurseryId: dst.id,
-          supplyId: p.supplyId,
-          customTitle: clean(p.customTitle),
-          customImageUrl: await img(p.customImageUrl),
-          galleryImageUrls: (await Promise.all(p.galleryImageUrls.map(img))) as string[],
-          slug: p.slug,
-          imageRequired: p.imageRequired,
-          price: p.price,
-          compareAtPrice: p.compareAtPrice,
-          stockQuantity: p.stockQuantity,
-          isActive: p.isActive,
-          alwaysInStock: p.alwaysInStock,
-          customDescription: clean(p.customDescription),
-          seoMetaTitle: clean(p.seoMetaTitle),
-          seoMetaDescription: clean(p.seoMetaDescription),
-          optionLabel: p.optionLabel,
-          option2Label: p.option2Label,
-          variants: {
-            create: await Promise.all(
-              p.variants.map(async (v) => ({
-                nurseryId: dst.id,
-                name: v.name,
-                option1: v.option1,
-                option2: v.option2,
-                colorHex: v.colorHex,
-                sku: v.sku,
-                barcode: v.barcode,
-                price: v.price,
-                compareAtPrice: v.compareAtPrice,
-                stockQuantity: v.stockQuantity,
-                imageUrls: (await Promise.all(v.imageUrls.map(img))) as string[],
-                isDefault: v.isDefault,
-                isActive: v.isActive,
-                sortOrder: v.sortOrder,
-              })),
-            ),
-          },
-          categories: { create: p.categories.flatMap((c) => (ids.has(c.nurseryCategoryId) ? [{ nurseryCategoryId: ids.get(c.nurseryCategoryId)!, sortOrder: c.sortOrder }] : [])) },
-        },
+      // התמונות מועתקות לפני הטרנזקציה, כדי שלא תימשך זמן רב
+      const variantData = await Promise.all(
+        p.variants.map(async (v) => ({
+          name: v.name,
+          option1: v.option1,
+          option2: v.option2,
+          colorHex: v.colorHex,
+          sku: v.sku,
+          barcode: v.barcode,
+          price: v.price,
+          compareAtPrice: v.compareAtPrice,
+          stockQuantity: v.stockQuantity,
+          imageUrls: (await Promise.all(v.imageUrls.map(img))) as string[],
+          isActive: v.isActive,
+          sortOrder: v.sortOrder,
+          isDefault: v.isDefault,
+        })),
+      );
+      const productData = {
+        nurseryId: dst.id,
+        supplyId: p.supplyId,
+        customTitle: clean(p.customTitle),
+        customImageUrl: await img(p.customImageUrl),
+        galleryImageUrls: (await Promise.all(p.galleryImageUrls.map(img))) as string[],
+        slug: p.slug,
+        imageRequired: p.imageRequired,
+        price: p.price,
+        compareAtPrice: p.compareAtPrice,
+        stockQuantity: p.stockQuantity,
+        isActive: p.isActive,
+        alwaysInStock: p.alwaysInStock,
+        customDescription: clean(p.customDescription),
+        seoMetaTitle: clean(p.seoMetaTitle),
+        seoMetaDescription: clean(p.seoMetaDescription),
+        optionLabel: p.optionLabel,
+        option2Label: p.option2Label,
+        categories: { create: p.categories.flatMap((c) => (ids.has(c.nurseryCategoryId) ? [{ nurseryCategoryId: ids.get(c.nurseryCategoryId)!, sortOrder: c.sortOrder }] : [])) },
+      };
+      // trigger במסד יוצר לכל מוצר חדש וריאנט ברירת מחדל: מעדכנים אותו לפי וריאנט ברירת המחדל של המקור,
+      // ושאר הווריאנטים נוספים כרגילים
+      const created = await db.$transaction(async (tx) => {
+        const prod = await tx.nurseryProduct.create({ data: productData });
+        const auto = await tx.productVariant.findFirst({ where: { nurseryProductId: prod.id, isDefault: true } });
+        const srcDefault = variantData.find((v) => v.isDefault);
+        const rest = variantData.filter((v) => v !== srcDefault);
+        if (auto && srcDefault) {
+          const { isDefault: _d, ...data } = srcDefault;
+          await tx.productVariant.update({ where: { id: auto.id }, data });
+        }
+        if (rest.length) {
+          await tx.productVariant.createMany({ data: rest.map((v) => ({ ...v, isDefault: false, nurseryId: dst.id, nurseryProductId: prod.id })) });
+        }
+        return prod;
       });
       ids.set(p.id, created.id);
     }
