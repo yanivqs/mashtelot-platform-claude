@@ -193,6 +193,42 @@ async function main() {
     log(`שיוכים של מוצרים שאינם צמחים שהוסרו מ"${PARENT.name}": ${stray}`);
     if (WRITE && stray) await db.nurseryProductCategory.deleteMany({ where: strayWhere });
 
+    // ---------- "פרחים" (מדף הבית של בית וגן): צמחים פורחים בתתי-הקטגוריות שלה (החלטת בעלים 2026-11-23) ----------
+    const flowers = await db.nurseryCategory.findFirst({ where: { nurseryId: dst.id, slug: 'flowers' }, select: { id: true } });
+    if (flowers) {
+      const subs = await db.nurseryCategory.findMany({ where: { nurseryId: dst.id, parentId: flowers.id }, select: { id: true, slug: true, name: true } });
+      let seasonalId = subs.find((s) => s.slug === 'flowers-seasonal')?.id;
+      if (!seasonalId) {
+        log('תת-קטגוריה "עונתיים" נוצרת תחת "פרחים"');
+        if (WRITE) seasonalId = (await db.nurseryCategory.create({ data: { nurseryId: dst.id, name: 'עונתיים', slug: 'flowers-seasonal', parentId: flowers.id, sortOrder: -1 } })).id;
+      }
+      const rosesId = subs.find((s) => s.slug === 'roses')?.id;
+      const perennialId = subs.find((s) => s.slug === 'perennial-flowers')?.id;
+      const active = await db.nurseryProduct.findMany({
+        where: { nurseryId: dst.id, isActive: true, plantId: { not: null } },
+        select: {
+          id: true,
+          plant: { select: { hebrewName: true, plantType: true, flowering: true, floweringSeason: true, flowerColor: true } },
+          categories: { select: { nurseryCategoryId: true, nurseryCategory: { select: { slug: true } } } },
+        },
+        orderBy: { plant: { hebrewName: 'asc' } },
+      });
+      const inCat = (p: (typeof active)[number], prefix: string) => p.categories.some((c) => c.nurseryCategory.slug.startsWith(prefix));
+      const flowersInfo = (p: (typeof active)[number]) => Boolean(p.plant!.flowerColor || p.plant!.floweringSeason) && !/ירוק|לא פורח|ללא/.test(p.plant!.flowering ?? '');
+      const plan: Array<[string | undefined, string, (p: (typeof active)[number]) => boolean]> = [
+        [rosesId, 'ורדים', (p) => /(^|\s)ורד/.test(p.plant!.hebrewName)],
+        [perennialId, 'פרחים רב-שנתיים', (p) => flowersInfo(p) && ((p.plant!.plantType ?? '').includes('רב-שנתי') || inCat(p, 'רב-שנתיים-עשבוניים'))],
+        [seasonalId, 'עונתיים', (p) => (p.plant!.plantType ?? '').includes('עונתי') || inCat(p, 'עונתיים')],
+      ];
+      for (const [catId, name, pick] of plan) {
+        const chosen = active.filter(pick);
+        const missing = catId ? chosen.filter((p) => !p.categories.some((c) => c.nurseryCategoryId === catId)) : chosen;
+        log(`פרחים › ${name}: ${chosen.length} צמחים (${missing.length} שיוכים חדשים)`);
+        if (!WRITE || !catId) continue;
+        for (const p of missing) await db.nurseryProductCategory.create({ data: { nurseryProductId: p.id, nurseryCategoryId: catId, sortOrder: await sortIn(catId) } });
+      }
+    }
+
     log(`צמחים חדשים: ${created} (מחירים: ${JSON.stringify(priceCount)}); שיוכי קטגוריה חדשים: ${WRITE ? linked : '—'}`);
     const types: Record<string, number> = {};
     for (const p of sloner) if (!have.has(p.id)) { const k = p.plantType ?? `(ללא) ${(slugsOf.get(p.id) ?? []).join(',') || '-'}`; types[k] = (types[k] ?? 0) + 1; }
