@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Nursery } from '@prisma/client';
 import { sellableQuantity } from '@/lib/stock';
 import { getProductCategoryPath, type CatalogProduct } from '@/lib/catalog';
@@ -47,7 +48,8 @@ export async function ProductView({
     };
   });
   const plant = product.plant;
-  const kicker = plant?.plantType || product.supply?.brand || null;
+  const manufacturer = product.manufacturer?.isActive ? product.manufacturer : null;
+  const kicker = plant?.plantType || (manufacturer ? null : product.supply?.brand) || null;
   const canonicalPath = `/product/${slug}`;
   const care = plant?.care?.trim();
   // R06-04: מועדפים ו"נצפו לאחרונה" — רק כשמודול החשבונות פעיל (המצב נטען בדפדפן)
@@ -98,6 +100,21 @@ export async function ProductView({
               )}
               <h1 className="mt-3 text-3xl font-bold leading-tight text-gray-900">{title}</h1>
               {plant?.latinName && <p className="mt-1 text-sm italic text-gray-600">{plant.latinName}</p>}
+              {manufacturer && (
+                <Link
+                  href={`/catalog?brand=${encodeURIComponent(manufacturer.slug)}`}
+                  className="mt-2 inline-flex w-fit items-center gap-2 text-sm text-gray-700 hover:underline"
+                  data-testid="product-manufacturer"
+                >
+                  {manufacturer.logoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={manufacturer.logoUrl} alt="" className="h-8 w-auto max-w-24 object-contain" />
+                  )}
+                  <span>
+                    ספק / יצרן: <span className="font-medium">{manufacturer.name}</span>
+                  </span>
+                </Link>
+              )}
               {personal}
             </>
           }

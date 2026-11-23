@@ -24,6 +24,7 @@ export function tenantUrl(
 type ProductWithRefs = NurseryProduct & {
   plant: Plant | null;
   supply: MasterSupply | null;
+  manufacturer?: { name: string; isActive: boolean } | null;
 };
 
 /** Resolve the display fields for a nursery product, honoring SEO overrides. */
@@ -89,6 +90,9 @@ export function productJsonLd(params: {
   const inStock = product.alwaysInStock || (variants.length ? variants.some((v) => sellableQuantity(v, product) > 0) : availableQuantity(product) > 0);
   const availability = inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock';
   const seller = { '@type': 'Organization', name: nursery.name };
+  // המותג: הספק/היצרן של המוצר, ואם אין — המשתלה
+  const brand = { '@type': 'Brand', name: product.manufacturer?.isActive ? product.manufacturer.name : nursery.name };
+  const mpn = product.manufacturerCode || undefined;
 
   // §7.01: כמה וריאנטים → טווח מחירים (AggregateOffer)
   if (variants.length > 1) {
@@ -100,7 +104,8 @@ export function productJsonLd(params: {
       description: description || title,
       image: images.length ? images : undefined,
       sku: product.id,
-      brand: { '@type': 'Brand', name: nursery.name },
+      brand,
+      mpn,
       offers: {
         '@type': 'AggregateOffer',
         url,
@@ -124,7 +129,9 @@ export function productJsonLd(params: {
     description: description || title,
     image: images.length ? images : undefined,
     sku: only?.sku || product.id,
-    brand: { '@type': 'Brand', name: nursery.name },
+    gtin: only?.barcode && /^\d{8,14}$/.test(only.barcode) ? only.barcode : undefined,
+    brand,
+    mpn,
     offers: {
       '@type': 'Offer',
       url,

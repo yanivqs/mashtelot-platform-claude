@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { parseProductManufacturer, setDefaultVariantCodes } from '@/lib/manufacturers-admin';
 import { refreshStore } from '@/lib/store-refresh';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
@@ -67,7 +68,7 @@ export async function updateProduct(
     const { nurseryId, actorEmail } = await ownedProduct(id);
     const before = await prisma.nurseryProduct.findUnique({
       where: { id },
-      select: { price: true, stockQuantity: true, slug: true, customTitle: true, plant: { select: { hebrewName: true } }, supply: { select: { title: true } } },
+      select: { price: true, stockQuantity: true, slug: true, customTitle: true, manufacturerId: true, plant: { select: { hebrewName: true } }, supply: { select: { title: true } } },
     });
 
     const price = toDecimalString(formData.get('price'));
@@ -100,9 +101,27 @@ export async function updateProduct(
       if (!stockRes.ok) return { error: stockRes.error };
     }
 
+    // יצרן וקוד יצרן (הטופס שולח את השדות תמיד)
+    let manufacturerData = {};
+    if (formData.has('manufacturerId')) {
+      const m = await parseProductManufacturer(
+        prisma,
+        { manufacturerId: String(formData.get('manufacturerId') || ''), manufacturerCode: String(formData.get('manufacturerCode') || '') },
+        before?.manufacturerId ?? null,
+      );
+      if (!m.ok) return { error: m.error };
+      manufacturerData = m.data;
+    }
+    // מק"ט וברקוד — רק במוצר עם וריאנט יחיד (כשיש כמה — בעורך הווריאנטים)
+    if (formData.has('variantBarcode')) {
+      const codes = await setDefaultVariantCodes(prisma, id, String(formData.get('variantSku') || ''), String(formData.get('variantBarcode') || ''));
+      if (!codes.ok) return { error: codes.error };
+    }
+
     await prisma.nurseryProduct.update({
       where: { id },
       data: {
+        ...manufacturerData,
         price,
         compareAtPrice: toDecimalString(formData.get('compareAtPrice')),
         isActive: formData.get('isActive') === 'on',
@@ -196,10 +215,16 @@ export async function createCustomProduct(
   if (!price) return { error: 'מחיר לא תקין' };
 
   const stock = parseInt(String(formData.get('stockQuantity') || '0'), 10);
+  const m = await parseProductManufacturer(prisma, {
+    manufacturerId: String(formData.get('manufacturerId') || ''),
+    manufacturerCode: String(formData.get('manufacturerCode') || ''),
+  });
+  if (!m.ok) return { error: m.error };
 
   const product = await prisma.nurseryProduct.create({
     data: {
       nurseryId,
+      ...m.data,
       customTitle: title,
       price,
       compareAtPrice: toDecimalString(formData.get('compareAtPrice')),
@@ -213,11 +238,13 @@ export async function createCustomProduct(
     },
   });
 
+  const codes = await setDefaultVariantCodes(prisma, product.id, String(formData.get('variantSku') || ''), String(formData.get('variantBarcode') || ''));
   await syncProductCategories(product.id, nurseryId, formData.getAll('categoryIds').map(String));
 
   revalidatePath('/admin/products');
   refreshStore();
-  redirect('/admin/products');
+  // המוצר נוצר גם אם הברקוד תפוס — ממשיכים לעריכה כדי לתקן
+  redirect(codes.ok ? '/admin/products' : `/admin/products/${product.id}?new=1`);
 }
 
 /** מחיקה: מוצר שהוזמן נעלם מהמלאי ומהחנות, וההזמנות נשארות שלמות. */

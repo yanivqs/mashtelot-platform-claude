@@ -10,6 +10,7 @@ import type { RowProduct } from './product-row';
 const productInclude = {
   plant: true,
   supply: true,
+  manufacturer: { select: { name: true, isActive: true } },
   categories: true,
   variants: { orderBy: [{ isDefault: 'desc' }, { sortOrder: 'asc' }] },
   ...catalogRevisionInclude,
@@ -27,6 +28,9 @@ export async function loadAdminProducts(nurseryId: string, where: Prisma.Nursery
     const { title, image } = resolveProductContent(p);
     return {
       id: p.id,
+      manufacturerId: p.manufacturerId,
+      manufacturerCode: p.manufacturerCode,
+      manufacturerName: p.manufacturer?.name ?? null,
       title,
       latinName: p.plant?.latinName ?? null,
       image,

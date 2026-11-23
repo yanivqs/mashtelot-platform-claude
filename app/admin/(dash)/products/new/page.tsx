@@ -10,7 +10,10 @@ export const dynamic = 'force-dynamic';
 export default async function NewProductPage() {
   const { nurseryId } = await requireNurseryPage({ any: ['plant_catalog', 'supplies'] });
 
-  const categories = await prisma.nurseryCategory.findMany({ where: { nurseryId } });
+  const [categories, manufacturers] = await Promise.all([
+    prisma.nurseryCategory.findMany({ where: { nurseryId } }),
+    prisma.manufacturer.findMany({ where: { isActive: true }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+  ]);
 
   return (
     <div className="max-w-3xl">
@@ -27,7 +30,7 @@ export default async function NewProductPage() {
       </p>
 
       <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-        <NewProductForm categoryOptions={flattenCategoryTree(categories)} />
+        <NewProductForm categoryOptions={flattenCategoryTree(categories)} manufacturers={manufacturers} />
       </div>
     </div>
   );

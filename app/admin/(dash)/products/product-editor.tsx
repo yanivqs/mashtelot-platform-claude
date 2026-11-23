@@ -12,6 +12,7 @@ import { normalizeProductSlug } from '@/lib/utils';
 import { updateProduct, duplicateProductAction, suggestProductSlug, type ProductFormState } from './actions';
 import { DeleteProductButton } from './delete-button';
 import { VariantsEditor } from './variants-editor';
+import { ManufacturerFields, type ManufacturerOption } from '@/components/admin/manufacturer-fields';
 import type { CategoryOption, RowProduct } from './product-row';
 
 const initial: ProductFormState = {};
@@ -89,9 +90,11 @@ export function ProductEditor({
   categoryOptions,
   aiAvailable,
   storeOrigin,
+  manufacturers,
 }: {
   product: RowProduct;
   categoryOptions: CategoryOption[];
+  manufacturers: ManufacturerOption[];
   aiAvailable: boolean;
   storeOrigin: string;
 }) {
@@ -212,6 +215,14 @@ export function ProductEditor({
             <input name="stockQuantity" type="number" inputMode="numeric" min="0" defaultValue={product.stockQuantity} className={field} />
           </label>
         )}
+        <ManufacturerFields
+          manufacturers={manufacturers}
+          manufacturerId={product.manufacturerId}
+          manufacturerCode={product.manufacturerCode}
+          sku={product.variants[0]?.sku}
+          barcode={product.variants[0]?.barcode}
+          withCodes={!multi && product.variants.length === 1}
+        />
         <label className="flex items-center gap-2 self-end text-sm">
           <input name="isActive" type="checkbox" defaultChecked={product.isActive} className="h-5 w-5 rounded border-gray-300" />
           <span className="font-medium text-gray-700">מוצג בחנות</span>

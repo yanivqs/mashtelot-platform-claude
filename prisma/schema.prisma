@@ -431,19 +431,44 @@ model PlantCategoryAssignment {
 }
 
 model MasterSupply {
-  id              String            @id @default(uuid())
-  title           String
-  brand           String?
-  category        SupplyCategory    @default(GENERAL)
-  barcode         String?           @unique
-  description     String?
-  imageUrl        String?           @map("image_url")
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
-  nurseryProducts NurseryProduct[]
-  revisions       CatalogRevision[]
+  id               String            @id @default(uuid())
+  title            String
+  brand            String?
+  category         SupplyCategory    @default(GENERAL)
+  barcode          String?           @unique
+  description      String?
+  imageUrl         String?           @map("image_url")
+  /// היצרן/הספק (טבלת manufacturers); brand נשאר עם שם היצרן — הוא חלק מגרסת הקטלוג
+  manufacturerId   String?           @map("manufacturer_id")
+  /// קוד/מק"ט של היצרן
+  manufacturerCode String?           @map("manufacturer_code")
+  /// מחיר מומלץ לצרכן — ברירת המחדל כשמשתלה מושכת את המוצר
+  suggestedPrice   Decimal?          @map("suggested_price") @db.Decimal(10, 2)
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  manufacturer     Manufacturer?     @relation(fields: [manufacturerId], references: [id], onDelete: SetNull)
+  nurseryProducts  NurseryProduct[]
+  revisions        CatalogRevision[]
 
+  @@index([manufacturerId])
   @@map("master_supplies")
+}
+
+/// ספקים ויצרנים (ברמת הפלטפורמה): בסופר-אדמין משייכים אליהם מוצרי ציוד, ובעל משתלה בוחר יצרן למוצר
+model Manufacturer {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  slug            String           @unique
+  logoUrl         String?          @map("logo_url")
+  website         String?
+  description     String?
+  isActive        Boolean          @default(true) @map("is_active")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  supplies        MasterSupply[]
+  nurseryProducts NurseryProduct[]
+
+  @@map("manufacturers")
 }
 
 model NurseryProduct {
@@ -475,6 +500,9 @@ model NurseryProduct {
   optionLabel        String?                  @map("option_label")
   /// שם הציר השני בבחירת וריאנט (למשל "צבע"); ריק = אין ציר שני
   option2Label       String?                  @map("option2_label")
+  /// היצרן/הספק של המוצר (מועתק מהקטלוג במשיכה, או נבחר ע"י בעל המשתלה)
+  manufacturerId     String?                  @map("manufacturer_id")
+  manufacturerCode   String?                  @map("manufacturer_code")
   /// §6: גרסת הפריט המרכזי שאושרה למוצר — החנות מציגה אותה (לא את הקטלוג החי)
   catalogRevisionId  String?                  @map("catalog_revision_id")
   /// §6.02: שדות שנשמרו מקומית ואינם מוצעים לסנכרון — { שדה: ערך }
@@ -490,6 +518,7 @@ model NurseryProduct {
   nursery            Nursery                  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
   plant              Plant?                   @relation(fields: [plantId], references: [id])
   supply             MasterSupply?            @relation(fields: [supplyId], references: [id])
+  manufacturer       Manufacturer?            @relation(fields: [manufacturerId], references: [id], onDelete: SetNull)
   orderItems         OrderItem[]
   categories         NurseryProductCategory[]
   stockMovements     StockMovement[]
@@ -497,6 +526,7 @@ model NurseryProduct {
   @@unique([nurseryId, plantId])
   @@unique([nurseryId, supplyId])
   @@unique([nurseryId, slug])
+  @@index([manufacturerId])
   @@map("nursery_products")
 }
 

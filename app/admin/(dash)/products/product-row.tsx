@@ -11,6 +11,9 @@ import { StatusToggle } from '@/components/admin/status-toggle';
 
 export interface RowProduct {
   id: string;
+  manufacturerId: string | null;
+  manufacturerCode: string | null;
+  manufacturerName: string | null;
   title: string;
   latinName: string | null;
   image: string | null;

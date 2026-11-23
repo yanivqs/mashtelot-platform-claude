@@ -19,10 +19,11 @@ export default async function EditProductPage(props: {
   const [{ id }, searchParams] = await Promise.all([props.params, props.searchParams]);
   const { nurseryId } = await requireNurseryPage({ any: ['plant_catalog', 'supplies'] });
 
-  const [[product], categories, nursery] = await Promise.all([
+  const [[product], categories, nursery, manufacturers] = await Promise.all([
     loadAdminProducts(nurseryId, { id }),
     prisma.nurseryCategory.findMany({ where: { nurseryId } }),
     prisma.nursery.findUniqueOrThrow({ where: { id: nurseryId }, select: { subdomain: true, customDomain: true } }),
+    prisma.manufacturer.findMany({ where: { isActive: true }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
   ]);
   if (!product) notFound();
 
@@ -73,6 +74,12 @@ export default async function EditProductPage(props: {
         categoryOptions={flattenCategoryTree(categories)}
         aiAvailable={aiSlugAvailable()}
         storeOrigin={origin}
+        manufacturers={
+          // יצרן שהושבת נשאר בבחירה של מוצר שכבר משויך אליו
+          product.manufacturerId && !manufacturers.some((m) => m.id === product.manufacturerId)
+            ? [...manufacturers, { id: product.manufacturerId, name: `${product.manufacturerName ?? 'יצרן'} (מושבת)` }]
+            : manufacturers
+        }
       />
     </div>
   );

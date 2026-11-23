@@ -5,6 +5,7 @@ import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { ImageUpload } from '@/components/admin/image-upload';
 import { createCustomProduct, type ProductFormState } from '../actions';
+import { ManufacturerFields, type ManufacturerOption } from '@/components/admin/manufacturer-fields';
 
 const initial: ProductFormState = {};
 const field = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500';
@@ -23,8 +24,10 @@ function SubmitButton() {
 
 export function NewProductForm({
   categoryOptions,
+  manufacturers,
 }: {
   categoryOptions: Array<{ id: string; name: string; depth: number }>;
+  manufacturers: ManufacturerOption[];
 }) {
   const [state, formAction] = useActionState(createCustomProduct, initial);
   const keep = useKeepFormValues(state);
@@ -65,6 +68,7 @@ export function NewProductForm({
         <span className="mb-1 block font-medium text-gray-700">מלאי</span>
         <input name="stockQuantity" type="number" min="0" defaultValue={0} className={field} />
       </label>
+      <ManufacturerFields manufacturers={manufacturers} withCodes />
       <label className="flex items-center gap-2 self-end text-sm">
         <input name="isActive" type="checkbox" defaultChecked className="h-4 w-4 rounded border-gray-300" />
         <span className="font-medium text-gray-700">מוצג בחנות</span>

@@ -34,6 +34,7 @@ import {
   Wallet,
   type LucideIcon,
   Accessibility,
+  Factory,
 } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { getEnabledModuleKeys } from '@/lib/module-access';
@@ -60,6 +61,8 @@ interface NavItem {
 
 const adminNav: NavItem[] = [
   { href: '/admin/catalog', label: 'קטלוג בוטני', icon: Sprout },
+  { href: '/admin/supplies', label: 'קטלוג ציוד', icon: Package },
+  { href: '/admin/manufacturers', label: 'ספקים ויצרנים', icon: Factory },
   { href: '/admin/nurseries', label: 'משתלות', icon: Store },
   { href: '/admin/accounts', label: 'חשבונות משתלות', icon: Wallet },
   { href: '/admin/print-orders', label: 'בית דפוס', icon: Printer },

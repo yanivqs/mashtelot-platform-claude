@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminProductsPage(
   props: {
-    searchParams: Promise<{ q?: string; letter?: string; category?: string; sort?: string; dir?: string }>;
+    searchParams: Promise<{ q?: string; letter?: string; category?: string; manufacturer?: string; sort?: string; dir?: string }>;
   }
 ) {
   const searchParams = await props.searchParams;
@@ -43,20 +43,26 @@ export default async function AdminProductsPage(
   const category =
     searchParams.category === 'none' || nurseryCategories.some((c) => c.id === searchParams.category) ? searchParams.category! : '';
   const inCategory = category && category !== 'none' ? new Set(categoryAndDescendantIds(nurseryCategories, category)) : null;
+  // ספקים/יצרנים שיש להם מוצרים במלאי
+  const manufacturerOptions = [...new Map(rows.filter((r) => r.manufacturerId).map((r) => [r.manufacturerId!, r.manufacturerName ?? ''])).entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'he'));
+  const manufacturer = manufacturerOptions.some((m) => m.id === searchParams.manufacturer) ? searchParams.manufacturer! : '';
   const { key: sortKey, dir } = parseInventorySort(searchParams.sort, searchParams.dir);
   const visibleRows = sortInventory(
     rows.filter(
       (r) =>
         (!letter || firstLetter(r.title) === letter) &&
-        (!q || `${r.title} ${r.latinName ?? ''}`.toLowerCase().includes(q)) &&
+        (!q || `${r.title} ${r.latinName ?? ''} ${r.manufacturerCode ?? ''} ${r.variants.map((v) => `${v.sku ?? ''} ${v.barcode ?? ''}`).join(' ')}`.toLowerCase().includes(q)) &&
         (category !== 'none' || r.categoryIds.length === 0) &&
+        (!manufacturer || r.manufacturerId === manufacturer) &&
         (!inCategory || r.categoryIds.some((id) => inCategory.has(id))),
     ),
     sortKey,
     dir,
   );
   const hrefWith = (patch: Record<string, string | null>) => {
-    const cur: Record<string, string | null> = { q: q || null, letter, category: category || null, sort: sortKey, dir: sortKey ? dir : null, ...patch };
+    const cur: Record<string, string | null> = { q: q || null, letter, category: category || null, manufacturer: manufacturer || null, sort: sortKey, dir: sortKey ? dir : null, ...patch };
     const sp = new URLSearchParams();
     for (const [k, v] of Object.entries(cur)) if (v) sp.set(k, v);
     const s = sp.toString();
@@ -177,6 +183,21 @@ export default async function AdminProductsPage(
                     </option>
                   ))}
                   <option value="none">ללא קטגוריה</option>
+                </select>
+              )}
+              {manufacturerOptions.length > 0 && (
+                <select
+                  name="manufacturer"
+                  defaultValue={manufacturer}
+                  aria-label="סינון לפי ספק / יצרן"
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
+                >
+                  <option value="">כל הספקים והיצרנים</option>
+                  {manufacturerOptions.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
                 </select>
               )}
               <button className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white">
