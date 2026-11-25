@@ -27,7 +27,7 @@ test('central edit → no store change → owner approves part, keeps part, then
   await login(page, E2E_SUPER);
   await page.goto(`${ADMIN}/admin/catalog/${plant.id}`);
   await page.locator('textarea[name="description"]').fill('תיאור מעודכן מהקטלוג');
-  await page.locator('[name="light"]').fill('חצי צל');
+  await page.locator('select[name="light"]').selectOption('צל חלקי');
   await page.getByRole('button', { name: 'שמירת שינויים' }).click();
   await expect(page.getByText('1 מוצרים בחנויות יקבלו הצעת עדכון')).toBeVisible();
 
@@ -54,7 +54,7 @@ test('central edit → no store change → owner approves part, keeps part, then
 
   await productPage(page);
   await expect(page.getByText('תיאור מקורי')).toBeVisible();
-  await expect(page.getByText('חצי צל').first()).toBeVisible();
+  await expect(page.getByText('צל חלקי').first()).toBeVisible();
 
   // החזרת התיאור לסנכרון
   await page.goto(`${ADMIN}/admin/catalog-updates`);

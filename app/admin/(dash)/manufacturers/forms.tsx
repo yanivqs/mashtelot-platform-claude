@@ -63,7 +63,7 @@ export function ManufacturerForm({ value }: { value?: ManufacturerValues }) {
         <input name="website" dir="ltr" defaultValue={value?.website ?? ''} placeholder="https://" className={field} />
       </label>
       <div className="sm:col-span-2">
-        <ImageUpload name="logoUrl" defaultValue={value?.logoUrl ?? null} label="לוגו" folder="logos" hint="רקע שקוף או לבן, לפחות 300 פיקסלים" />
+        <ImageUpload name="logoUrl" defaultValue={value?.logoUrl ?? null} label="לוגו" folder="logos" hint="ריבוע 1:1 על רקע לבן, לפחות 300×300 פיקסלים — כך כל הלוגואים מוצגים באחידות" />
       </div>
       <label className="text-sm sm:col-span-2">
         <span className="mb-1 block font-medium text-gray-700">תיאור (לא חובה)</span>

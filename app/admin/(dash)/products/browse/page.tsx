@@ -15,6 +15,7 @@ import { AlphabetBar } from '@/components/alphabet-bar';
 import { Pagination } from '@/components/pagination';
 import { addCatalogItem, addSuppliesBulk } from './actions';
 import { SelectAllSupplies } from './select-all';
+import { ManufacturerLogo } from '@/components/manufacturer-logo';
 
 export const dynamic = 'force-dynamic';
 
@@ -280,10 +281,7 @@ export default async function BrowseCatalogPage(props: Props) {
                 selectedManufacturer?.id === m.id ? 'border-brand-600 bg-brand-50 font-medium' : 'border-gray-200 bg-white'
               }`}
             >
-              {m.logoUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={m.logoUrl} alt="" className="h-6 w-6 object-contain" />
-              )}
+              {m.logoUrl && <ManufacturerLogo name={m.name} logoUrl={m.logoUrl} className="h-6 w-6 rounded" />}
               {m.name}
               <span className="text-xs text-gray-500">({m._count.supplies})</span>
             </Link>

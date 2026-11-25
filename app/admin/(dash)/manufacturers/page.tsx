@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { ManufacturerForm } from './forms';
+import { ManufacturerLogo } from '@/components/manufacturer-logo';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,16 +42,7 @@ export default async function ManufacturersPage() {
                 href={`/admin/manufacturers/${m.id}`}
                 className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 shadow-sm hover:border-brand-200"
               >
-                <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-100 bg-white">
-                  {m.logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={m.logoUrl} alt="" className="h-full w-full object-contain" />
-                  ) : (
-                    <span aria-hidden className="text-lg font-bold text-gray-400">
-                      {m.name.slice(0, 1)}
-                    </span>
-                  )}
-                </span>
+                <ManufacturerLogo name={m.name} logoUrl={m.logoUrl} className="h-14 w-14 text-lg" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium text-gray-900">{m.name}</span>
                   <span className="block text-xs text-gray-500">

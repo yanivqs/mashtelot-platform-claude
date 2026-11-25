@@ -1,5 +1,7 @@
 'use client';
 
+import { PlantChoiceInput } from '@/components/admin/plant-choice-input';
+import { isChoiceField } from '@/lib/plant-options';
 import { PLANT_MAIN_FIELDS, PLANT_MORE_FIELDS, plantInputName, type PlantField, type PlantFieldDef, type PlantFieldValues } from '@/lib/plant-fields';
 
 const input = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-base outline-none focus:border-brand-500 sm:text-sm';
@@ -8,7 +10,8 @@ export type PlantSuggestions = Partial<Record<PlantField, string[]>>;
 
 /**
  * השדות הבוטניים של צמח (בתוך grid של שתי עמודות): אור, השקיה, פריחה וכו'.
- * בשדות שמזינים מסננים בחנות — הצעות מערכי הקטלוג (datalist), ועדיין אפשר להקליד חופשי.
+ * אור, השקיה ועונת פריחה — בחירה מאפשרויות מוגדרות מראש (PlantChoiceInput).
+ * בשאר השדות שמזינים מסננים בחנות — הצעות מערכי הקטלוג (datalist), ועדיין אפשר להקליד חופשי.
  * `localFields` — שדות ששונו מקומית בצמח מהקטלוג: מסומנים, עם כפתור החזרה לערך הקטלוג.
  */
 export function PlantFields({
@@ -24,7 +27,8 @@ export function PlantFields({
 }) {
   const field = (f: PlantFieldDef) => {
     const id = `${idPrefix}-${f.field}`;
-    const list = f.suggest && suggestions[f.field]?.length ? `${id}-list` : undefined;
+    const choice = isChoiceField(f.field) ? f.field : null;
+    const list = !choice && f.suggest && suggestions[f.field]?.length ? `${id}-list` : undefined;
     const local = localFields.includes(f.field);
     return (
       <div key={f.field} className={`text-sm ${f.long ? 'sm:col-span-2' : ''}`}>
@@ -42,7 +46,9 @@ export function PlantFields({
             </>
           )}
         </span>
-        {f.long ? (
+        {choice ? (
+          <PlantChoiceInput field={choice} name={plantInputName(f.field)} id={id} value={values[f.field]} className={input} />
+        ) : f.long ? (
           <textarea id={id} name={plantInputName(f.field)} rows={3} defaultValue={values[f.field] ?? ''} className={input} />
         ) : (
           <input

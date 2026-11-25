@@ -4,6 +4,8 @@ import { useActionState, useState } from 'react';
 import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import { ImageUpload } from '@/components/admin/image-upload';
+import { PlantChoiceInput } from '@/components/admin/plant-choice-input';
+import { isChoiceField } from '@/lib/plant-options';
 import { updatePlant, type PlantFormState } from './actions';
 
 const initial: PlantFormState = {};
@@ -102,7 +104,16 @@ export function PlantForm({
             {group}
           </legend>
           <div className="grid gap-4 sm:grid-cols-2">
-            {FIELDS.filter((f) => f.group === group).map((f) => (
+            {FIELDS.filter((f) => f.group === group).map((f) =>
+              isChoiceField(f.name) ? (
+                // אור / השקיה / עונת פריחה — אפשרויות מוגדרות מראש (lib/plant-options.ts)
+                <div key={f.name} className="text-sm">
+                  <label htmlFor={`plant-${f.name}`} className="mb-1 block font-medium text-gray-700">
+                    {f.label}
+                  </label>
+                  <PlantChoiceInput field={f.name} name={f.name} id={`plant-${f.name}`} value={plant[f.name]} className={field} />
+                </div>
+              ) : (
               <label
                 key={f.name}
                 className={`text-sm ${f.type === 'textarea' ? 'sm:col-span-2' : ''}`}
@@ -114,7 +125,8 @@ export function PlantForm({
                   <input name={f.name} defaultValue={plant[f.name] ?? ''} className={field} />
                 )}
               </label>
-            ))}
+              ),
+            )}
           </div>
         </fieldset>
       ))}
