@@ -10,6 +10,7 @@ import { PlantFactsGrid } from '@/components/storefront/plant-key-facts';
 import { SpecTable } from '@/components/storefront/spec-table';
 import { isModuleEnabled } from '@/lib/module-access';
 import { ProductPersonal } from '@/components/storefront/product-personal';
+import { ManufacturerLogo } from '@/components/manufacturer-logo';
 
 /**
  * תוכן דף המוצר — משותף לדף הציבורי ולתצוגה המקדימה מהאדמין.
@@ -106,10 +107,7 @@ export async function ProductView({
                   className="mt-2 inline-flex w-fit items-center gap-2 text-sm text-gray-700 hover:underline"
                   data-testid="product-manufacturer"
                 >
-                  {manufacturer.logoUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={manufacturer.logoUrl} alt="" className="h-8 w-auto max-w-24 object-contain" />
-                  )}
+                  {manufacturer.logoUrl && <ManufacturerLogo name={manufacturer.name} logoUrl={manufacturer.logoUrl} className="h-10 w-10" />}
                   <span>
                     ספק / יצרן: <span className="font-medium">{manufacturer.name}</span>
                   </span>
