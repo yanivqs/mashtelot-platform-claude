@@ -1,4 +1,5 @@
 import { PLANT_SYNC_FIELDS } from '@/lib/catalog-sync';
+import { CHOICE_FIELDS, isChoiceField, readSeasons } from '@/lib/plant-options';
 
 /**
  * השדות הבוטניים שבעל משתלה יכול למלא (צמח פרטי) או לשנות מקומית (צמח מהקטלוג).
@@ -28,10 +29,11 @@ export const PLANT_MAIN_FIELDS: PlantFieldDef[] = [
   def('latinName', { placeholder: 'Lavandula angustifolia' }),
   def('nickname'),
   def('plantType', { suggest: true }),
-  def('light', { suggest: true, placeholder: 'שמש מלאה / הצללה חלקית / צל' }),
-  def('water', { suggest: true, placeholder: 'מועטה / בינונית / מרובה' }),
+  // אור, השקיה ועונת פריחה — אפשרויות מוגדרות מראש (lib/plant-options.ts), לא טקסט חופשי
+  def('light', { suggest: true }),
+  def('water', { suggest: true }),
   def('flowering'),
-  def('floweringSeason', { suggest: true, placeholder: 'אביב-קיץ' }),
+  def('floweringSeason', { suggest: true }),
   def('flowerColor', { suggest: true }),
   def('height', { placeholder: "0.5-1 מ'" }),
   def('spacing'),
@@ -61,12 +63,22 @@ export const plantInputName = (field: PlantField) => `plant_${field}`;
 
 export type PlantFieldValues = Partial<Record<PlantField, string | null>>;
 
-/** קריאת השדות מהטופס: רק שדות שנשלחו; ריק = null. */
-export function parsePlantFields(form: { has(k: string): boolean; get(k: string): unknown }): PlantFieldValues {
+export interface FormLike {
+  has(k: string): boolean;
+  get(k: string): unknown;
+  getAll(k: string): unknown[];
+}
+
+/** קריאת השדות מהטופס: רק שדות שנשלחו; ריק = null. עונת פריחה — מתיבות הסימון. */
+export function parsePlantFields(form: FormLike): PlantFieldValues {
   const out: PlantFieldValues = {};
   for (const f of PLANT_EDIT_FIELDS) {
     const name = plantInputName(f.field);
     if (!form.has(name)) continue;
+    if (isChoiceField(f.field) && CHOICE_FIELDS[f.field].kind === 'seasons') {
+      out[f.field] = readSeasons(form, name);
+      continue;
+    }
     const v = String(form.get(name) ?? '').trim();
     out[f.field] = v ? v.slice(0, f.long ? 4000 : f.field === 'hebrewName' || f.field === 'latinName' ? 120 : 300) : null;
   }

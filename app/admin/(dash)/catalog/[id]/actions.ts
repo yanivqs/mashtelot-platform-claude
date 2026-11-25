@@ -9,6 +9,7 @@ import { assignPlantCategoriesToProduct } from '@/lib/category-provision';
 import { productsBehind } from '@/lib/catalog-sync-admin';
 import { promotePlant, rejectPlantSuggestion } from '@/lib/nursery-plants';
 import { recordAudit } from '@/lib/audit';
+import { readSeasons } from '@/lib/plant-options';
 
 const EDITABLE_FIELDS = [
   'hebrewName',
@@ -62,6 +63,8 @@ export async function updatePlant(
     data[key] = value || null;
   }
   data.hebrewName = hebrewName;
+  // עונת פריחה — מתיבות הסימון (כמה ערכים באותו שם)
+  data.floweringSeason = readSeasons(formData, 'floweringSeason');
 
   const categoryIds = formData.getAll('categoryIds').map(String);
 
