@@ -43,7 +43,7 @@ export function PlantChoiceInput({
 
   const checked = new Set(seasonsFromText(current));
   return (
-    <div id={id} role="group" className="flex flex-wrap gap-x-4 gap-y-2 py-1.5">
+    <div id={id} role="group" aria-label="עונות" className="flex flex-wrap gap-x-4 gap-y-2 py-1.5">
       {/* שדה ריק באותו שם — כדי שהשדה ייחשב "נשלח" גם כשלא סומנה אף עונה */}
       <input type="hidden" name={name} value="" />
       <input type="hidden" name={origInputName(name)} value={current} />

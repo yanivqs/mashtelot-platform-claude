@@ -31,8 +31,8 @@ test('nursery plants: the owner creates a plant with botanical details, the stor
   await expect(page.getByRole('radio', { name: /צמח/ })).toBeChecked();
   await page.locator('input[name="plant_hebrewName"]').fill(NAME);
   await page.locator('input[name="plant_latinName"]').fill('Lavandula e2e');
-  await page.locator('input[name="plant_light"]').fill('שמש מלאה');
-  await page.locator('input[name="plant_water"]').fill('מועטה');
+  await page.locator('select[name="plant_light"]').selectOption('שמש מלאה');
+  await page.locator('select[name="plant_water"]').selectOption('מועטה');
   await page.locator('input[name="plant_height"]').fill('60 ס"מ');
   await page.locator('input[name="price"]').fill('30');
   await setHidden(page, 'customImageUrl', '/file.svg');
@@ -60,14 +60,14 @@ test('nursery plants: the owner creates a plant with botanical details, the stor
   await login(page, E2E_MFR_OWNER);
   await page.goto(`${ADMIN}/admin/products?q=${encodeURIComponent(NAME)}`);
   await page.getByRole('link', { name: NAME }).first().click();
-  await page.locator('input[name="plant_light"]').fill('הצללה חלקית');
+  await page.locator('select[name="plant_light"]').selectOption('צל חלקי');
   await page.getByRole('button', { name: 'שמירת פרטי הצמח' }).click();
   await expect(page.getByText('שונה מקומית')).toBeVisible();
-  await expect(page.locator('input[name="plant_light"]')).toHaveValue('הצללה חלקית');
+  await expect(page.locator('select[name="plant_light"]')).toHaveValue('צל חלקי');
   await noAxe(page, 'main');
 
   await page.goto(`${MFR_SHOP}/catalog?light=partial`);
   await page.getByRole('link', { name: NAME }).first().click();
-  await expect(page.getByText('הצללה חלקית').first()).toBeVisible();
+  await expect(page.getByText('צל חלקי').first()).toBeVisible();
   await noAxe(page);
 });
