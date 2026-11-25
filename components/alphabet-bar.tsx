@@ -28,14 +28,14 @@ export function AlphabetBar({
           href={hrefFor(null)}
           rel="nofollow"
           className={`${base} px-2.5 ${
-            active ? 'text-gray-600 hover:bg-gray-100' : 'bg-[var(--brand,#16a34a)] text-white'
+            active ? 'text-gray-600 hover:bg-gray-100' : 'bg-[var(--brand,#15803d)] text-white'
           }`}
         >
           הכל
         </Link>
         {letters.map((letter) =>
           letter === active ? (
-            <span key={letter} aria-current="true" className={`${base} bg-[var(--brand,#16a34a)] text-white`}>
+            <span key={letter} aria-current="true" className={`${base} bg-[var(--brand,#15803d)] text-white`}>
               {letter}
             </span>
           ) : (

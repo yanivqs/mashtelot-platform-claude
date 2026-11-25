@@ -8,6 +8,7 @@ import { tenantOrigin } from '@/lib/seo';
 import { adminProductViewUrl } from '@/lib/product-preview';
 import { aiSlugAvailable } from '@/lib/ai-slug';
 import { loadAdminProducts } from '../load';
+import { plantFieldSuggestions } from '@/lib/nursery-plants';
 import { ProductEditor } from '../product-editor';
 
 export const dynamic = 'force-dynamic';
@@ -19,12 +20,14 @@ export default async function EditProductPage(props: {
   const [{ id }, searchParams] = await Promise.all([props.params, props.searchParams]);
   const { nurseryId } = await requireNurseryPage({ any: ['plant_catalog', 'supplies'] });
 
-  const [[product], categories, nursery] = await Promise.all([
+  const [[product], categories, nursery, manufacturers] = await Promise.all([
     loadAdminProducts(nurseryId, { id }),
     prisma.nurseryCategory.findMany({ where: { nurseryId } }),
     prisma.nursery.findUniqueOrThrow({ where: { id: nurseryId }, select: { subdomain: true, customDomain: true } }),
+    prisma.manufacturer.findMany({ where: { isActive: true }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
   ]);
   if (!product) notFound();
+  const plantSuggestions = product.plant ? await plantFieldSuggestions(prisma) : {};
 
   const origin = tenantOrigin(nursery);
   const visible = product.isActive && !product.imageRequired;
@@ -73,6 +76,13 @@ export default async function EditProductPage(props: {
         categoryOptions={flattenCategoryTree(categories)}
         aiAvailable={aiSlugAvailable()}
         storeOrigin={origin}
+        plantSuggestions={plantSuggestions}
+        manufacturers={
+          // יצרן שהושבת נשאר בבחירה של מוצר שכבר משויך אליו
+          product.manufacturerId && !manufacturers.some((m) => m.id === product.manufacturerId)
+            ? [...manufacturers, { id: product.manufacturerId, name: `${product.manufacturerName ?? 'יצרן'} (מושבת)` }]
+            : manufacturers
+        }
       />
     </div>
   );

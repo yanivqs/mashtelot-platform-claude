@@ -7,6 +7,8 @@ import { prisma } from '@/lib/prisma';
 import { requireUser } from '@/lib/auth';
 import { assignPlantCategoriesToProduct } from '@/lib/category-provision';
 import { productsBehind } from '@/lib/catalog-sync-admin';
+import { promotePlant, rejectPlantSuggestion } from '@/lib/nursery-plants';
+import { recordAudit } from '@/lib/audit';
 
 const EDITABLE_FIELDS = [
   'hebrewName',
@@ -107,4 +109,32 @@ export async function deletePlant(formData: FormData): Promise<void> {
   }
   await prisma.plant.delete({ where: { id } });
   redirect('/admin/catalog');
+}
+
+/** צמח שמשתלה הציעה → הקטלוג הראשי (כל המשתלות יכולות למשוך אותו). */
+export async function promoteNurseryPlant(formData: FormData): Promise<void> {
+  const user = await requireUser(['SUPER_ADMIN']);
+  const id = String(formData.get('id') || '');
+  const before = await prisma.plant.findUnique({ where: { id }, select: { ownerNurseryId: true, hebrewName: true } });
+  const res = await promotePlant(prisma, id);
+  if (res.ok) {
+    await recordAudit({ actorEmail: user.email, action: 'plant.promoted', entityType: 'Plant', entityId: id, metadata: { name: before?.hebrewName, fromNurseryId: before?.ownerNurseryId } });
+  }
+  revalidatePath(`/admin/catalog/${id}`);
+  revalidatePath('/admin/catalog');
+  redirect(`/admin/catalog/${id}`);
+}
+
+/** דחיית הצעה — הצמח נשאר פרטי בחנות של המשתלה. */
+export async function rejectNurseryPlant(formData: FormData): Promise<void> {
+  const user = await requireUser(['SUPER_ADMIN']);
+  const id = String(formData.get('id') || '');
+  const before = await prisma.plant.findUnique({ where: { id }, select: { ownerNurseryId: true, hebrewName: true } });
+  const res = await rejectPlantSuggestion(prisma, id);
+  if (res.ok) {
+    await recordAudit({ nurseryId: before?.ownerNurseryId ?? null, actorEmail: user.email, action: 'plant.suggestion_rejected', entityType: 'Plant', entityId: id, metadata: { name: before?.hebrewName } });
+  }
+  revalidatePath(`/admin/catalog/${id}`);
+  revalidatePath('/admin/catalog');
+  redirect('/admin/catalog?view=suggested');
 }

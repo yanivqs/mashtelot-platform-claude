@@ -6,12 +6,14 @@ import { useFormStatus } from 'react-dom';
 import { AlertCircle, Copy, Sparkles, Loader2 } from 'lucide-react';
 import { ImageUpload } from '@/components/admin/image-upload';
 import { ImageList } from '@/components/admin/image-list';
-import { SpecTable } from '@/components/storefront/spec-table';
 import { SEO_LEVEL_META } from '@/lib/seo-score';
 import { normalizeProductSlug } from '@/lib/utils';
 import { updateProduct, duplicateProductAction, suggestProductSlug, type ProductFormState } from './actions';
 import { DeleteProductButton } from './delete-button';
 import { VariantsEditor } from './variants-editor';
+import { ManufacturerFields, type ManufacturerOption } from '@/components/admin/manufacturer-fields';
+import type { PlantSuggestions } from '@/components/admin/plant-fields';
+import { PlantDetailsForm } from './plant-details-form';
 import type { CategoryOption, RowProduct } from './product-row';
 
 const initial: ProductFormState = {};
@@ -20,7 +22,7 @@ function SaveButton() {
   const { pending } = useFormStatus();
   return (
     <button
-      className="w-full rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60 sm:w-auto"
+      className="w-full rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60 sm:w-auto"
       disabled={pending}
     >
       {pending ? 'שומר...' : 'שמירה'}
@@ -89,9 +91,13 @@ export function ProductEditor({
   categoryOptions,
   aiAvailable,
   storeOrigin,
+  manufacturers,
+  plantSuggestions = {},
 }: {
   product: RowProduct;
+  plantSuggestions?: PlantSuggestions;
   categoryOptions: CategoryOption[];
+  manufacturers: ManufacturerOption[];
   aiAvailable: boolean;
   storeOrigin: string;
 }) {
@@ -212,6 +218,14 @@ export function ProductEditor({
             <input name="stockQuantity" type="number" inputMode="numeric" min="0" defaultValue={product.stockQuantity} className={field} />
           </label>
         )}
+        <ManufacturerFields
+          manufacturers={manufacturers}
+          manufacturerId={product.manufacturerId}
+          manufacturerCode={product.manufacturerCode}
+          sku={product.variants[0]?.sku}
+          barcode={product.variants[0]?.barcode}
+          withCodes={!multi && product.variants.length === 1}
+        />
         <label className="flex items-center gap-2 self-end text-sm">
           <input name="isActive" type="checkbox" defaultChecked={product.isActive} className="h-5 w-5 rounded border-gray-300" />
           <span className="font-medium text-gray-700">מוצג בחנות</span>
@@ -272,16 +286,7 @@ export function ProductEditor({
         />
       </div>
 
-      {product.plant && (
-        <details className="rounded-xl border border-gray-200 bg-white p-4">
-          <summary className="cursor-pointer text-sm font-medium text-gray-900">
-            מידע בוטני מלא (קריאה בלבד — הגרסה שאישרתם מהקטלוג המרכזי)
-          </summary>
-          <div className="mt-3">
-            <SpecTable plant={product.plant} />
-          </div>
-        </details>
-      )}
+      {product.plant && <PlantDetailsForm product={product} suggestions={plantSuggestions} />}
 
       <div className="flex flex-wrap items-center gap-4 pt-1">
         <form action={duplicateProductAction}>

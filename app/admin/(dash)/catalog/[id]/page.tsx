@@ -5,7 +5,7 @@ import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { flattenCategoryTree } from '@/lib/category-tree';
 import { PlantForm } from './plant-form';
-import { deletePlant } from './actions';
+import { deletePlant, promoteNurseryPlant, rejectNurseryPlant } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +21,7 @@ export default async function EditPlantPage(
 
   const plant = await prisma.plant.findUnique({
     where: { id: params.id },
-    include: { categories: true },
+    include: { categories: true, ownerNursery: { select: { name: true, subdomain: true } } },
   });
   if (!plant) notFound();
 
@@ -31,7 +31,7 @@ export default async function EditPlantPage(
 
   const plantData = Object.fromEntries(
     Object.entries(plant)
-      .filter(([k]) => k !== 'categories')
+      .filter(([k]) => k !== 'categories' && k !== 'ownerNursery')
       .map(([k, v]) => [k, v instanceof Date ? v.toISOString() : v]),
   ) as Record<string, string | null> & { id: string };
 
@@ -49,6 +49,31 @@ export default async function EditPlantPage(
       <p className="mb-6 text-sm text-gray-500">
         משויך ל-{linkedCount} משתלות · מזהה מקורי: {plant.plantId ?? '—'}
       </p>
+
+      {plant.ownerNursery && (
+        <div className="mb-4 rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-950" data-testid="nursery-plant-banner">
+          <p className="font-semibold">
+            צמח פרטי של {plant.ownerNursery.name} — מוצג רק בחנות שלה ואינו חלק מהקטלוג הראשי.
+          </p>
+          <p className="mt-1">
+            {plant.submittedAt
+              ? `המשתלה הציעה אותו לקטלוג ב-${plant.submittedAt.toLocaleDateString('he-IL')}. אפשר לתקן את הפרטים ולשייך קטגוריות למטה (שמירה), ואז להוסיף לקטלוג.`
+              : 'המשתלה לא הציעה אותו לקטלוג (או שההצעה נדחתה).'}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <form action={promoteNurseryPlant}>
+              <input type="hidden" name="id" value={plant.id} />
+              <button className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">הוסף לקטלוג הראשי</button>
+            </form>
+            {plant.submittedAt && (
+              <form action={rejectNurseryPlant}>
+                <input type="hidden" name="id" value={plant.id} />
+                <button className="rounded-lg border border-violet-300 bg-white px-4 py-2 text-sm font-medium text-violet-900 hover:bg-violet-100">דחה הצעה</button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {searchParams.error === 'linked' && (
         <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

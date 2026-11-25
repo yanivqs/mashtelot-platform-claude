@@ -6,7 +6,7 @@ import { FACET_KEYS } from '@/lib/plant-facets';
 import { ScrollRow } from '@/components/storefront/scroll-row';
 
 /** הפרמטרים שנשמרים בין קישורי הסינון (page מתאפס בכל שינוי). */
-export const FILTER_PARAM_KEYS = ['q', 'category', 'letter', 'sort', ...FACET_KEYS];
+export const FILTER_PARAM_KEYS = ['q', 'category', 'letter', 'sort', 'brand', ...FACET_KEYS];
 
 export type ParamChanges = Record<string, string | null>;
 export type HrefBuilder = (changes: ParamChanges) => string;

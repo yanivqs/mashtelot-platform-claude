@@ -26,9 +26,14 @@ export interface CatalogIndexEntry {
   search: SearchDoc;
   letter: string | null;
   plant: PlantFacetFields | null;
+  /** הספק/היצרן (פעיל) — key = slug ב-URL */
+  manufacturer: { key: string; label: string } | null;
   /** מזהה קטגוריה → סדר המוצר בתוכה (כפי שקבע בעל המשתלה) */
   categorySort: Record<string, number>;
 }
+
+/** מסנן הספק/היצרן — לא מאפיין צמח, אבל מוצג ונבחר כמו שאר המסננים */
+export const MANUFACTURER_FACET = { key: 'brand', label: 'ספק / יצרן' } as const;
 
 /** מיון שהלקוח בוחר (R04-07: מחיר, שם ותאריך בלבד). "מומלץ" = הסדר הרגיל (רלוונטיות/קטגוריה/חדשים). */
 export const CATALOG_SORTS = [
@@ -54,6 +59,8 @@ export interface CatalogFilterState {
   categoryIds?: string[] | null;
   /** מפתח פאסט → מפתח אפשרות נבחרת */
   facets?: Record<string, string>;
+  /** slug של ספק/יצרן נבחר */
+  manufacturer?: string | null;
   /** מילון נרדפות גלובלי (search_synonyms) */
   synonyms?: SynonymIndex;
 }
@@ -61,6 +68,7 @@ export interface CatalogFilterState {
 interface Skip {
   letter?: boolean;
   facet?: string;
+  manufacturer?: boolean;
 }
 
 function matches(
@@ -80,6 +88,7 @@ function matches(
   }
   if (!skip.letter && state.letter && entry.letter !== state.letter) return false;
   if (state.categoryIds && !state.categoryIds.some((id) => id in entry.categorySort)) return false;
+  if (!skip.manufacturer && state.manufacturer && entry.manufacturer?.key !== state.manufacturer) return false;
   for (const [key, option] of Object.entries(state.facets ?? {})) {
     if (key === skip.facet) continue;
     const def = PLANT_FACETS.find((f) => f.key === key);
@@ -125,7 +134,7 @@ function sortEntries(
 }
 
 export interface FacetView {
-  def: FacetDef;
+  def: Pick<FacetDef, 'key' | 'label'>;
   options: FacetOption[];
   selected: string | null;
 }
@@ -165,6 +174,21 @@ export function buildCatalogView(
   }
 
   const facets: FacetView[] = [];
+  // ספק/יצרן ראשון — רק כשיש בתוצאות מוצרים עם יצרן (בקטגוריית צמחים בלבד הוא לא מוצג)
+  {
+    const counts = new Map<string, { label: string; count: number }>();
+    for (const e of entries) {
+      if (!e.manufacturer || !matches(e, state, query, scores, { manufacturer: true })) continue;
+      const cur = counts.get(e.manufacturer.key) ?? { label: e.manufacturer.label, count: 0 };
+      cur.count++;
+      counts.set(e.manufacturer.key, cur);
+    }
+    const options = [...counts.entries()]
+      .map(([key, v]) => ({ key, label: v.label, count: v.count }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'he'));
+    const selected = state.manufacturer ?? null;
+    if (options.length > 0 || selected) facets.push({ def: MANUFACTURER_FACET, options, selected });
+  }
   for (const def of PLANT_FACETS) {
     const pool = entries.filter((e) => e.plant && matches(e, state, query, scores, { facet: def.key }));
     const options = facetOptions(
@@ -194,6 +218,7 @@ export function toIndexEntry(p: {
   /** שמות נוספים לחיפוש (שם עברי מקורי, לטיני, כינוי) */
   altNames?: Array<string | null | undefined>;
   plant: PlantFacetFields | null;
+  manufacturer?: { key: string; label: string } | null;
   categorySort: Record<string, number>;
 }): CatalogIndexEntry {
   return {
@@ -204,6 +229,7 @@ export function toIndexEntry(p: {
     search: buildSearchDoc([p.title, ...(p.altNames ?? [])]),
     letter: firstLetter(p.title),
     plant: p.plant,
+    manufacturer: p.manufacturer ?? null,
     categorySort: p.categorySort,
   };
 }

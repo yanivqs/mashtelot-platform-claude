@@ -24,6 +24,7 @@ export const PAGE_SIZE = 12;
 const withRefs = {
   plant: true,
   supply: true,
+  manufacturer: { select: { name: true, slug: true, logoUrl: true, isActive: true } },
   // וריאנטים פעילים (§7.01) — מחיר "החל מ-", זמינות ובחירה בדף המוצר
   variants: { where: { isActive: true }, orderBy: [{ isDefault: 'desc' }, { sortOrder: 'asc' }] },
   // §6: הגרסה המאושרת של הפריט המרכזי — מוחלת ע"י localizeProduct
@@ -140,6 +141,7 @@ const getCatalogIndex = cache(async (nurseryId: string) => {
         },
       },
       supply: { select: { title: true } },
+      manufacturer: { select: { slug: true, name: true, isActive: true } },
       categories: { select: { nurseryCategoryId: true, sortOrder: true } },
       catalogOverrides: true,
       ...catalogRevisionInclude,
@@ -154,6 +156,7 @@ const getCatalogIndex = cache(async (nurseryId: string) => {
       title: r.customTitle || r.plant?.hebrewName || r.supply?.title || 'מוצר ללא שם',
       altNames: [r.plant?.hebrewName, r.plant?.latinName, r.plant?.nickname],
       plant: r.plant,
+      manufacturer: r.manufacturer?.isActive ? { key: r.manufacturer.slug, label: r.manufacturer.name } : null,
       categorySort: Object.fromEntries(r.categories.map((c) => [c.nurseryCategoryId, c.sortOrder])),
     }),
   );
@@ -203,6 +206,7 @@ export async function getCatalogPage(
     letter,
     categoryIds: selected ? categoryAndDescendantIds(rawCategories, selected.id) : null,
     facets: parseFacetParams(sp),
+    manufacturer: sp.brand?.trim() || null,
     synonyms,
   };
 

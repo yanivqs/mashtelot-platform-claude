@@ -1,6 +1,10 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { parseProductManufacturer, setDefaultVariantCodes } from '@/lib/manufacturers-admin';
+import { createNurseryPlantProduct, savePlantDetails } from '@/lib/nursery-plants';
+import { parsePlantFields } from '@/lib/plant-fields';
+import { restoreSyncField } from '@/lib/catalog-sync-admin';
 import { refreshStore } from '@/lib/store-refresh';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
@@ -67,7 +71,7 @@ export async function updateProduct(
     const { nurseryId, actorEmail } = await ownedProduct(id);
     const before = await prisma.nurseryProduct.findUnique({
       where: { id },
-      select: { price: true, stockQuantity: true, slug: true, customTitle: true, plant: { select: { hebrewName: true } }, supply: { select: { title: true } } },
+      select: { price: true, stockQuantity: true, slug: true, customTitle: true, manufacturerId: true, plant: { select: { hebrewName: true } }, supply: { select: { title: true } } },
     });
 
     const price = toDecimalString(formData.get('price'));
@@ -100,9 +104,27 @@ export async function updateProduct(
       if (!stockRes.ok) return { error: stockRes.error };
     }
 
+    // יצרן וקוד יצרן (הטופס שולח את השדות תמיד)
+    let manufacturerData = {};
+    if (formData.has('manufacturerId')) {
+      const m = await parseProductManufacturer(
+        prisma,
+        { manufacturerId: String(formData.get('manufacturerId') || ''), manufacturerCode: String(formData.get('manufacturerCode') || '') },
+        before?.manufacturerId ?? null,
+      );
+      if (!m.ok) return { error: m.error };
+      manufacturerData = m.data;
+    }
+    // מק"ט וברקוד — רק במוצר עם וריאנט יחיד (כשיש כמה — בעורך הווריאנטים)
+    if (formData.has('variantBarcode')) {
+      const codes = await setDefaultVariantCodes(prisma, id, String(formData.get('variantSku') || ''), String(formData.get('variantBarcode') || ''));
+      if (!codes.ok) return { error: codes.error };
+    }
+
     await prisma.nurseryProduct.update({
       where: { id },
       data: {
+        ...manufacturerData,
         price,
         compareAtPrice: toDecimalString(formData.get('compareAtPrice')),
         isActive: formData.get('isActive') === 'on',
@@ -187,37 +209,62 @@ export async function createCustomProduct(
   _prev: ProductFormState,
   formData: FormData,
 ): Promise<ProductFormState> {
-  const { nurseryId } = await requireNurseryAction({ any: ['plant_catalog', 'supplies'] });
+  // "צמח" = צמח פרטי של המשתלה עם כל הנתונים הבוטניים (lib/nursery-plants.ts) — דורש את מודול הצמחים
+  const isPlant = formData.get('kind') === 'plant';
+  const { user, nurseryId } = await requireNurseryAction(isPlant ? { all: ['plant_catalog'] } : { any: ['plant_catalog', 'supplies'] });
+  const plantFields = isPlant ? parsePlantFields(formData) : {};
 
-  const title = String(formData.get('customTitle') || '').trim();
-  if (!title) return { error: 'יש להזין שם למוצר' };
+  const title = isPlant ? (plantFields.hebrewName ?? '') : String(formData.get('customTitle') || '').trim();
+  if (!title) return { error: isPlant ? 'יש להזין שם לצמח' : 'יש להזין שם למוצר' };
 
   const price = toDecimalString(formData.get('price'));
   if (!price) return { error: 'מחיר לא תקין' };
 
   const stock = parseInt(String(formData.get('stockQuantity') || '0'), 10);
-
-  const product = await prisma.nurseryProduct.create({
-    data: {
-      nurseryId,
-      customTitle: title,
-      price,
-      compareAtPrice: toDecimalString(formData.get('compareAtPrice')),
-      stockQuantity: Number.isFinite(stock) && stock >= 0 ? stock : 0,
-      isActive: formData.get('isActive') === 'on',
-      alwaysInStock: formData.get('alwaysInStock') === 'on',
-      customDescription: (String(formData.get('customDescription') || '').trim() || null),
-      customImageUrl: optionalUrl(formData.get('customImageUrl')),
-      seoMetaTitle: (String(formData.get('seoMetaTitle') || '').trim() || null),
-      seoMetaDescription: (String(formData.get('seoMetaDescription') || '').trim() || null),
-    },
+  const m = await parseProductManufacturer(prisma, {
+    manufacturerId: String(formData.get('manufacturerId') || ''),
+    manufacturerCode: String(formData.get('manufacturerCode') || ''),
   });
+  if (!m.ok) return { error: m.error };
 
+  const customDescription = String(formData.get('customDescription') || '').trim() || null;
+  const productData = {
+    ...m.data,
+    customTitle: isPlant ? null : title,
+    price,
+    compareAtPrice: toDecimalString(formData.get('compareAtPrice')),
+    stockQuantity: Number.isFinite(stock) && stock >= 0 ? stock : 0,
+    isActive: formData.get('isActive') === 'on',
+    alwaysInStock: formData.get('alwaysInStock') === 'on',
+    customDescription,
+    customImageUrl: optionalUrl(formData.get('customImageUrl')),
+    seoMetaTitle: String(formData.get('seoMetaTitle') || '').trim() || null,
+    seoMetaDescription: String(formData.get('seoMetaDescription') || '').trim() || null,
+  };
+  let product: { id: string };
+  if (isPlant) {
+    const res = await createNurseryPlantProduct(prisma, {
+      nurseryId,
+      fields: plantFields,
+      submit: formData.get('submitToCatalog') === 'on',
+      description: customDescription,
+      product: productData,
+      actor: user.email,
+    });
+    if (!res.ok) return { error: res.error };
+    product = { id: res.productId };
+    await recordAudit({ nurseryId, actorEmail: user.email, action: 'plant.created', entityType: 'Plant', entityId: res.plantId, metadata: { name: title, submitted: formData.get('submitToCatalog') === 'on' } });
+  } else {
+    product = await prisma.nurseryProduct.create({ data: { nurseryId, ...productData } });
+  }
+
+  const codes = await setDefaultVariantCodes(prisma, product.id, String(formData.get('variantSku') || ''), String(formData.get('variantBarcode') || ''));
   await syncProductCategories(product.id, nurseryId, formData.getAll('categoryIds').map(String));
 
   revalidatePath('/admin/products');
   refreshStore();
-  redirect('/admin/products');
+  // המוצר נוצר גם אם הברקוד תפוס — ממשיכים לעריכה כדי לתקן
+  redirect(codes.ok ? '/admin/products' : `/admin/products/${product.id}?new=1`);
 }
 
 /** מחיקה: מוצר שהוזמן נעלם מהמלאי ומהחנות, וההזמנות נשארות שלמות. */
@@ -263,4 +310,39 @@ export async function toggleAlwaysInStock(formData: FormData): Promise<void> {
   revalidatePath('/admin/products');
   revalidatePath(`/admin/products/${id}`);
   refreshStore();
+}
+
+export interface PlantDetailsState {
+  ok?: boolean;
+  error?: string;
+  mode?: 'private' | 'local';
+}
+
+/** פרטי הצמח בעורך המוצר: צמח פרטי — נשמר בצמח; צמח מהקטלוג — שינוי מקומי לחנות הזו. */
+export async function savePlantDetailsAction(_prev: PlantDetailsState, formData: FormData): Promise<PlantDetailsState> {
+  const id = String(formData.get('id') || '');
+  try {
+    const { nurseryId, actorEmail } = await ownedProduct(id);
+    // כפתור "החזר לנתוני הקטלוג" ליד שדה
+    const restore = String(formData.get('restoreField') || '');
+    if (restore) {
+      const r = await restoreSyncField(prisma, { nurseryId, productId: id, field: restore, actorEmail });
+      if (!r.ok) return { error: r.error };
+    } else {
+      const res = await savePlantDetails(prisma, {
+        nurseryId,
+        productId: id,
+        fields: parsePlantFields(formData),
+        submit: formData.has('submitPresent') ? formData.get('submitToCatalog') === 'on' : undefined,
+        actor: actorEmail,
+      });
+      if (!res.ok) return { error: res.error };
+    }
+    revalidatePath(`/admin/products/${id}`);
+    revalidatePath('/admin/products');
+    refreshStore();
+    return { ok: true };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'שגיאה בשמירה' };
+  }
 }

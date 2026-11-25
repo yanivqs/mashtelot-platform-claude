@@ -62,6 +62,8 @@ export async function duplicateProduct(db: PrismaClient, nurseryId: string, prod
         seoMetaDescription: p.seoMetaDescription,
         optionLabel: p.optionLabel,
         option2Label: p.option2Label,
+        manufacturerId: p.manufacturerId,
+        manufacturerCode: p.manufacturerCode,
         categories: { create: found.categories.map((c) => ({ nurseryCategoryId: c.nurseryCategoryId })) },
       },
     });

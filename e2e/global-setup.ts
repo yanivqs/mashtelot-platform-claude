@@ -61,6 +61,12 @@ export const E2E_PRINT_TEMPLATE = 'מדבקות E2E';
 export const E2E_CARDS_OWNER = { email: 'cards-owner@e2e.invalid', password: 'e2e-cards-pass-123' };
 export const E2E_SUPER9 = { email: 'super9@e2e.invalid', password: 'e2e-super9-pass-123' };
 export const E2E_CARDS_TEMPLATE = 'כרטיסי ברכה E2E';
+/** ספקים ויצרנים: משתלה ייעודית, בעלים וסופר-אדמין משלהם */
+export const E2E_MFR_OWNER = { email: 'mfr-owner@e2e.invalid', password: 'e2e-mfr-pass-1234' };
+export const E2E_SUPER10 = { email: 'super10@e2e.invalid', password: 'e2e-super10-pass-123' };
+export const MFR_SHOP = 'http://e2emfr.localhost:3100';
+export const E2E_MFR_PREFIX = 'יצרן E2E';
+export const E2E_PLANT_PREFIX = 'צמח E2E';
 export const E2E_CARDS_CATEGORIES = { parent: 'e2e-cards', child: 'e2e-cards-small' };
 
 export default async function globalSetup() {
@@ -112,6 +118,17 @@ export default async function globalSetup() {
       await db.user.deleteMany({ where: { nurseryId: oldFix.id } });
       await db.nursery.delete({ where: { id: oldFix.id } });
     }
+    // צמחים שנוצרו ע"י משתלה ב-E2E וקודמו לקטלוג (פרטיים נמחקים עם המשתלה)
+    await db.nurseryProduct.deleteMany({ where: { plant: { hebrewName: { startsWith: E2E_PLANT_PREFIX } } } });
+    await db.plant.deleteMany({ where: { hebrewName: { startsWith: E2E_PLANT_PREFIX } } });
+    const oldMfr = await db.nursery.findUnique({ where: { subdomain: 'e2emfr' } });
+    if (oldMfr) {
+      await db.user.deleteMany({ where: { nurseryId: oldMfr.id } });
+      await db.nursery.delete({ where: { id: oldMfr.id } });
+    }
+    await db.user.deleteMany({ where: { email: E2E_SUPER10.email } });
+    await db.masterSupply.deleteMany({ where: { manufacturer: { name: { startsWith: E2E_MFR_PREFIX } } } });
+    await db.manufacturer.deleteMany({ where: { name: { startsWith: E2E_MFR_PREFIX } } });
     const old = await db.nursery.findUnique({ where: { subdomain: 'e2eshop' } });
     if (old) {
       await db.order.deleteMany({ where: { nurseryId: old.id } });
@@ -457,6 +474,21 @@ export default async function globalSetup() {
     });
     await db.user.create({
       data: { email: E2E_SUPER9.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER9.password, 4) },
+    });
+    const mfr = await db.nursery.create({ data: { name: 'משתלת היצרנים', subdomain: 'e2emfr', ownerEmail: E2E_MFR_OWNER.email } });
+    await db.nurseryModule.createMany({
+      data: ['plant_catalog', 'supplies', 'sales', 'orders'].map((moduleKey) => ({
+        nurseryId: mfr.id,
+        moduleKey,
+        isEnabled: true,
+        ...(moduleKey === 'sales' ? { config: { mode: 'ONLINE' } } : {}),
+      })),
+    });
+    await db.user.create({
+      data: { email: E2E_MFR_OWNER.email, role: 'NURSERY_OWNER', nurseryId: mfr.id, passwordHash: await bcrypt.hash(E2E_MFR_OWNER.password, 4) },
+    });
+    await db.user.create({
+      data: { email: E2E_SUPER10.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER10.password, 4) },
     });
     await db.user.create({
       data: {

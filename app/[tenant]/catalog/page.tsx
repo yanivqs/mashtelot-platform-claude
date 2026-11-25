@@ -40,7 +40,7 @@ export async function generateMetadata(props: CatalogPageProps): Promise<Metadat
 
   // עמודי קטגוריה מאונדקסים (קנוניים); חיפוש/אות/מאפיינים — לא (תוכן דל וכפול)
   const hasRefinements = Boolean(
-    q || searchParams.letter || searchParams.sort || Object.keys(parseFacetParams(searchParams)).length,
+    q || searchParams.letter || searchParams.sort || searchParams.brand || Object.keys(parseFacetParams(searchParams)).length,
   );
 
   return {

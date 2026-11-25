@@ -3,6 +3,8 @@ import { requireNurseryPage } from '@/lib/nursery-scope';
 import { ArrowRight } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { flattenCategoryTree } from '@/lib/category-tree';
+import { plantFieldSuggestions } from '@/lib/nursery-plants';
+import { getEnabledModuleKeys } from '@/lib/module-access';
 import { NewProductForm } from './new-product-form';
 
 export const dynamic = 'force-dynamic';
@@ -10,7 +12,12 @@ export const dynamic = 'force-dynamic';
 export default async function NewProductPage() {
   const { nurseryId } = await requireNurseryPage({ any: ['plant_catalog', 'supplies'] });
 
-  const categories = await prisma.nurseryCategory.findMany({ where: { nurseryId } });
+  const allowPlant = (await getEnabledModuleKeys(nurseryId)).has('plant_catalog');
+  const [categories, manufacturers, plantSuggestions] = await Promise.all([
+    prisma.nurseryCategory.findMany({ where: { nurseryId } }),
+    prisma.manufacturer.findMany({ where: { isActive: true }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+    allowPlant ? plantFieldSuggestions(prisma) : {},
+  ]);
 
   return (
     <div className="max-w-3xl">
@@ -23,11 +30,16 @@ export default async function NewProductPage() {
       </Link>
       <h1 className="mb-1 text-2xl font-bold">מוצר חדש</h1>
       <p className="mb-6 text-sm text-gray-500">
-        מוצר שאינו מופיע בקטלוג המרכזי (למשל ציוד, שירות או פריט מיוחד של המשתלה שלכם).
+        צמח או מוצר שאינו מופיע בקטלוג המרכזי — עם כל הפרטים, ומוצג בחנות שלכם.
       </p>
 
       <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-        <NewProductForm categoryOptions={flattenCategoryTree(categories)} />
+        <NewProductForm
+          categoryOptions={flattenCategoryTree(categories)}
+          manufacturers={manufacturers}
+          plantSuggestions={plantSuggestions}
+          allowPlant={allowPlant}
+        />
       </div>
     </div>
   );

@@ -49,7 +49,7 @@ function SaveButton() {
   const { pending } = useFormStatus();
   return (
     <button
-      className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+      className="rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60"
       disabled={pending}
     >
       {pending ? 'שומר...' : 'שמירת שינויים'}
