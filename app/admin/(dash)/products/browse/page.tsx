@@ -80,6 +80,8 @@ export default async function BrowseCatalogPage(props: Props) {
 
   if (tab === 'plants') {
     const where = {
+      // צמחים פרטיים של משתלות (owner_nursery_id) אינם חלק מהקטלוג הראשי
+      ownerNurseryId: null,
       ...(q
         ? {
             OR: [

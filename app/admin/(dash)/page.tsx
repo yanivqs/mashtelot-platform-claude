@@ -50,7 +50,7 @@ export default async function AdminOverviewPage(
   if (user.role === 'SUPER_ADMIN') {
     const [nurseries, plants, supplies, products, orders] = await Promise.all([
       prisma.nursery.count(),
-      prisma.plant.count(),
+      prisma.plant.count({ where: { ownerNurseryId: null } }),
       prisma.masterSupply.count(),
       prisma.nurseryProduct.count(),
       prisma.order.count(),

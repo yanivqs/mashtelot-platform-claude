@@ -66,6 +66,7 @@ export const E2E_MFR_OWNER = { email: 'mfr-owner@e2e.invalid', password: 'e2e-mf
 export const E2E_SUPER10 = { email: 'super10@e2e.invalid', password: 'e2e-super10-pass-123' };
 export const MFR_SHOP = 'http://e2emfr.localhost:3100';
 export const E2E_MFR_PREFIX = 'יצרן E2E';
+export const E2E_PLANT_PREFIX = 'צמח E2E';
 export const E2E_CARDS_CATEGORIES = { parent: 'e2e-cards', child: 'e2e-cards-small' };
 
 export default async function globalSetup() {
@@ -117,6 +118,9 @@ export default async function globalSetup() {
       await db.user.deleteMany({ where: { nurseryId: oldFix.id } });
       await db.nursery.delete({ where: { id: oldFix.id } });
     }
+    // צמחים שנוצרו ע"י משתלה ב-E2E וקודמו לקטלוג (פרטיים נמחקים עם המשתלה)
+    await db.nurseryProduct.deleteMany({ where: { plant: { hebrewName: { startsWith: E2E_PLANT_PREFIX } } } });
+    await db.plant.deleteMany({ where: { hebrewName: { startsWith: E2E_PLANT_PREFIX } } });
     const oldMfr = await db.nursery.findUnique({ where: { subdomain: 'e2emfr' } });
     if (oldMfr) {
       await db.user.deleteMany({ where: { nurseryId: oldMfr.id } });

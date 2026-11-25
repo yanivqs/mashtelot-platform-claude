@@ -6,6 +6,7 @@ import { useFormStatus } from 'react-dom';
 import { ImageUpload } from '@/components/admin/image-upload';
 import { createCustomProduct, type ProductFormState } from '../actions';
 import { ManufacturerFields, type ManufacturerOption } from '@/components/admin/manufacturer-fields';
+import { PlantFields, type PlantSuggestions } from '@/components/admin/plant-fields';
 
 const initial: ProductFormState = {};
 const field = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-500';
@@ -14,7 +15,7 @@ function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <button
-      className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+      className="rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60"
       disabled={pending}
     >
       {pending ? 'שומר...' : 'יצירת מוצר'}
@@ -25,20 +26,67 @@ function SubmitButton() {
 export function NewProductForm({
   categoryOptions,
   manufacturers,
+  plantSuggestions,
+  allowPlant,
 }: {
   categoryOptions: Array<{ id: string; name: string; depth: number }>;
   manufacturers: ManufacturerOption[];
+  plantSuggestions: PlantSuggestions;
+  /** למשתלה עם מודול קטלוג הצמחים */
+  allowPlant: boolean;
 }) {
   const [state, formAction] = useActionState(createCustomProduct, initial);
   const keep = useKeepFormValues(state);
   const [imageUrl, setImageUrl] = useState('');
+  const [kind, setKind] = useState<'plant' | 'other'>(allowPlant ? 'plant' : 'other');
 
   return (
     <form ref={keep} action={formAction} className="grid gap-4 sm:grid-cols-2">
-      <label className="text-sm sm:col-span-2">
-        <span className="mb-1 block font-medium text-gray-700">שם המוצר *</span>
-        <input name="customTitle" required className={field} />
-      </label>
+      {allowPlant && (
+        <fieldset className="text-sm sm:col-span-2">
+          <legend className="mb-2 font-medium text-gray-700">סוג המוצר</legend>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ['plant', 'צמח', 'עם שמש, השקיה, פריחה ושאר הפרטים הבוטניים'],
+                ['other', 'מוצר אחר', 'ציוד, שירות או פריט מיוחד'],
+              ] as const
+            ).map(([value, label, hint]) => (
+              <label
+                key={value}
+                className={`flex min-w-[12rem] flex-1 cursor-pointer items-start gap-2 rounded-lg border p-3 ${kind === value ? 'border-brand-700 bg-brand-50' : 'border-gray-200'}`}
+              >
+                <input type="radio" name="kind" value={value} checked={kind === value} onChange={() => setKind(value)} className="mt-0.5 h-4 w-4" />
+                <span>
+                  <span className="block font-medium text-gray-900">{label}</span>
+                  <span className="block text-xs text-gray-500">{hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      {kind === 'plant' ? (
+        <fieldset className="grid gap-4 rounded-lg border border-gray-200 p-4 sm:col-span-2 sm:grid-cols-2">
+          <legend className="px-1 text-sm font-bold text-gray-900">פרטי הצמח</legend>
+          <PlantFields idPrefix="new-plant" suggestions={plantSuggestions} />
+          <label className="flex items-start gap-2 text-sm sm:col-span-2">
+            <input name="submitToCatalog" type="checkbox" defaultChecked className="mt-0.5 h-4 w-4 rounded border-gray-300" />
+            <span>
+              <span className="font-medium text-gray-700">הצע את הצמח לקטלוג הראשי של הפלטפורמה</span>
+              <span className="block text-xs text-gray-500">
+                הצמח מוצג מיד רק בחנות שלכם. אם יאושר, הוא יתווסף לקטלוג ומשתלות אחרות יוכלו להוסיף אותו לחנות שלהן.
+              </span>
+            </span>
+          </label>
+        </fieldset>
+      ) : (
+        <label className="text-sm sm:col-span-2">
+          <span className="mb-1 block font-medium text-gray-700">שם המוצר *</span>
+          <input name="customTitle" required className={field} />
+        </label>
+      )}
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 sm:col-span-2">
         <ImageUpload

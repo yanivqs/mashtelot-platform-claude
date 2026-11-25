@@ -27,7 +27,7 @@ export function supplyLetterWhere(letter: string | null): Prisma.MasterSupplyWhe
 /** האותיות שיש להן לפחות צמח אחד בקטלוג המרכזי. */
 export async function plantLetters(): Promise<Set<string>> {
   const rows = await prisma.$queryRaw<Array<{ p: string | null }>>`
-    SELECT DISTINCT LEFT(TRIM(hebrew_name), 3) AS p FROM plants`;
+    SELECT DISTINCT LEFT(TRIM(hebrew_name), 3) AS p FROM plants WHERE owner_nursery_id IS NULL`;
   return lettersOf(rows.map((r) => r.p));
 }
 

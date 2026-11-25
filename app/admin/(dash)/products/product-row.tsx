@@ -42,6 +42,12 @@ export interface RowProduct {
   needsDescription: boolean;
   categoryIds: string[];
   plant: Plant | null;
+  /** צמח פרטי שהמשתלה יצרה (נשמר בצמח עצמו) */
+  plantOwned: boolean;
+  /** הצמח הפרטי הוצע לקטלוג הראשי */
+  plantSubmitted: boolean;
+  /** שדות בוטניים ששונו מקומית (צמח מהקטלוג) */
+  localPlantFields: string[];
   seo: SeoScore;
   /** שם האפשרות לבחירת וריאנט (למשל "גודל עציץ") */
   optionLabel: string | null;

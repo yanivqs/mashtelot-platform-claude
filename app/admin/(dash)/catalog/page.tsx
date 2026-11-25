@@ -13,7 +13,7 @@ const PAGE_SIZE = 30;
 
 export default async function AdminCatalogPage(
   props: {
-    searchParams: Promise<{ q?: string; page?: string; letter?: string; img?: string }>;
+    searchParams: Promise<{ q?: string; page?: string; letter?: string; img?: string; view?: string }>;
   }
 ) {
   const searchParams = await props.searchParams;
@@ -24,7 +24,10 @@ export default async function AdminCatalogPage(
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10) || 1);
   // תמונות שהועתקו מאתרים חיצוניים וממתינות להחלפה
   const imgUpdate = searchParams.img === 'update';
+  // צמחים שמשתלות יצרו והציעו לקטלוג (owner_nursery_id + submitted_at); ברירת המחדל — רק הקטלוג הראשי
+  const suggested = searchParams.view === 'suggested';
   const where = {
+    ...(suggested ? { ownerNurseryId: { not: null }, submittedAt: { not: null } } : { ownerNurseryId: null }),
     ...(imgUpdate ? { imageNeedsUpdate: true } : {}),
     ...(q
       ? {
@@ -38,16 +41,18 @@ export default async function AdminCatalogPage(
     ...plantLetterWhere(letter),
   };
 
-  const [plants, total, letters, needsImage] = await Promise.all([
+  const [plants, total, letters, needsImage, suggestedCount] = await Promise.all([
     prisma.plant.findMany({
       where,
-      orderBy: { hebrewName: 'asc' },
+      include: { ownerNursery: { select: { name: true } } },
+      orderBy: suggested ? { submittedAt: 'desc' } : { hebrewName: 'asc' },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
     prisma.plant.count({ where }),
     plantLetters(),
-    prisma.plant.count({ where: { imageNeedsUpdate: true } }),
+    prisma.plant.count({ where: { imageNeedsUpdate: true, ownerNurseryId: null } }),
+    prisma.plant.count({ where: { ownerNurseryId: { not: null }, submittedAt: { not: null } } }),
   ]);
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -55,6 +60,7 @@ export default async function AdminCatalogPage(
     const sp = new URLSearchParams();
     if (q) sp.set('q', q);
     if (imgUpdate) sp.set('img', 'update');
+    if (suggested) sp.set('view', 'suggested');
     if (nextLetter) sp.set('letter', nextLetter);
     if (p > 1) sp.set('page', String(p));
     const s = sp.toString();
@@ -82,6 +88,10 @@ export default async function AdminCatalogPage(
       </div>
       <p className="mb-6 text-sm text-gray-500">
         {total.toLocaleString('he-IL')} צמחים
+        {' · '}
+        <Link href={suggested ? '/admin/catalog' : '/admin/catalog?view=suggested'} className="text-violet-800 hover:underline">
+          {suggested ? 'חזרה לקטלוג הראשי' : `${suggestedCount.toLocaleString('he-IL')} צמחים שהוצעו ע"י משתלות`}
+        </Link>
         {needsImage > 0 && (
           <>
             {' · '}
@@ -95,6 +105,7 @@ export default async function AdminCatalogPage(
       <form method="get" className="mb-4 flex max-w-lg gap-3">
         {letter && <input type="hidden" name="letter" value={letter} />}
         {imgUpdate && <input type="hidden" name="img" value="update" />}
+        {suggested && <input type="hidden" name="view" value="suggested" />}
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -135,6 +146,11 @@ export default async function AdminCatalogPage(
                 {[p.latinName, p.family].filter(Boolean).join(' · ') || '—'}
               </p>
             </div>
+            {p.ownerNursery && (
+              <span className="shrink-0 rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-medium text-violet-800">
+                הוצע ע&quot;י {p.ownerNursery.name}
+              </span>
+            )}
             {p.imageNeedsUpdate && (
               <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">תמונה לעדכון</span>
             )}

@@ -83,6 +83,8 @@ model Nursery {
   modules               NurseryModule[]
   staticPages           StaticPage[]
   nurseryProducts       NurseryProduct[]
+  /// צמחים פרטיים שהמשתלה יצרה בעצמה (plants.owner_nursery_id)
+  ownedPlants           Plant[]                @relation("NurseryOwnedPlants")
   orders                Order[]
   paymentMethods        NurseryPaymentMethod[]
   redirects             Redirect[]
@@ -397,12 +399,18 @@ model Plant {
   imageUrl         String?                   @map("image_url")
   /// התמונה הועתקה מאתר חיצוני (סלונר/מלצר) ויש להחליפה בתמונה משלנו
   imageNeedsUpdate Boolean                   @default(false) @map("image_needs_update")
+  /// צמח פרטי של משתלה (נוצר ע"י בעל המשתלה) — מוצג רק בחנות שלה; NULL = קטלוג ראשי
+  ownerNurseryId   String?                   @map("owner_nursery_id")
+  /// בעל המשתלה הציע את הצמח לקטלוג הראשי (ממתין לסופר-אדמין)
+  submittedAt      DateTime?                 @map("submitted_at")
+  ownerNursery     Nursery?                  @relation("NurseryOwnedPlants", fields: [ownerNurseryId], references: [id], onDelete: Cascade)
   createdAt        DateTime                  @default(now()) @map("created_at")
   updatedAt        DateTime                  @updatedAt @map("updated_at")
   nurseryProducts  NurseryProduct[]
   categories       PlantCategoryAssignment[]
   revisions        CatalogRevision[]
 
+  @@index([ownerNurseryId])
   @@map("plants")
 }
 

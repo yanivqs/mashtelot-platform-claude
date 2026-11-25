@@ -77,6 +77,7 @@ test('manufacturers: super admin adds a manufacturer and products, the nursery p
 
   // מוצר שבעל המשתלה יוצר בעצמו — עם יצרן מהרשימה
   await page.goto(`${ADMIN}/admin/products/new`);
+  await page.getByRole('radio', { name: /מוצר אחר/ }).check();
   await page.locator('input[name="customTitle"]').fill('מוצר שלי E2E');
   await page.locator('input[name="price"]').fill('12');
   await page.getByLabel('ספק / יצרן').selectOption({ label: NAME });

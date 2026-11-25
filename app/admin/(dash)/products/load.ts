@@ -5,6 +5,7 @@ import { resolveProductContent } from '@/lib/seo';
 import { scoreProductSeo } from '@/lib/seo-score';
 import { productSlug } from '@/lib/utils';
 import { catalogRevisionInclude, localizeProduct } from '@/lib/catalog-localize';
+import { asObject } from '@/lib/catalog-sync';
 import type { RowProduct } from './product-row';
 
 const productInclude = {
@@ -53,6 +54,9 @@ export async function loadAdminProducts(nurseryId: string, where: Prisma.Nursery
       needsDescription: Boolean(p.plantId || p.supplyId) && !p.customDescription?.trim(),
       categoryIds: p.categories.map((c) => c.nurseryCategoryId),
       plant: p.plant,
+      plantOwned: Boolean(p.plant?.ownerNurseryId && p.plant.ownerNurseryId === nurseryId),
+      plantSubmitted: Boolean(p.plant?.ownerNurseryId && p.plant.submittedAt),
+      localPlantFields: p.plant?.ownerNurseryId ? [] : Object.keys(asObject(p.catalogOverrides)),
       seo: scoreProductSeo(p),
       optionLabel: p.optionLabel,
       option2Label: p.option2Label,

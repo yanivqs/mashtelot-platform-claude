@@ -32,6 +32,9 @@ export async function addCatalogItem(formData: FormData): Promise<void> {
     if (createdId) redirect(`/admin/products/${createdId}?new=1`);
     return;
   }
+  // רק צמח מהקטלוג הראשי — צמח פרטי של משתלה אחרת לא נמשך (owner_nursery_id)
+  const plant = await prisma.plant.findFirst({ where: { id: refId, ownerNurseryId: null }, select: { id: true } });
+  if (!plant) return;
   try {
     const product = await prisma.nurseryProduct.create({
       data: {
