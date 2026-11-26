@@ -58,6 +58,7 @@ export default async function PrintTemplatePage(props: { params: Promise<{ id: s
         unitLabel: t.unitLabel,
         leadTimeDays: t.leadTimeDays,
         requiresArtwork: t.requiresArtwork,
+        kind: t.kind,
         isActive: t.isActive,
       }}
       categories={categories}

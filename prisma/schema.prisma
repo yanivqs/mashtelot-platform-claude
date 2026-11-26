@@ -515,6 +515,8 @@ model NurseryProduct {
   catalogRevisionId  String?                  @map("catalog_revision_id")
   /// §6.02: שדות שנשמרו מקומית ואינם מוצעים לסנכרון — { שדה: ערך }
   catalogOverrides   Json?                    @map("catalog_overrides")
+  /// שלט צמח: מה שבעל המשתלה ערך בשלט (תיאור, הערות, סוג, אור והשקיה) — lib/plant-sign/types.ts
+  signSettings       Json?                    @map("sign_settings")
   /// מוצר שהוזמן ונמחק: לא מוצג באדמין ובחנות, נשמר בשביל היסטוריית ההזמנות
   deletedAt          DateTime?                @map("deleted_at")
   catalogRevision    CatalogRevision?         @relation(fields: [catalogRevisionId], references: [id], onDelete: SetNull)
@@ -530,6 +532,7 @@ model NurseryProduct {
   orderItems         OrderItem[]
   categories         NurseryProductCategory[]
   stockMovements     StockMovement[]
+  plantSigns         PrintPlantSign[]
 
   @@unique([nurseryId, plantId])
   @@unique([nurseryId, supplyId])
@@ -934,6 +937,7 @@ model PrintOrder {
   nursery          Nursery               @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
   orderedBy        User?                 @relation(fields: [orderedById], references: [id])
   artworks         PrintArtwork[]
+  plantSigns       PrintPlantSign[]
 
   @@map("print_orders")
 }
@@ -1274,6 +1278,8 @@ model PrintTemplate {
   categoryId      String?                @map("category_id")
   /// מוצר עם מאגר דוגמאות: חוק הכמות לפי מספר הדוגמאות (lib/print-designs.ts). ריק — מחשבון רגיל
   designRule      Json?                  @map("design_rule")
+  /// מוצר מיוחד: 'PLANT_SIGN' — שלטי צמחים (המשתלה בוחרת צמחים; המחיר לפי סך השלטים)
+  kind            String?
   createdAt       DateTime               @default(now()) @map("created_at")
   updatedAt       DateTime               @updatedAt @map("updated_at")
   versions        PrintTemplateVersion[]
@@ -1520,6 +1526,23 @@ model PrintArtworkVersion {
 
   @@unique([artworkId, version])
   @@map("print_artwork_versions")
+}
+
+/// שלט צמח בהזמנת דפוס: Snapshot נעול של כל מה שעל השלט (lib/plant-sign/types.ts SignData)
+model PrintPlantSign {
+  id               String          @id @default(uuid())
+  printOrderId     String          @map("print_order_id")
+  nurseryId        String          @map("nursery_id")
+  nurseryProductId String?         @map("nursery_product_id")
+  quantity         Int
+  sortOrder        Int             @default(0) @map("sort_order")
+  data             Json
+  createdAt        DateTime        @default(now()) @map("created_at")
+  printOrder       PrintOrder      @relation(fields: [printOrderId], references: [id], onDelete: Cascade)
+  nurseryProduct   NurseryProduct? @relation(fields: [nurseryProductId], references: [id], onDelete: SetNull)
+
+  @@index([printOrderId])
+  @@map("print_plant_signs")
 }
 
 enum PrintProductionStatus {

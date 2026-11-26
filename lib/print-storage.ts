@@ -80,6 +80,8 @@ interface Driver {
   name: 'supabase' | 'local';
   uploadTarget(key: string, ticket: string): Promise<UploadTarget>;
   read(key: string): Promise<Buffer | null>;
+  /** כתיבה מהשרת (קובץ שהשרת יצר, למשל PDF של שלטי צמחים) */
+  write(key: string, bytes: Buffer, contentType: string): Promise<void>;
   remove(key: string): Promise<void>;
 }
 
@@ -128,6 +130,15 @@ function supabaseDriver(cfg: { base: string; key: string }): Driver {
       if (!r.ok) return null;
       return Buffer.from(await r.arrayBuffer());
     },
+    async write(key, bytes, contentType) {
+      await ensureBucket();
+      const r = await fetch(`${cfg.base}/storage/v1/object/${objectPath(key)}`, {
+        method: 'POST',
+        headers: { ...auth, 'Content-Type': contentType, 'x-upsert': 'false' },
+        body: new Uint8Array(bytes),
+      });
+      if (!r.ok) throw new Error(`שמירת הקובץ באחסון נכשלה (${r.status})`);
+    },
     async remove(key) {
       await fetch(`${cfg.base}/storage/v1/object/${objectPath(key)}`, { method: 'DELETE', headers: auth });
     },
@@ -158,6 +169,11 @@ const localDriver: Driver = {
     } catch {
       return null;
     }
+  },
+  async write(key, bytes) {
+    const p = localPath(key);
+    await fs.mkdir(path.dirname(p), { recursive: true });
+    await fs.writeFile(p, bytes);
   },
   async remove(key) {
     await fs.rm(localPath(key), { force: true });

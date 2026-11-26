@@ -133,6 +133,8 @@ export async function orderSaved(
   if (!p || !rev || rev.status !== 'APPROVED') return { ok: false, error: 'למוצר אין מפרט מאושר' };
   const pub = p.template?.versions[0];
   if (!p.template?.isActive || !pub) return { ok: false, error: 'מוצר הדפוס הזה אינו זמין כרגע — פנו לבית הדפוס' };
+  // שלטי צמחים: הזמנה חוזרת מהעמוד הייעודי (השלטים נבנים מחדש מנתוני הצמחים)
+  if (p.template.kind === 'PLANT_SIGN') return { ok: false, error: 'שלטי צמחים מזמינים שוב מעמוד שלטי הצמחים' };
   const fields = parseFields(pub.fields);
   const pricing = parsePricing(pub.pricing);
   if (!fields.ok || !pricing.ok) return { ok: false, error: 'הגדרת המוצר אינה תקינה — פנו לבית הדפוס' };

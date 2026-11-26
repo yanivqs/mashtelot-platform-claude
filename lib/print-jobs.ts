@@ -110,6 +110,8 @@ export async function createJobOrder(
 ): Promise<JobOrderResult> {
   const v = await db.printTemplateVersion.findUnique({ where: { id: args.templateVersionId }, include: { template: true } });
   if (!v || v.status !== 'PUBLISHED' || !v.template.isActive) return { ok: false, error: 'המוצר אינו זמין להזמנה — רעננו את הדף' };
+  // שלטי צמחים מוזמנים רק מהעמוד הייעודי (עם ה-Snapshot של השלטים) — lib/plant-sign/order.ts
+  if (v.template.kind === 'PLANT_SIGN') return { ok: false, error: 'שלטי צמחים מזמינים מעמוד שלטי הצמחים' };
   const fields = parseFields(v.fields);
   const pricing = parsePricing(v.pricing);
   if (!fields.ok || !pricing.ok) return { ok: false, error: 'הגדרת המוצר אינה תקינה — פנו לבית הדפוס' };

@@ -20,9 +20,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const file = await prisma.printFile.findUnique({ where: { id } });
   if (!file) return new Response('Not found', { status: 404 });
   // R06: עובד המשתלה כמו בעליה; כותב תוכן — לא (אין לו גישה לבית הדפוס)
+  // קובץ ייצור (למשל PDF של שלטי צמחים) — לבית הדפוס בלבד
   const allowed =
     user.role === 'SUPER_ADMIN' ||
-    ((user.role === 'NURSERY_OWNER' || user.role === 'NURSERY_STAFF') && user.nurseryId === file.nurseryId);
+    ((user.role === 'NURSERY_OWNER' || user.role === 'NURSERY_STAFF') && user.nurseryId === file.nurseryId && file.kind !== 'PRODUCTION');
   if (!allowed || (user.role !== 'SUPER_ADMIN' && (await isNurseryBlocked(user.nurseryId)))) return new Response('Not found', { status: 404 });
 
   const bytes = await storageDriver().read(file.storageKey);

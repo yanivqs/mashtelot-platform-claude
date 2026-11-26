@@ -56,6 +56,8 @@ const env = {
   SUPABASE_URL: 'http://127.0.0.1:3199',
   SUPABASE_SERVICE_ROLE_KEY: 'e2e-only',
   E2E: '1',
+  // שלטי צמחים: PDF בשרת דרך ה-Chromium של Playwright (ב-Vercel — @sparticuz/chromium)
+  CHROMIUM_PATH: process.env.CHROMIUM_PATH || require('playwright-core').chromium.executablePath(),
 };
 
 const run = (cmd, args) => execFileSync(cmd, args, { cwd: ROOT, env, stdio: 'inherit', shell: process.platform === 'win32' });

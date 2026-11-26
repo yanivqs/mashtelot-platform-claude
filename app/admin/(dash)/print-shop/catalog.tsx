@@ -36,7 +36,7 @@ export async function loadProductCards(where: Prisma.PrintTemplateWhereInput): P
     return [
       {
         id: v.id,
-        href: `/admin/print-shop/${v.template.slug ?? v.template.id}`,
+        href: v.template.kind === 'PLANT_SIGN' ? '/admin/print-shop/plant-signs' : `/admin/print-shop/${v.template.slug ?? v.template.id}`,
         title: v.template.title,
         description: v.template.description,
         imageUrl: v.template.imageUrl,
@@ -76,13 +76,13 @@ export async function loadCategoryTiles(parentId: string | null): Promise<Catego
       name: true,
       imageUrl: true,
       _count: { select: { children: { where: { isActive: true, templates: { some: live } } } } },
-      templates: { where: live, select: { id: true, slug: true, imageUrl: true }, take: 2 },
+      templates: { where: live, select: { id: true, slug: true, imageUrl: true, kind: true }, take: 2 },
     },
   });
   return cats.map(({ _count, templates, ...c }) => {
     const only = _count.children === 0 && templates.length === 1 ? templates[0]! : null;
     return only
-      ? { ...c, imageUrl: only.imageUrl ?? c.imageUrl, href: `/admin/print-shop/${only.slug ?? only.id}` }
+      ? { ...c, imageUrl: only.imageUrl ?? c.imageUrl, href: only.kind === 'PLANT_SIGN' ? '/admin/print-shop/plant-signs' : `/admin/print-shop/${only.slug ?? only.id}` }
       : { ...c, href: `/admin/print-shop/c/${c.slug}` };
   });
 }

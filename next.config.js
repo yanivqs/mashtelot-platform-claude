@@ -40,6 +40,12 @@ const nextConfig = {
   // אין `images.remotePatterns`: האפליקציה אינה משתמשת ב-next/image (תמונות מוצגות ב-<img>),
   // ותצורת hostname '**' אפשרה ל-/_next/image למשוך ולעבד תמונה מכל דומיין — משטח התקיפה של
   // advisories קריטיים (RCE ב-Image Optimization API עם AVIF, DoS). ללא תצורה — נדחה. C-P1-03 שלב 0.
+  // שלטי צמחים: Chromium להפקת PDF (lib/plant-sign/pdf.ts) — נטען בזמן ריצה, לא נארז,
+  // והגופנים של השלט נכללים בפונקציה (הם נקראים מהדיסק ומוטמעים ב-PDF)
+  serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
+  outputFileTracingIncludes: {
+    '/api/print/plant-signs/[orderId]': ['./public/fonts/sign/**/*', './node_modules/@sparticuz/chromium/bin/**/*'],
+  },
   experimental: {
     serverActions: {
       // ברירת המחדל (1MB) קטנה מדי לקובץ ה-CSV של ייבוא הקטלוג הבוטני (~1.5MB)

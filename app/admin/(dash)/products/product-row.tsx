@@ -64,7 +64,8 @@ export interface CategoryOption {
 }
 
 /** שורה ברשימת המלאי — לחיצה פותחת את דף העריכה של המוצר. */
-export function ProductRow({ product, viewUrl }: { product: RowProduct; viewUrl: string }) {
+/** signForm: מזהה הטופס של "שלטי צמחים" — תיבת סימון לבחירת הצמח (רק כשהשירות זמין למשתלה) */
+export function ProductRow({ product, viewUrl, signForm }: { product: RowProduct; viewUrl: string; signForm?: string }) {
   const href = `/admin/products/${product.id}`;
   const multi = product.variants.length > 1;
   const hidden = !product.isActive || product.imageRequired;
@@ -80,6 +81,20 @@ export function ProductRow({ product, viewUrl }: { product: RowProduct; viewUrl:
   return (
     <div className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
       <div className="flex items-center gap-3 px-3 py-3 sm:gap-4 sm:px-4">
+        {signForm &&
+          (product.plant ? (
+            <input
+              type="checkbox"
+              name="ids"
+              value={product.id}
+              form={signForm}
+              aria-label={`בחירה לשלטי צמחים: ${product.customTitle || product.title}`}
+              className="h-4 w-4 shrink-0"
+              data-testid="sign-pick"
+            />
+          ) : (
+            <span className="w-4 shrink-0" aria-hidden />
+          ))}
         <Link href={href} tabIndex={-1} aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-50 text-lg sm:h-11 sm:w-11">
           {product.image ? (
             // eslint-disable-next-line @next/next/no-img-element
