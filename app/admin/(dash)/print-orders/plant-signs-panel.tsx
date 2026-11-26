@@ -32,7 +32,15 @@ export function PlantSignsPanel({
     start(async () => {
       try {
         const r = await fetch(`/api/print/plant-signs/${orderId}`, { method: 'POST' });
-        const j = (await r.json()) as { ok?: boolean; error?: string; pages?: number; warnings?: string[] };
+        const text = await r.text();
+        let j: { ok?: boolean; error?: string; pages?: number; warnings?: string[] };
+        try {
+          j = JSON.parse(text);
+        } catch {
+          // תשובה שאינה JSON: בדרך כלל חריגת זמן או זיכרון של השרת
+          setMsg({ ok: false, text: `הפקת ה-PDF נכשלה (שגיאת שרת ${r.status}${r.status === 504 ? ' — חריגת זמן' : ''})` });
+          return;
+        }
         if (!r.ok || !j.ok) {
           setMsg({ ok: false, text: j.error ?? 'הפקת ה-PDF נכשלה' });
           return;
