@@ -253,7 +253,8 @@ export function renderSign(d: SignData, opts: RenderOptions): string {
   const phId = `ps-ph-${uid}`;
 
   // המסכה: רחבה למעלה וצרה למטה, בקשת אסימטרית עדינה
-  const photoPath = 'M5.5 2L47.4 2C52.8 9.4 56.8 22.4 57.2 36.6C57.5 51.5 47.8 64.6 35.3 72L2 72L2 5.5Q2 2 5.5 2Z';
+  // המסכה: קשת מעגלית אחידה (רדיוס 47.66) — מתחילה למעלה, מתרחבת באמצע (עד ~57.7) ומסתיימת צרה למטה
+  const photoPath = 'M5.5 2L47.4 2A47.66 47.66 0 0 1 35.3 72L2 72L2 5.5Q2 2 5.5 2Z';
 
   // ---- שכבת הגרפיקה ----
   let g = '';
@@ -270,7 +271,7 @@ export function renderSign(d: SignData, opts: RenderOptions): string {
     g += `<g clip-path="url(#${photoId})" opacity=".75">${sprig(uid, [10, 68], [20, 42], [34, 12], 9, 11, 'light')}</g>`;
   }
   // קו מתאר עדין לצד המסכה
-  g += `<path d="M48.8 2C54.2 9.4 58.2 22.4 58.6 36.6C58.9 51.5 49.2 64.8 36.7 72" stroke="${C.gold}" stroke-width="0.3" fill="none"/>`;
+  g += `<path d="M49.17 2A49.06 49.06 0 0 1 37.85 72" stroke="${C.gold}" stroke-width="0.3" fill="none"/>`;
   // תחום הלוגו: קרוב לריבוע עם פינה מעוגלת רחבה, בקווים מסתלסלים עדינים (לא ישרים)
   g += `<path d="M124.4 2C125.3 6.4 123.9 10.6 124.6 15C125.2 19.2 128.2 22.6 132.6 23.4C137.4 24.3 141.4 23.2 145 24.2C146.2 24.5 147.2 24.9 148 25.4" stroke="${C.gold}" stroke-width="0.3" fill="none" stroke-linecap="round"/>`;
 
