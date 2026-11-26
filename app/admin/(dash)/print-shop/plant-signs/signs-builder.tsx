@@ -262,7 +262,12 @@ export function SignsBuilder({
                       <Thumb src={l.source.imageUrl} />
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium">{l.source.hebrewName}</span>
-                        {l.dirty && <span className="text-xs text-amber-700">שינויים שלא נשמרו</span>}
+                        {l.dirty && <span className="block text-xs text-amber-700">שינויים שלא נשמרו</span>}
+                        {l.source.storeVisible === false && (
+                          <span className="block text-xs text-rose-700" data-testid="sign-hidden">
+                            מוסתר באתר — ה-QR יעבוד רק אחרי שהמוצר יוצג
+                          </span>
+                        )}
                       </span>
                     </button>
                     <label className="flex items-center gap-1 text-xs text-gray-700">

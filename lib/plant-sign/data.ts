@@ -1,7 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { localizeProduct } from '@/lib/catalog-localize';
 import { tenantOrigin, tenantUrl } from '@/lib/seo';
-import { productSlug } from '@/lib/utils';
 import { signFromSource, type SignSource } from './source';
 import type { SignData, SignSettings, SignSocial } from './types';
 
@@ -12,6 +11,8 @@ export const SIGN_PRODUCT_SELECT = {
   customTitle: true,
   customDescription: true,
   customImageUrl: true,
+  isActive: true,
+  imageRequired: true,
   signSettings: true,
   catalogOverrides: true,
   catalogRevision: { select: { data: true } },
@@ -74,8 +75,6 @@ export function buildSignSource(args: { product: SignProduct; nursery: SignNurse
   const p = localizeProduct(args.product);
   const plant = p.plant;
   if (!plant) return null;
-  const title = p.customTitle || plant.hebrewName;
-  const slug = productSlug(p.id, title, p.slug);
   return {
     productId: p.id,
     hebrewName: plant.hebrewName,
@@ -86,7 +85,9 @@ export function buildSignSource(args: { product: SignProduct; nursery: SignNurse
     nurseryName: args.nursery.name,
     socials: args.socials,
     website: tenantOrigin(args.nursery).replace(/^https?:\/\//, ''),
-    qrUrl: tenantUrl(args.nursery, `/product/${encodeURIComponent(slug)}`),
+    // כתובת קצרה לפי 8 תווי המזהה: QR פחות צפוף (קריא בהדפסה קטנה), ונשאר תקף גם אם שם המוצר או הכתובת שלו ישתנו
+    qrUrl: tenantUrl(args.nursery, `/product/${p.id.slice(0, 8)}`),
+    storeVisible: p.isActive && !p.imageRequired,
     plant: {
       description: plant.description,
       plantType: plant.plantType,

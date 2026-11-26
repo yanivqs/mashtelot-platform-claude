@@ -16,6 +16,8 @@ export interface SignSource {
   socials: SignSocial[];
   website: string | null;
   qrUrl: string;
+  /** המוצר מוצג בחנות — אחרת ה-QR מוביל לדף שלא קיים */
+  storeVisible?: boolean;
   plant: SignPlantFields & { light: string | null; water: string | null };
   /** התיאור שהמשתלה כתבה למוצר (HTML או טקסט) */
   productDescription: string | null;
