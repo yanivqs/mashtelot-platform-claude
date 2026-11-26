@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import { buildSignSource, SIGN_NURSERY_SELECT, SIGN_PRODUCT_SELECT, signSocials } from './data';
+import { buildSignSource, SIGN_NURSERY_SELECT, SIGN_PRODUCT_SELECT, signSocialLinks } from './data';
 import type { SignSource } from './source';
 
 /** מקורות השלטים למוצרי-צמח של המשתלה, לפי הסדר שהתבקש (מוצר שאינו שלה / אינו צמח — מושמט) */
@@ -11,10 +11,10 @@ export async function loadSignSources(db: PrismaClient, nurseryId: string, produ
       select: SIGN_PRODUCT_SELECT,
     }),
     db.nursery.findUnique({ where: { id: nurseryId }, select: SIGN_NURSERY_SELECT }),
-    db.nurseryChannel.findMany({ where: { nurseryId, isEnabled: true }, select: { provider: true } }),
+    db.nurseryChannel.findMany({ where: { nurseryId, isEnabled: true }, select: { provider: true, value: true } }),
   ]);
   if (!nursery) return [];
-  const socials = signSocials(channels.map((c) => c.provider));
+  const socials = signSocialLinks(channels);
   const byId = new Map(products.map((p) => [p.id, p]));
   return productIds.flatMap((id) => {
     const p = byId.get(id);

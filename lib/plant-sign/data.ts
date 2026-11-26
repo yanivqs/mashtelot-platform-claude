@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { localizeProduct } from '@/lib/catalog-localize';
 import { tenantOrigin, tenantUrl } from '@/lib/seo';
 import { signFromSource, type SignSource } from './source';
-import type { SignData, SignSettings, SignSocial } from './types';
+import type { SignData, SignSettings, SignSocialLink } from './types';
 
 /** השדות שנדרשים לשלט מתוך מוצר */
 export const SIGN_PRODUCT_SELECT = {
@@ -30,12 +30,7 @@ export interface SignNursery {
 
 export const SIGN_NURSERY_SELECT = { name: true, logoUrl: true, subdomain: true, customDomain: true } satisfies Prisma.NurserySelect;
 
-const SOCIAL_ORDER: SignSocial[] = ['FACEBOOK', 'INSTAGRAM', 'TIKTOK', 'YOUTUBE', 'WHATSAPP'];
-
-export function signSocials(providers: string[]): SignSocial[] {
-  const set = new Set(providers);
-  return SOCIAL_ORDER.filter((p) => set.has(p));
-}
+export { signSocialLinks } from './social';
 
 const str = (v: unknown, max: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null);
 
@@ -71,7 +66,7 @@ export function isEmptySettings(s: SignSettings): boolean {
 }
 
 /** מקור השלט ממוצר-צמח (עם הנתונים המקומיים של המשתלה), מהמשתלה ומהערוצים שלה */
-export function buildSignSource(args: { product: SignProduct; nursery: SignNursery; socials: SignSocial[] }): SignSource | null {
+export function buildSignSource(args: { product: SignProduct; nursery: SignNursery; socials: SignSocialLink[] }): SignSource | null {
   const p = localizeProduct(args.product);
   const plant = p.plant;
   if (!plant) return null;
@@ -112,7 +107,7 @@ export function buildSignSource(args: { product: SignProduct; nursery: SignNurse
 export function buildSignData(args: {
   product: SignProduct;
   nursery: SignNursery;
-  socials: SignSocial[];
+  socials: SignSocialLink[];
   settings?: SignSettings | null;
 }): SignData | null {
   const src = buildSignSource(args);

@@ -37,7 +37,9 @@ test('plant signs: owner picks plants, edits and orders; print house generates t
   await expect(preview.locator('.ps-latin')).toHaveText('Lavandula angustifolia');
   await expect(preview).toContainText('שמש מלאה');
   await expect(preview).toContainText('השקיה בינונית');
-  await expect(preview).toContainText('פייסבוק');
+  // אותו שם משתמש בפייסבוק ובאינסטגרם — שורה אחת "עקבו אחרינו @e2e"
+  await expect(preview).toContainText('עקבו אחרינו');
+  await expect(preview).toContainText('@e2e');
   await expect(page.getByRole('link', { name: /PDF|הורדה/ })).toHaveCount(0);
 
   // עריכה: תיאור והערה, שמירה למוצר

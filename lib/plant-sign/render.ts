@@ -1,5 +1,6 @@
 import type { SignData, SignSocial } from './types';
 import { qrPath } from './qr';
+import { normalizeSocials, socialLayout } from './social';
 
 /**
  * שלט צמח 15×10 ס"מ: HTML + SVG טהור (מחרוזת), כדי שהתצוגה המקדימה בדפדפן וה-PDF בשרת ייראו זהה.
@@ -91,6 +92,7 @@ export const SIGN_CSS = `
 .ps-label{font-family:'PS Assistant',sans-serif;font-weight:700;color:${C.ink};line-height:1.15}
 .ps-note{font-family:'PS Assistant',sans-serif;font-weight:400;color:${C.muted};line-height:1.3}
 .ps-small{font-family:'PS Assistant',sans-serif;font-weight:400;color:${C.text};line-height:1.25}
+.ps-handle{font-family:'PS Assistant',sans-serif;font-weight:600;color:${C.ink};line-height:1.25;letter-spacing:.01em}
 .ps-scan{font-family:'PS Assistant',sans-serif;color:${C.ink};line-height:1.2}
 .ps-scan b{font-weight:700;display:block;margin-bottom:.4mm}
 .ps-logo{position:absolute;object-fit:contain;object-position:center}
@@ -283,8 +285,8 @@ export function renderSign(d: SignData, opts: RenderOptions): string {
   g += sprig(uid, [1, 101], [6, 95], [12.6, 92.4], 5, 5.6, 'dark');
   // ימין למטה
   g += sprig(uid, [151.5, 101], [145, 100], [128.5, 98.4], 8, 6, 'light');
-  g += sprig(uid, [150, 102], [151.5, 90], [146.2, 72.4], 11, 7, 'dark');
-  g += sprig(uid, [149.5, 101.5], [144.5, 95.5], [139.6, 91.4], 5, 5.4, 'dark');
+  g += sprig(uid, [150.4, 102], [152.2, 90], [147.6, 72.6], 11, 6.2, 'dark');
+  g += sprig(uid, [149.5, 101.5], [145, 97.5], [140.4, 94.6], 5, 5, 'dark');
 
   // קו מפריד מתחת לשמות, עם עלה באמצע
   g += `<path d="M65.6 25.4H89.2M96 25.4H119.6" stroke="#b9ae8f" stroke-width="0.22" stroke-linecap="round"/>`;
@@ -335,14 +337,24 @@ export function renderSign(d: SignData, opts: RenderOptions): string {
   // קו אנכי לפני הרשתות
   g += `<path d="M112.6 75V92" stroke="${C.line}" stroke-width="0.25"/>`;
 
-  // רשתות חברתיות
-  const socials = d.socials.slice(0, 4);
-  const gap = socials.length >= 4 ? 7.4 : 9.4;
-  const centerX = 129.6;
+  // רשתות חברתיות: שם המשתמש של המשתלה (או הטלפון בוואטסאפ) — שורת אייקונים, או רשימה כשהשמות שונים/ארוכים
+  const socials = normalizeSocials(d.socials).slice(0, 4);
+  const layout = socialLayout(socials);
+  const gap = socials.length >= 4 ? 7.2 : 9.2;
+  const iconR = socials.length >= 4 ? 2.95 : 3.3;
+  const centerX = 129.4;
   const xs = socials.map((_, i) => centerX + ((socials.length - 1) / 2 - i) * gap);
+  const rowH = socials.length >= 4 ? 4.1 : 4.8;
+  const rowY = (i: number) => 83.4 - (socials.length * rowH) / 2 + rowH * (i + 0.5);
   socials.forEach((s, i) => {
-    const x = xs[i]!;
-    g += `<circle cx="${n(x)}" cy="79.6" r="3.3" fill="${C.ink}"/><path d="${SOCIAL_PATHS[s]}" transform="translate(${n(x - 1.85)} 77.75) scale(0.154)" fill="#ffffff"/>`;
+    if (layout.mode === 'list') {
+      const cy = rowY(i);
+      g += `<circle cx="141.6" cy="${n(cy)}" r="1.8" fill="${C.ink}"/><path d="${SOCIAL_PATHS[s.provider]}" transform="translate(140.55 ${n(cy - 1.05)}) scale(0.0875)" fill="#ffffff"/>`;
+    } else {
+      const x = xs[i]!;
+      const k = iconR / 3.3;
+      g += `<circle cx="${n(x)}" cy="79.4" r="${iconR}" fill="${C.ink}"/><path d="${SOCIAL_PATHS[s.provider]}" transform="translate(${n(x - 1.85 * k)} ${n(79.4 - 1.85 * k)}) scale(${n(0.154 * k)})" fill="#ffffff"/>`;
+    }
   });
 
   const svg = `<svg class="ps-svg" xmlns="http://www.w3.org/2000/svg" viewBox="${-b} ${-b} ${W} ${H}" width="${W}mm" height="${H}mm" aria-hidden="true">${g}</svg>`;
@@ -374,9 +386,27 @@ export function renderSign(d: SignData, opts: RenderOptions): string {
   t += box('ps-h', 82, 75, 19, 4.6, 3.0, 2.3, 'הערות');
   if (d.notes) t += box('ps-small', 72.4, 81.2, 35.4, 11.2, 2.6, 1.8, esc(d.notes));
 
-  if (socials.length) {
+  if (socials.length && layout.mode === 'list') {
     socials.forEach((s, i) => {
-      t += box('ps-small', xs[i]! - 4.4, 83.6, 8.8, 3.2, 2.05, 1.6, SOCIAL_LABELS[s]);
+      const label = s.handle ? `<bdi dir="ltr">${esc(s.handle)}</bdi>` : SOCIAL_LABELS[s.provider];
+      t += box(
+        s.handle ? 'ps-handle' : 'ps-small',
+        114.4,
+        rowY(i) - 1.75,
+        25.2,
+        3.5,
+        2.5,
+        1.5,
+        label,
+        'justify-content:flex-end;text-align:right',
+      );
+    });
+  } else if (socials.length && layout.mode === 'shared') {
+    t += box('ps-small', 114.2, 83.3, 30.4, 3.6, 2.45, 1.6, `עקבו אחרינו <bdi dir="ltr" class="ps-handle">${esc(layout.handle)}</bdi>`);
+    if (layout.phone) t += box('ps-small', 114.2, 87, 30.4, 3.3, 2.25, 1.6, `וואטסאפ <bdi dir="ltr">${esc(layout.phone)}</bdi>`);
+  } else if (socials.length) {
+    socials.forEach((s, i) => {
+      t += box('ps-small', xs[i]! - 4.4, 83.4, 8.8, 3.2, 2.05, 1.6, SOCIAL_LABELS[s.provider]);
     });
   } else {
     const site = d.website ?? d.nurseryName;

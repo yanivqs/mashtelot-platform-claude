@@ -1,6 +1,6 @@
 import { lightScale, waterScale } from './scales';
 import { signDescription, typePhrase, type SignPlantFields } from './text';
-import type { SignData, SignSettings, SignSocial } from './types';
+import type { SignData, SignSettings, SignSocialLink } from './types';
 
 /**
  * מקור השלט: הנתונים הגולמיים של מוצר-צמח, המשתלה וה-QR (נבנה בשרת — data.ts).
@@ -13,7 +13,7 @@ export interface SignSource {
   imageUrl: string | null;
   logoUrl: string | null;
   nurseryName: string;
-  socials: SignSocial[];
+  socials: SignSocialLink[];
   website: string | null;
   qrUrl: string;
   /** המוצר מוצג בחנות — אחרת ה-QR מוביל לדף שלא קיים */

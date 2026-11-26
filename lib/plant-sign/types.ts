@@ -2,6 +2,12 @@
 
 export type SignSocial = 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK' | 'YOUTUBE' | 'WHATSAPP';
 
+/** רשת בשלט: שם המשתמש ("@name") או הטלפון (וואטסאפ); null — מוצג שם הרשת */
+export interface SignSocialLink {
+  provider: SignSocial;
+  handle: string | null;
+}
+
 export interface SignData {
   hebrewName: string;
   latinName: string | null;
@@ -13,7 +19,7 @@ export interface SignData {
   water: { amount: number; title: string; note: string };
   plantType: string | null;
   notes: string | null;
-  socials: SignSocial[];
+  socials: SignSocialLink[];
   /** כשאין רשתות — כתובת האתר */
   website: string | null;
   /** הכתובת שה-QR מפנה אליה: דף הצמח בחנות */
