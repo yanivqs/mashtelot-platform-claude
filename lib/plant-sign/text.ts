@@ -135,7 +135,8 @@ export function composeSignDescription(p: SignPlantFields, target = DESCRIPTION_
   if (growth && growth.length <= 20) parts.push(sentence(`קצב צמיחה ${growth}`));
 
   const care = clean(p.care);
-  if (care) parts.push(sentence(care.split(/[.;]/)[0]!));
+  // המשפט הראשון בלבד (נקודה בסוף מילה — לא בתוך קיצור כמו ס"מ)
+  if (care) parts.push(sentence(care.split(/;|\.(?=\s|$)/)[0]!));
 
   let out = '';
   for (const s of parts) {
@@ -176,11 +177,16 @@ export function plainText(html: string | null | undefined): string {
   );
 }
 
+/** מספר ויחידת המידה באותה שורה ("כ-2 מ'" לא נשבר בין שורות) */
+export function keepUnits(text: string): string {
+  return text.replace(/(\d)\s+(?=(?:מ'|מ"|ס"מ|ס'מ|מטר|ליטר|ס\.))/g, '$1\u00A0');
+}
+
 /** התיאור שיוצג בשלט */
 export function signDescription(args: { saved?: string | null; productDescription?: string | null; plant: SignPlantFields }): string {
   const saved = clean(args.saved);
-  if (saved) return truncate(saved, DESCRIPTION_MAX);
+  if (saved) return keepUnits(truncate(saved, DESCRIPTION_MAX));
   const own = plainText(args.productDescription);
-  if (own.length >= 20) return truncate(own, DESCRIPTION_MAX);
-  return composeSignDescription(args.plant);
+  if (own.length >= 20) return keepUnits(truncate(own, DESCRIPTION_MAX));
+  return keepUnits(composeSignDescription(args.plant));
 }

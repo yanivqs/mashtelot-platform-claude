@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { composeSignDescription, DESCRIPTION_TARGET, mergeTraits, plainText, signDescription, truncate } from './text';
+import { composeSignDescription, DESCRIPTION_TARGET, keepUnits, mergeTraits, plainText, signDescription, truncate } from './text';
 
 describe('composeSignDescription', () => {
   it('צמח עם הרבה נתונים: פסקה במשפטים שלמים, עד יעד האורך', () => {
@@ -69,5 +69,16 @@ describe('truncate / plainText', () => {
   });
   it('HTML → טקסט', () => {
     expect(plainText('<p>שורה&nbsp;א</p><p>שורה &amp; ב</p>')).toBe('שורה א שורה & ב');
+  });
+});
+
+describe('keepUnits / care', () => {
+  it('מספר ויחידה לא נשברים בין שורות', () => {
+    expect(keepUnits('בגובה כ-2 מ\'. רוחב 30 ס"מ')).toBe('בגובה כ-2\u00A0מ\'. רוחב 30\u00A0ס"מ');
+  });
+  it('טיפול: המשפט הראשון, בלי לחתוך בתוך ס"מ', () => {
+    expect(composeSignDescription({ care: 'בסוף החורף יש לגזום לגובה 30-20 ס"מ. דישון באביב' })).toBe(
+      'בסוף החורף יש לגזום לגובה 30-20 ס"מ.',
+    );
   });
 });

@@ -147,18 +147,33 @@ const DROP_ICON = (cx: number, cy: number, h: number) => {
   return `<path d="M0 -0.675C0.16 -0.42 0.5 -0.12 0.5 0.18A0.5 0.5 0 0 1 -0.5 0.18C-0.5 -0.12 -0.16 -0.42 0 -0.675Z" transform="translate(${n(cx)} ${n(cy + h * 0.06)}) scale(${n(s)})" fill="${C.drop}"/>`;
 };
 
-/** עלה: מנקודת הבסיס, באורך len ובזווית angle (מעלות) */
+/** עלה מחודד ואסימטרי מעט, מנקודת הבסיס, באורך len ובזווית angle (מעלות); עורק מרכזי ועורקים צדדיים עדינים */
 function leaf(x: number, y: number, len: number, angle: number, fill: string, opacity = 1, vein = true): string {
-  const w = len * 0.36;
-  const d = `M0 0C${n(len * 0.3)} ${n(-w)} ${n(len * 0.78)} ${n(-w * 0.85)} ${n(len)} 0C${n(len * 0.78)} ${n(w * 0.85)} ${n(len * 0.3)} ${n(w)} 0 0Z`;
-  const v = vein
-    ? `<path d="M${n(len * 0.06)} 0L${n(len * 0.9)} 0" stroke="#ffffff" stroke-opacity=".35" stroke-width="${n(len * 0.025)}" fill="none"/>`
-    : '';
+  const w = len * 0.4;
+  const d = `M0 0C${n(len * 0.18)} ${n(-w * 0.95)} ${n(len * 0.62)} ${n(-w * 1.05)} ${n(len)} 0C${n(len * 0.66)} ${n(w * 0.78)} ${n(len * 0.2)} ${n(w * 0.9)} 0 0Z`;
+  let v = '';
+  if (vein) {
+    v += `<path d="M${n(len * 0.04)} 0Q${n(len * 0.5)} ${n(-w * 0.12)} ${n(len * 0.94)} 0" stroke="#ffffff" stroke-opacity=".42" stroke-width="${n(len * 0.022)}" fill="none" stroke-linecap="round"/>`;
+    for (const t of [0.3, 0.5, 0.7]) {
+      v += `<path d="M${n(len * t)} ${n(-w * 0.05)}L${n(len * (t + 0.12))} ${n(-w * 0.55)}M${n(len * t)} ${n(w * 0.02)}L${n(len * (t + 0.12))} ${n(w * 0.48)}" stroke="#ffffff" stroke-opacity=".2" stroke-width="${n(len * 0.014)}" fill="none" stroke-linecap="round"/>`;
+    }
+  }
   return `<g transform="translate(${n(x)} ${n(y)}) rotate(${n(angle)})" opacity="${opacity}"><path d="${d}" fill="${fill}"/>${v}</g>`;
 }
 
-/** ענף דקורטיבי: גבעול (עקומה ריבועית) ועלים לסירוגין שקטנים לכיוון הקצה */
+/** מילוי עלים: מעבר צבע לאורך העלה (כהה בבסיס, בהיר בקצה), שלושה גוונים */
+function leafGradients(uid: string): string {
+  const g = (id: string, a: string, b: string) =>
+    `<linearGradient id="ps-lf-${uid}-${id}" x1="0" y1="0.5" x2="1" y2="0.5"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
+  return g('a', '#3f6b37', '#6f9a5c') + g('b', '#557f46', '#8db574') + g('c', '#7aa266', '#b4cf9c');
+}
+
+/**
+ * ענף דקורטיבי: גבעול (עקומה ריבועית) ועלים לסירוגין, גדולים בבסיס וקטנים לכיוון הקצה,
+ * בגווני מעבר — כמו ענף אמיתי ולא סמל שטוח.
+ */
 function sprig(
+  uid: string,
   p0: [number, number],
   c: [number, number],
   p1: [number, number],
@@ -175,17 +190,16 @@ function sprig(
     const dy = 2 * (1 - t) * (c[1] - p0[1]) + 2 * t * (p1[1] - c[1]);
     return (Math.atan2(dy, dx) * 180) / Math.PI;
   };
-  const fills = tone === 'dark' ? ['#5d8450', '#73985f', '#86a872'] : ['#8fae7c', '#a3bd91', '#b7cca6'];
-  let out = `<path d="M${p0[0]} ${p0[1]}Q${c[0]} ${c[1]} ${p1[0]} ${p1[1]}" stroke="${fills[0]}" stroke-width="0.32" fill="none" stroke-linecap="round"/>`;
+  const fills = (tone === 'dark' ? ['a', 'b', 'a'] : ['b', 'c', 'c']).map((k) => `url(#ps-lf-${uid}-${k})`);
+  let out = `<path d="M${p0[0]} ${p0[1]}Q${c[0]} ${c[1]} ${p1[0]} ${p1[1]}" stroke="${tone === 'dark' ? '#4d7541' : '#7fa36b'}" stroke-width="0.34" fill="none" stroke-linecap="round"/>`;
   for (let i = 0; i < count; i++) {
-    const t = 0.14 + (0.8 * i) / Math.max(1, count - 1);
+    const t = 0.1 + (0.82 * i) / Math.max(1, count - 1);
     const [x, y] = at(t);
     const side = i % 2 === 0 ? 1 : -1;
-    const len = maxLen * (1 - t * 0.45);
-    out += leaf(x, y, len, tangent(t) + side * 48, fills[i % 3]!, 0.92);
+    const len = maxLen * (1 - t * 0.5);
+    out += leaf(x, y, len, tangent(t) + side * (38 + (i % 3) * 6), fills[i % 3]!, 0.96);
   }
-  // עלה בקצה
-  out += leaf(p1[0], p1[1], maxLen * 0.55, tangent(1), fills[1]!, 0.92);
+  out += leaf(p1[0], p1[1], maxLen * 0.5, tangent(1) - 6, fills[1]!, 0.96);
   return out;
 }
 
@@ -238,13 +252,14 @@ export function renderSign(d: SignData, opts: RenderOptions): string {
   const bgId = `ps-bg-${uid}`;
   const phId = `ps-ph-${uid}`;
 
-  const photoPath = 'M5.5 2L47 2C54.5 14 59 29 57.3 43.5C56 55 53.6 64.5 51.2 72L2 72L2 5.5Q2 2 5.5 2Z';
+  // המסכה: רחבה למעלה וצרה למטה, בקשת אסימטרית עדינה
+  const photoPath = 'M5.5 2L60.4 2C63 15.5 62.2 29.5 58.4 41.5C55.4 51 51 61.2 46.8 72L2 72L2 5.5Q2 2 5.5 2Z';
 
   // ---- שכבת הגרפיקה ----
   let g = '';
   g += `<defs><radialGradient id="${bgId}" cx="62%" cy="38%" r="75%"><stop offset="0" stop-color="${C.paperLight}"/><stop offset="1" stop-color="${C.paper}"/></radialGradient>`;
   g += `<linearGradient id="${phId}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e4ecd9"/><stop offset="1" stop-color="#c7d7b8"/></linearGradient>`;
-  g += `<clipPath id="${photoId}"><path d="${photoPath}"/></clipPath></defs>`;
+  g += `<clipPath id="${photoId}"><path d="${photoPath}"/></clipPath>${leafGradients(uid)}</defs>`;
   g += `<rect x="${-b}" y="${-b}" width="${W}" height="${H}" fill="url(#${bgId})"/>`;
 
   // תמונת הצמח במסכה האסימטרית
@@ -252,41 +267,46 @@ export function renderSign(d: SignData, opts: RenderOptions): string {
     g += `<image href="${esc(d.imageUrl)}" x="2" y="2" width="58" height="70" preserveAspectRatio="xMidYMid slice" clip-path="url(#${photoId})"/>`;
   } else {
     g += `<path d="${photoPath}" fill="url(#${phId})"/>`;
-    g += `<g clip-path="url(#${photoId})">${sprig([14, 66], [22, 40], [36, 14], 9, 10, 'light')}</g>`;
+    g += `<g clip-path="url(#${photoId})" opacity=".75">${sprig(uid, [12, 68], [22, 42], [38, 14], 9, 11, 'light')}</g>`;
   }
-  // קו מתאר עדין לצד המסכה, וקשת פינת הלוגו
-  g += `<path d="M49.2 2C56.7 14 61.2 29 59.5 43.5C58.2 55 55.8 64.5 53.4 72" stroke="${C.gold}" stroke-width="0.3" fill="none"/>`;
-  g += `<path d="M124.6 2C123.6 14.6 130.2 24.2 148 25.2" stroke="${C.gold}" stroke-width="0.3" fill="none"/>`;
+  // קו מתאר עדין לצד המסכה
+  g += `<path d="M62.6 2C65.2 15.5 64.4 29.5 60.6 41.5C57.6 51 53.2 61.2 49 72" stroke="${C.gold}" stroke-width="0.3" fill="none"/>`;
+  // תחום הלוגו: קרוב לריבוע עם פינה מעוגלת רחבה, בקווים מסתלסלים עדינים (לא ישרים)
+  g += `<path d="M124.4 2C125.3 6.4 123.9 10.6 124.6 15C125.2 19.2 128.2 22.6 132.6 23.4C137.4 24.3 141.4 23.2 145 24.2C146.2 24.5 147.2 24.9 148 25.4" stroke="${C.gold}" stroke-width="0.3" fill="none" stroke-linecap="round"/>`;
 
   // מסגרת, ומעליה ענפים דקורטיביים בפינות התחתונות (חלקם בשטח הגלישה), מתחת לכרטיסים
   g += `<rect x="2" y="2" width="146" height="96" rx="3.5" fill="none" stroke="${C.frame}" stroke-width="0.4"/>`;
-  g += sprig([21, 101.5], [14.5, 97.6], [8.6, 95.2], 5, 4.2, 'light');
-  g += sprig([12.5, 101.6], [2.6, 97.5], [0.6, 80.6], 10, 5.8, 'dark');
-  g += sprig([152.4, 97], [148.8, 88], [146.2, 79.4], 6, 4.4, 'light');
-  g += sprig([150.6, 101.8], [144.8, 89], [142, 71.6], 12, 6, 'dark');
+  // שמאל למטה: ענף לאורך הצד, ענף לאורך התחתית וענף באלכסון
+  g += sprig(uid, [-1.5, 101], [5, 99.8], [24, 97.8], 8, 6.2, 'light');
+  g += sprig(uid, [0.5, 102], [-1, 92], [3.4, 77.6], 10, 7, 'dark');
+  g += sprig(uid, [1, 101], [6, 95], [12.6, 92.4], 5, 5.6, 'dark');
+  // ימין למטה
+  g += sprig(uid, [151.5, 101], [145, 100], [128.5, 98.4], 8, 6, 'light');
+  g += sprig(uid, [150, 102], [151.5, 90], [146.2, 72.4], 11, 7, 'dark');
+  g += sprig(uid, [149.5, 101.5], [144.5, 95.5], [139.6, 91.4], 5, 5.4, 'dark');
 
   // קו מפריד מתחת לשמות, עם עלה באמצע
-  g += `<path d="M64 24.8H88.6M95.4 24.8H120" stroke="#b9ae8f" stroke-width="0.22" stroke-linecap="round"/>`;
-  g += leaf(92, 25.3, 2.6, -128, C.leaf, 1, false) + leaf(92, 25.3, 2.6, -52, '#7fa06d', 1, false);
+  g += `<path d="M68 25.4H91.2M98 25.4H121.2" stroke="#b9ae8f" stroke-width="0.22" stroke-linecap="round"/>`;
+  g += leaf(94.6, 25.9, 2.6, -128, C.leaf, 1, false) + leaf(94.6, 25.9, 2.6, -52, '#7fa06d', 1, false);
 
   // כרטיס השקיה
-  g += `<rect x="57.8" y="46" width="35.6" height="23.6" rx="2.6" fill="#ffffff" fill-opacity=".38" stroke="${C.cardBorder}" stroke-width="0.25"/>`;
-  g += `<circle cx="63.4" cy="48.4" r="3.5" fill="#fbfaf6" stroke="#3f6b46" stroke-width="0.3"/>${DROP_ICON(63.4, 48.3, 3.4)}`;
+  g += `<rect x="62" y="46" width="32.6" height="23.6" rx="2.6" fill="#ffffff" fill-opacity=".38" stroke="${C.cardBorder}" stroke-width="0.25"/>`;
+  g += `<circle cx="67.4" cy="48.4" r="3.5" fill="#fbfaf6" stroke="#3f6b46" stroke-width="0.3"/>${DROP_ICON(67.4, 48.3, 3.4)}`;
   const amount = d.water.amount;
-  [82, 75.6, 69.2].forEach((x, i) => {
+  [84.7, 78.3, 71.9].forEach((x, i) => {
     const fill = amount >= i + 1 ? 1 : amount >= i + 0.5 ? 0.5 : 0;
     g += drop(x, 55.6, 4.7, fill, uid, i);
   });
 
   // כרטיס אור
-  g += `<rect x="96.4" y="46" width="39" height="23.6" rx="2.6" fill="${C.lightCard}" stroke="${C.lightBorder}" stroke-width="0.25"/>`;
-  g += `<circle cx="102.4" cy="48.4" r="3.5" fill="#fdf3d6" stroke="#e2bd5a" stroke-width="0.3"/>`;
+  g += `<rect x="97.6" y="46" width="38.4" height="23.6" rx="2.6" fill="${C.lightCard}" stroke="${C.lightBorder}" stroke-width="0.25"/>`;
+  g += `<circle cx="103.4" cy="48.4" r="3.5" fill="#fdf3d6" stroke="#e2bd5a" stroke-width="0.3"/>`;
   g +=
-    sunRays(102.4, 48.4, 1.65, 2.35, C.sunStroke, 0.22) +
-    `<circle cx="102.4" cy="48.4" r="1.2" fill="${C.sun}" stroke="${C.sunStroke}" stroke-width="0.18"/>`;
+    sunRays(103.4, 48.4, 1.65, 2.35, C.sunStroke, 0.22) +
+    `<circle cx="103.4" cy="48.4" r="1.2" fill="${C.sun}" stroke="${C.sunStroke}" stroke-width="0.18"/>`;
   const r = d.light.range;
   // סדר מימין לשמאל: שמש מלאה ← צל
-  [126.4, 119.4, 112.4, 105.4].forEach((x, step) => {
+  [127.3, 120.3, 113.3, 106.3].forEach((x, step) => {
     g += sun(step, x, 55.6, 1.75, Boolean(r && step >= r[0] && step <= r[1]));
   });
 
@@ -329,21 +349,21 @@ export function renderSign(d: SignData, opts: RenderOptions): string {
   // ---- שכבת הטקסט ----
   let t = '';
   if (d.logoUrl) {
-    t += `<img class="ps-logo" src="${esc(d.logoUrl)}" alt="" style="left:127.6mm;top:4.4mm;width:18.6mm;height:15.6mm"/>`;
+    t += `<img class="ps-logo" src="${esc(d.logoUrl)}" alt="" style="left:127mm;top:3.8mm;width:19.6mm;height:17.6mm"/>`;
   } else {
-    t += box('ps-h', 127, 5, 19.6, 14, 4.2, 2.4, esc(d.nurseryName));
+    t += box('ps-h', 126.8, 4.4, 20, 16.4, 4.4, 2.4, esc(d.nurseryName));
   }
-  t += box('ps-title', 60, 6, 63, 11.6, 9.6, 4.2, esc(d.hebrewName));
-  if (d.latinName) t += box('ps-latin', 60, 17.7, 63, 4.8, 3.7, 2.3, esc(d.latinName));
-  if (d.description) t += box('ps-desc', 61.2, 27.4, 60.6, 16.2, 2.95, 2.05, esc(d.description));
+  t += box('ps-title', 65.4, 6, 58.4, 11.8, 9.6, 4.2, esc(d.hebrewName));
+  if (d.latinName) t += box('ps-latin', 65.4, 18, 58.4, 4.8, 3.7, 2.3, esc(d.latinName));
+  if (d.description) t += box('ps-desc', 64.6, 28, 60.6, 16, 2.95, 2.05, esc(d.description));
 
-  t += box('ps-h', 67.6, 46.6, 18, 4.4, 3.3, 2.6, 'השקיה');
-  t += box('ps-label', 59, 59.1, 33.2, 3.8, 2.9, 2.1, esc(d.water.title));
-  t += box('ps-note', 59.6, 62.8, 32, 6.2, 2.3, 1.65, esc(d.water.note));
+  t += box('ps-h', 71.6, 46.6, 18, 4.4, 3.3, 2.6, 'השקיה');
+  t += box('ps-label', 63, 59.1, 30.6, 3.8, 2.9, 2.1, esc(d.water.title));
+  t += box('ps-note', 63.4, 62.8, 29.8, 6.2, 2.3, 1.65, esc(d.water.note));
 
-  t += box('ps-h', 106.8, 46.6, 18, 4.4, 3.3, 2.6, 'אור');
-  t += box('ps-label', 97.6, 59.1, 36.6, 3.8, 2.9, 2.1, esc(d.light.title));
-  t += box('ps-note', 98.2, 62.8, 35.4, 6.2, 2.3, 1.65, esc(d.light.note));
+  t += box('ps-h', 108, 46.6, 18, 4.4, 3.3, 2.6, 'אור');
+  t += box('ps-label', 98.8, 59.1, 36, 3.8, 2.9, 2.1, esc(d.light.title));
+  t += box('ps-note', 99.4, 62.8, 34.8, 6.2, 2.3, 1.65, esc(d.light.note));
 
   t += `<div class="ps-box" style="left:26.6mm;top:76.2mm;width:13.6mm;height:8.4mm"><div class="ps-in ps-scan" style="font-size:2.05mm"><b style="font-size:2.45mm">סרקו אותי</b>למעבר לדף המלא של הצמח</div></div>`;
 

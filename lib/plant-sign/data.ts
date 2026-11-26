@@ -79,7 +79,8 @@ export function buildSignSource(args: { product: SignProduct; nursery: SignNurse
   return {
     productId: p.id,
     hebrewName: plant.hebrewName,
-    latinName: plant.latinName?.trim() || null,
+    // שם הסוג באות גדולה (מוסכמה בוטנית): "lavandula dentata" → "Lavandula dentata"
+    latinName: plant.latinName?.trim() ? plant.latinName.trim().replace(/^[a-z]/, (c) => c.toUpperCase()) : null,
     imageUrl: p.customImageUrl || plant.imageUrl || null,
     logoUrl: args.nursery.logoUrl || null,
     nurseryName: args.nursery.name,
