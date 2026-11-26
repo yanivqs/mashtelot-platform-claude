@@ -32,6 +32,8 @@ export interface TemplateMeta {
   unitLabel: string | null;
   leadTimeDays: number | null;
   requiresArtwork?: boolean;
+  /** מוצר מיוחד: 'PLANT_SIGN' — שלטי צמחים */
+  kind?: string | null;
   isActive: boolean;
 }
 
@@ -159,7 +161,7 @@ export async function createTemplateOrder(
     where: { id: args.templateVersionId },
     include: { template: true },
   });
-  if (!v || v.status !== 'PUBLISHED' || !v.template.isActive) {
+  if (!v || v.status !== 'PUBLISHED' || !v.template.isActive || v.template.kind === 'PLANT_SIGN') {
     return { ok: false, error: 'המוצר אינו זמין להזמנה — רעננו את הדף' };
   }
   const fields = parseFields(v.fields);

@@ -85,6 +85,7 @@ export interface MetaValues {
   unitLabel: string | null;
   leadTimeDays: number | null;
   requiresArtwork: boolean;
+  kind: string | null;
   isActive: boolean;
 }
 
@@ -216,6 +217,15 @@ export function MetaForm({ meta, categories = [] }: { meta: MetaValues; categori
       <label className="flex items-center gap-2 text-sm sm:col-span-2">
         <input name="requiresArtwork" type="checkbox" defaultChecked={meta.requiresArtwork} className="h-4 w-4" />
         נדרשת גרפיקה מאושרת לפני שחרור לייצור
+      </label>
+      <label className="flex items-start gap-2 text-sm sm:col-span-2">
+        <input name="plantSign" type="checkbox" defaultChecked={meta.kind === 'PLANT_SIGN'} className="mt-0.5 h-4 w-4" data-testid="template-plant-sign" />
+        <span>
+          שלטי צמחים (15×10 ס&quot;מ)
+          <span className="block text-xs text-gray-600">
+            המשתלה בוחרת צמחים מהמוצרים שלה ועורכת את השלטים; המחיר לפי סך השלטים, וקובץ ה-PDF מופק כאן בהזמנה. אין צורך בקובץ גרפיקה.
+          </span>
+        </span>
       </label>
       <label className="flex items-center gap-2 text-sm sm:col-span-2">
         <input name="isActive" type="checkbox" defaultChecked={meta.isActive} className="h-4 w-4" />

@@ -10,6 +10,8 @@ import { ProductRow } from './product-row';
 import { loadAdminProducts } from './load';
 import { tenantOrigin } from '@/lib/seo';
 import { adminProductViewUrl } from '@/lib/product-preview';
+import { getEnabledModuleKeys } from '@/lib/module-access';
+import { findSignTemplate } from '@/lib/plant-sign/order';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,11 +24,15 @@ export default async function AdminProductsPage(
   const { nurseryId } = await requireNurseryPage({ any: ['plant_catalog', 'supplies'] });
 
 
-  const [rows, nurseryCategories, nursery] = await Promise.all([
+  const [rows, nurseryCategories, nursery, modules, signTemplate] = await Promise.all([
     loadAdminProducts(nurseryId),
     prisma.nurseryCategory.findMany({ where: { nurseryId } }),
     prisma.nursery.findUniqueOrThrow({ where: { id: nurseryId }, select: { subdomain: true, customDomain: true } }),
+    getEnabledModuleKeys(nurseryId),
+    findSignTemplate(prisma),
   ]);
+  // שלטי צמחים: סימון צמחים ברשימה ומעבר לעמוד ההזמנה בבית הדפוס
+  const signs = Boolean(signTemplate) && modules.has('print_shop') && modules.has('plant_catalog') && rows.some((r) => r.plant);
   const origin = tenantOrigin(nursery);
 
   const categoryOptions = flattenCategoryTree(nurseryCategories);
@@ -205,6 +211,14 @@ export default async function AdminProductsPage(
               </button>
             </form>
             <AlphabetBar available={letters} active={letter} hrefFor={letterHref} />
+            {signs && (
+              <form id="plant-signs-pick" method="get" action="/admin/print-shop/plant-signs" className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
+                <span>סמנו צמחים ברשימה כדי להזמין להם שלטים מעוצבים מבית הדפוס:</span>
+                <button className="rounded-lg border border-brand-700 px-3 py-1.5 font-medium text-brand-800 hover:bg-brand-50" data-testid="sign-pick-submit">
+                  שלטי צמחים לנבחרים
+                </button>
+              </form>
+            )}
             {(letter || q || category) && (
               <p className="text-xs text-gray-500">
                 מוצגים {visibleRows.length} מתוך {rows.length} ·{' '}
@@ -238,6 +252,7 @@ export default async function AdminProductsPage(
                 key={product.id}
                 product={product}
                 viewUrl={adminProductViewUrl(origin, { id: product.id, slug: product.slug ?? product.autoSlug, visible: product.isActive && !product.imageRequired })}
+                signForm={signs ? 'plant-signs-pick' : undefined}
               />
             ))}
           </div>

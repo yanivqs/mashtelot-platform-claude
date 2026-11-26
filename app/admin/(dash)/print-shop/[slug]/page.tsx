@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { requireNurseryPage } from '@/lib/nursery-scope';
@@ -38,6 +39,8 @@ export default async function PrintProductPage({ params, searchParams }: { param
   const pricing = version ? parsePricing(version.pricing) : null;
   if (!version || !fields?.ok || !pricing?.ok) return <NotFound />;
   const t = version.template;
+  // שלטי צמחים — עמוד ייעודי (בחירת צמחים ועריכת השלטים), לא המחשבון
+  if (t.kind === 'PLANT_SIGN') redirect('/admin/print-shop/plant-signs');
 
   // "הזמנה דומה": ממלאים מעבודה קיימת של המשתלה בלבד. ערך שכבר לא קיים יופיע ברשימת החוסרים.
   let prefill: CalculatorPrefill | undefined;

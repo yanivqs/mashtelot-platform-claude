@@ -45,7 +45,9 @@ function readMeta(formData: FormData): TemplateMeta {
     imageUrl: s('imageUrl'),
     unitLabel: s('unitLabel'),
     leadTimeDays: lead === null ? null : Number(lead),
-    requiresArtwork: formData.get('requiresArtwork') === 'on',
+    // שלטי צמחים: הגרפיקה נוצרת במערכת מנתוני הצמחים — אין קובץ גרפיקה מהמשתלה
+    requiresArtwork: formData.get('requiresArtwork') === 'on' && formData.get('plantSign') !== 'on',
+    kind: formData.get('plantSign') === 'on' ? 'PLANT_SIGN' : null,
     isActive: formData.get('isActive') === 'on',
   };
 }

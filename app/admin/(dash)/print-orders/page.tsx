@@ -10,6 +10,8 @@ import { ProductionPanel, type ProductionVM } from './production-panel';
 import { gateFor } from '@/lib/print-production';
 import { nextStatuses, type ProductionStatus } from '@/lib/print-release';
 import { signDownloadUrl } from '@/lib/print-storage';
+import type { SignData } from '@/lib/plant-sign/types';
+import { PlantSignsPanel } from './plant-signs-panel';
 
 const dateFmt = new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', dateStyle: 'short', timeStyle: 'short' });
 
@@ -28,6 +30,7 @@ export default async function PrintOrdersPage() {
         orderedBy: { select: { email: true } },
         items: { include: { printProduct: { select: { title: true } }, savedRevision: { select: { id: true, status: true, savedProductId: true } } } },
         productionFile: true,
+        plantSigns: { orderBy: { sortOrder: 'asc' }, select: { id: true, quantity: true, data: true } },
       },
       orderBy: { createdAt: 'desc' },
     }),
@@ -148,6 +151,16 @@ export default async function PrintOrdersPage() {
                       reasons: o.reviewReasons,
                       needsDesign: o.needsDesign,
                     }}
+                  />
+                </div>
+              )}
+              {o.plantSigns.length > 0 && (
+                <div className="mt-3">
+                  <PlantSignsPanel
+                    orderId={o.id}
+                    signs={o.plantSigns.map((s) => ({ id: s.id, quantity: s.quantity, data: s.data as unknown as SignData }))}
+                    released={Boolean(o.releasedAt)}
+                    hasFile={Boolean(o.productionFileId)}
                   />
                 </div>
               )}

@@ -81,8 +81,9 @@ export default async function PrintJobsPage() {
       const raw = fields?.ok && j.activeRevision ? specStillValid(fields.value, j.activeRevision.values as Stored) : null;
       const expired = lastOrder ? isQuoteExpired(lastOrder) : false;
 
+      const plantSigns = j.template?.kind === 'PLANT_SIGN';
       let blocked: string | null = null;
-      if (freeReorder) blocked = null;
+      if (freeReorder || plantSigns) blocked = null;
       else if (!pub) blocked = 'המוצר אינו זמין כרגע';
       else if (!j.activeRevision) blocked = revision?.status === 'REJECTED' ? 'המפרט נדחה בבית הדפוס' : 'המפרט ממתין לאישור בית הדפוס';
       else if (!raw) blocked = 'המוצר השתנה מאז ההזמנה האחרונה. בדקו את הפרטים בהזמנה דומה';
@@ -91,7 +92,8 @@ export default async function PrintJobsPage() {
         id: j.id,
         name: j.name,
         productTitle: j.template?.title ?? j.name,
-        productHref: j.template ? `/admin/print-shop/${j.template.slug ?? j.template.id}` : '',
+        // שלטי צמחים: "הזמנה דומה" פותחת את עמוד השלטים עם אותם צמחים
+        productHref: plantSigns ? '/admin/print-shop/plant-signs' : j.template ? `/admin/print-shop/${j.template.slug ?? j.template.id}` : '',
         imported: Boolean(j.importedAt),
         freeReorder,
         canOrderSimilar: Boolean(pub),
@@ -113,7 +115,7 @@ export default async function PrintJobsPage() {
             ? { orderId: lastOrder.id, total: Number(lastOrder.totalAmount), validUntil: lastOrder.quoteValidUntil?.toISOString() ?? null, expired }
             : null,
         blocked,
-        reorder: !blocked && fields?.ok && pricing?.ok && raw ? { fields: fields.value, pricing: pricing.value, raw, unitLabel: j.template?.unitLabel ?? null } : null,
+        reorder: !blocked && !plantSigns && fields?.ok && pricing?.ok && raw ? { fields: fields.value, pricing: pricing.value, raw, unitLabel: j.template?.unitLabel ?? null } : null,
         artwork: await artworkVersionsVM(versions),
         sortAt: lastOrder?.createdAt.getTime() ?? j.createdAt.getTime(),
       };

@@ -67,6 +67,11 @@ export const E2E_SUPER10 = { email: 'super10@e2e.invalid', password: 'e2e-super1
 export const MFR_SHOP = 'http://e2emfr.localhost:3100';
 export const E2E_MFR_PREFIX = 'יצרן E2E';
 export const E2E_PLANT_PREFIX = 'צמח E2E';
+/** שלטי צמחים: משתלה נפרדת, מוצר דפוס מסוג PLANT_SIGN ושני צמחים */
+export const E2E_SIGNS_OWNER = { email: 'signs-owner@e2e.invalid', password: 'e2e-signs-pass-123' };
+export const E2E_SUPER11 = { email: 'super11@e2e.invalid', password: 'e2e-super11-pass-123' };
+export const E2E_SIGNS_TEMPLATE = 'שלטי צמחים E2E';
+export const E2E_SIGN_PLANTS = [`${'צמח E2E'} שלט לבנדר`, `${'צמח E2E'} שלט רוזמרין`];
 export const E2E_CARDS_CATEGORIES = { parent: 'e2e-cards', child: 'e2e-cards-small' };
 
 export default async function globalSetup() {
@@ -127,6 +132,13 @@ export default async function globalSetup() {
       await db.nursery.delete({ where: { id: oldMfr.id } });
     }
     await db.user.deleteMany({ where: { email: E2E_SUPER10.email } });
+    const oldSigns = await db.nursery.findUnique({ where: { subdomain: 'e2esigns' } });
+    if (oldSigns) {
+      await db.user.deleteMany({ where: { nurseryId: oldSigns.id } });
+      await db.nursery.delete({ where: { id: oldSigns.id } });
+    }
+    await db.user.deleteMany({ where: { email: E2E_SUPER11.email } });
+    await db.printTemplate.deleteMany({ where: { title: E2E_SIGNS_TEMPLATE } });
     await db.masterSupply.deleteMany({ where: { manufacturer: { name: { startsWith: E2E_MFR_PREFIX } } } });
     await db.manufacturer.deleteMany({ where: { name: { startsWith: E2E_MFR_PREFIX } } });
     const old = await db.nursery.findUnique({ where: { subdomain: 'e2eshop' } });
@@ -489,6 +501,53 @@ export default async function globalSetup() {
     });
     await db.user.create({
       data: { email: E2E_SUPER10.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER10.password, 4) },
+    });
+
+    // שלטי צמחים
+    const signs = await db.nursery.create({ data: { name: 'משתלת השלטים', subdomain: 'e2esigns', ownerEmail: E2E_SIGNS_OWNER.email } });
+    await db.nurseryModule.createMany({
+      data: ['plant_catalog', 'print_shop', 'sales', 'orders'].map((moduleKey) => ({
+        nurseryId: signs.id,
+        moduleKey,
+        isEnabled: true,
+        ...(moduleKey === 'sales' ? { config: { mode: 'ONLINE' } } : {}),
+      })),
+    });
+    await db.nurseryChannel.createMany({
+      data: [
+        { nurseryId: signs.id, provider: 'FACEBOOK', value: 'https://facebook.com/e2e' },
+        { nurseryId: signs.id, provider: 'INSTAGRAM', value: 'https://instagram.com/e2e' },
+      ],
+    });
+    for (const [i, name] of E2E_SIGN_PLANTS.entries()) {
+      const plant = await db.plant.create({
+        data: { hebrewName: name, latinName: i ? 'Salvia rosmarinus' : 'Lavandula angustifolia', light: 'שמש מלאה', water: i ? 'מועטה' : 'בינונית', plantType: 'שיחים', uniqueness: 'עלווה ריחנית' },
+      });
+      await db.nurseryProduct.create({ data: { nurseryId: signs.id, plantId: plant.id, price: '25.00', isActive: true } });
+    }
+    await db.printTemplate.create({
+      data: {
+        title: E2E_SIGNS_TEMPLATE,
+        kind: 'PLANT_SIGN',
+        isActive: true,
+        requiresArtwork: false,
+        sortOrder: -100,
+        versions: {
+          create: {
+            version: 1,
+            status: 'PUBLISHED',
+            publishedAt: new Date(),
+            fields: [{ key: 'material', label: 'חומר', type: 'select', required: true, options: [{ value: 'paper', label: 'נייר מנוילן', priceDelta: 0 }, { value: 'pvc', label: 'PVC', priceDelta: 1 }] }],
+            pricing: { basePrice: 2, tiers: [], setupFee: 0, minQuantity: 1, quoteOnly: false, quantityOptions: [], allowCustomQuantity: true },
+          },
+        },
+      },
+    });
+    await db.user.create({
+      data: { email: E2E_SIGNS_OWNER.email, role: 'NURSERY_OWNER', nurseryId: signs.id, passwordHash: await bcrypt.hash(E2E_SIGNS_OWNER.password, 4) },
+    });
+    await db.user.create({
+      data: { email: E2E_SUPER11.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER11.password, 4) },
     });
     await db.user.create({
       data: {
