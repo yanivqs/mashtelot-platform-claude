@@ -30,6 +30,8 @@ export async function POST(_req: Request, ctx: { params: Promise<{ orderId: stri
     return Response.json({ ok: true, fileId: res.fileId, pages: res.pages, warnings: res.warnings });
   } catch (e) {
     console.error('plant signs pdf failed', e);
-    return Response.json({ error: 'הפקת ה-PDF נכשלה — נסו שוב' }, { status: 500 });
+    // הנתיב לסופר-אדמין בלבד — מציגים את סיבת הכשל כדי לאבחן בלי גישה ללוגים
+    const detail = (e instanceof Error ? `${e.name}: ${e.message}` : String(e)).replace(/\s+/g, ' ').slice(0, 400);
+    return Response.json({ error: `הפקת ה-PDF נכשלה — ${detail}` }, { status: 500 });
   }
 }
