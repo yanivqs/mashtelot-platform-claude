@@ -60,10 +60,8 @@ export function SignsBuilder({
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     const pool = catalog.filter((c) => !chosen.has(c.id));
-    if (!q) return pool.slice(0, 8);
-    return pool
-      .filter((c) => c.name.toLowerCase().includes(q) || c.latin?.toLowerCase().includes(q) || c.title?.toLowerCase().includes(q))
-      .slice(0, 8);
+    if (!q) return pool;
+    return pool.filter((c) => c.name.toLowerCase().includes(q) || c.latin?.toLowerCase().includes(q) || c.title?.toLowerCase().includes(q));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, catalog, lines]);
 
@@ -212,36 +210,36 @@ export function SignsBuilder({
               autoComplete="off"
             />
           </div>
-          {(query || lines.length === 0) && (
-            <ul className="mt-2 max-h-72 divide-y divide-gray-50 overflow-auto rounded-lg border border-gray-100" aria-label="תוצאות חיפוש">
-              {results.length === 0 && (
-                <li className="p-3 text-sm text-gray-600">{catalog.length ? 'לא נמצאו צמחים' : 'אין עדיין צמחים במוצרים שלכם'}</li>
-              )}
-              {results.map((c) => (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    onClick={() => addPlants([c.id])}
-                    disabled={pending}
-                    className="flex w-full items-center gap-3 p-2 text-right hover:bg-gray-50 disabled:opacity-60"
-                    data-testid="sign-add"
-                  >
-                    <Thumb src={c.image} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{c.name}</span>
-                      {c.latin && (
-                        <span className="block truncate text-xs italic text-gray-600" dir="ltr">
-                          {c.latin}
-                        </span>
-                      )}
-                    </span>
-                    <Plus className="h-4 w-4 text-brand-700" aria-hidden />
-                    <span className="sr-only">הוספה</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ul className="mt-2 max-h-72 divide-y divide-gray-50 overflow-auto rounded-lg border border-gray-100" aria-label="תוצאות חיפוש">
+            {results.length === 0 && (
+              <li className="p-3 text-sm text-gray-600">
+                {!catalog.length ? 'אין עדיין צמחים במוצרים שלכם' : query ? 'לא נמצאו צמחים' : 'כל הצמחים כבר נוספו'}
+              </li>
+            )}
+            {results.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => addPlants([c.id])}
+                  disabled={pending}
+                  className="flex w-full items-center gap-3 p-2 text-right hover:bg-gray-50 disabled:opacity-60"
+                  data-testid="sign-add"
+                >
+                  <Thumb src={c.image} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{c.name}</span>
+                    {c.latin && (
+                      <span className="block truncate text-xs italic text-gray-600" dir="ltr">
+                        {c.latin}
+                      </span>
+                    )}
+                  </span>
+                  <Plus className="h-4 w-4 text-brand-700" aria-hidden />
+                  <span className="sr-only">הוספה</span>
+                </button>
+              </li>
+            ))}
+          </ul>
 
           {lines.length > 0 && (
             <ul className="mt-4 space-y-2" data-testid="sign-lines">

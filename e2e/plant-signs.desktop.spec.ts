@@ -28,6 +28,8 @@ test('plant signs: owner picks plants, edits and orders; print house generates t
   await page.getByTestId('sign-pick-submit').click();
   await expect(page).toHaveURL(/\/admin\/print-shop\/plant-signs\?/);
   await expect(page.getByTestId('sign-lines').getByRole('listitem')).toHaveCount(2);
+  // רשימת ההוספה נשארת גלויה גם אחרי שנבחרו צמחים (כאן כל צמחי המשתלה כבר נבחרו)
+  await expect(page.getByText('כל הצמחים כבר נוספו')).toBeVisible();
   await page.getByRole('button', { name: E2E_SIGN_PLANTS[0]!, exact: true }).click();
 
   // תצוגה מקדימה של הצמח הראשון: שם, שם לטיני, אור והשקיה, ובלי אפשרות הורדה
