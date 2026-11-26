@@ -253,7 +253,7 @@ export function renderSign(d: SignData, opts: RenderOptions): string {
   const phId = `ps-ph-${uid}`;
 
   // המסכה: רחבה למעלה וצרה למטה, בקשת אסימטרית עדינה
-  const photoPath = 'M5.5 2L60.4 2C63 15.5 62.2 29.5 58.4 41.5C55.4 51 51 61.2 46.8 72L2 72L2 5.5Q2 2 5.5 2Z';
+  const photoPath = 'M5.5 2L47.4 2C52.8 9.4 56.8 22.4 57.2 36.6C57.6 50.8 54.4 62.8 49.6 72L2 72L2 5.5Q2 2 5.5 2Z';
 
   // ---- שכבת הגרפיקה ----
   let g = '';
@@ -264,13 +264,13 @@ export function renderSign(d: SignData, opts: RenderOptions): string {
 
   // תמונת הצמח במסכה האסימטרית
   if (d.imageUrl) {
-    g += `<image href="${esc(d.imageUrl)}" x="2" y="2" width="58" height="70" preserveAspectRatio="xMidYMid slice" clip-path="url(#${photoId})"/>`;
+    g += `<image href="${esc(d.imageUrl)}" x="2" y="2" width="55.8" height="70" preserveAspectRatio="xMidYMid slice" clip-path="url(#${photoId})"/>`;
   } else {
     g += `<path d="${photoPath}" fill="url(#${phId})"/>`;
-    g += `<g clip-path="url(#${photoId})" opacity=".75">${sprig(uid, [12, 68], [22, 42], [38, 14], 9, 11, 'light')}</g>`;
+    g += `<g clip-path="url(#${photoId})" opacity=".75">${sprig(uid, [10, 68], [20, 42], [34, 12], 9, 11, 'light')}</g>`;
   }
   // קו מתאר עדין לצד המסכה
-  g += `<path d="M62.6 2C65.2 15.5 64.4 29.5 60.6 41.5C57.6 51 53.2 61.2 49 72" stroke="${C.gold}" stroke-width="0.3" fill="none"/>`;
+  g += `<path d="M48.8 2C54.2 9.4 58.2 22.4 58.6 36.6C59 50.8 55.8 62.8 51 72" stroke="${C.gold}" stroke-width="0.3" fill="none"/>`;
   // תחום הלוגו: קרוב לריבוע עם פינה מעוגלת רחבה, בקווים מסתלסלים עדינים (לא ישרים)
   g += `<path d="M124.4 2C125.3 6.4 123.9 10.6 124.6 15C125.2 19.2 128.2 22.6 132.6 23.4C137.4 24.3 141.4 23.2 145 24.2C146.2 24.5 147.2 24.9 148 25.4" stroke="${C.gold}" stroke-width="0.3" fill="none" stroke-linecap="round"/>`;
 
@@ -286,8 +286,8 @@ export function renderSign(d: SignData, opts: RenderOptions): string {
   g += sprig(uid, [149.5, 101.5], [144.5, 95.5], [139.6, 91.4], 5, 5.4, 'dark');
 
   // קו מפריד מתחת לשמות, עם עלה באמצע
-  g += `<path d="M68 25.4H91.2M98 25.4H121.2" stroke="#b9ae8f" stroke-width="0.22" stroke-linecap="round"/>`;
-  g += leaf(94.6, 25.9, 2.6, -128, C.leaf, 1, false) + leaf(94.6, 25.9, 2.6, -52, '#7fa06d', 1, false);
+  g += `<path d="M65.6 25.4H89.2M96 25.4H119.6" stroke="#b9ae8f" stroke-width="0.22" stroke-linecap="round"/>`;
+  g += leaf(92.6, 25.9, 2.6, -128, C.leaf, 1, false) + leaf(92.6, 25.9, 2.6, -52, '#7fa06d', 1, false);
 
   // כרטיס השקיה
   g += `<rect x="62" y="46" width="32.6" height="23.6" rx="2.6" fill="#ffffff" fill-opacity=".38" stroke="${C.cardBorder}" stroke-width="0.25"/>`;
@@ -353,9 +353,9 @@ export function renderSign(d: SignData, opts: RenderOptions): string {
   } else {
     t += box('ps-h', 126.8, 4.4, 20, 16.4, 4.4, 2.4, esc(d.nurseryName));
   }
-  t += box('ps-title', 65.4, 6, 58.4, 11.8, 9.6, 4.2, esc(d.hebrewName));
-  if (d.latinName) t += box('ps-latin', 65.4, 18, 58.4, 4.8, 3.7, 2.3, esc(d.latinName));
-  if (d.description) t += box('ps-desc', 64.6, 28, 60.6, 16, 2.95, 2.05, esc(d.description));
+  t += box('ps-title', 61.4, 6, 62.4, 11.8, 9.6, 4.2, esc(d.hebrewName));
+  if (d.latinName) t += box('ps-latin', 61.4, 18, 62.4, 4.8, 3.7, 2.3, esc(d.latinName));
+  if (d.description) t += box('ps-desc', 61.6, 28, 62.2, 16, 2.95, 2.05, esc(d.description));
 
   t += box('ps-h', 71.6, 46.6, 18, 4.4, 3.3, 2.6, 'השקיה');
   t += box('ps-label', 63, 59.1, 30.6, 3.8, 2.9, 2.1, esc(d.water.title));
