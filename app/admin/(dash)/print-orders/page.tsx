@@ -4,7 +4,7 @@ import { requireUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { formatPrice } from '@/lib/utils';
 import Link from 'next/link';
-import { PrintStatusSelect, QuotePanel } from './controls';
+import { DeletePrintOrderButton, PrintStatusSelect, QuotePanel } from './controls';
 import { isQuoteExpired } from '@/lib/print-jobs';
 import { ProductionPanel, type ProductionVM } from './production-panel';
 import { gateFor } from '@/lib/print-production';
@@ -28,7 +28,12 @@ export default async function PrintOrdersPage() {
       include: {
         nursery: { select: { name: true } },
         orderedBy: { select: { email: true } },
-        items: { include: { printProduct: { select: { title: true } }, savedRevision: { select: { id: true, status: true, savedProductId: true } } } },
+        items: {
+          include: {
+            printProduct: { select: { title: true } },
+            savedRevision: { select: { id: true, status: true, savedProductId: true } },
+          },
+        },
         productionFile: true,
         plantSigns: { orderBy: { sortOrder: 'asc' }, select: { id: true, quantity: true, data: true } },
       },
@@ -50,7 +55,12 @@ export default async function PrintOrdersPage() {
     const previous =
       revision && !o.productionFileId && !o.releasedAt
         ? await prisma.printOrder.findFirst({
-            where: { id: { not: o.id }, nurseryId: o.nurseryId, productionFileId: { not: null }, items: { some: { savedRevision: { savedProductId: revision.savedProductId } } } },
+            where: {
+              id: { not: o.id },
+              nurseryId: o.nurseryId,
+              productionFileId: { not: null },
+              items: { some: { savedRevision: { savedProductId: revision.savedProductId } } },
+            },
             orderBy: { createdAt: 'desc' },
             select: { productionFile: { select: { id: true, originalName: true } } },
           })
@@ -92,10 +102,7 @@ export default async function PrintOrdersPage() {
           <h1 className="text-2xl font-bold">הזמנות דפוס נכנסות</h1>
           <p className="text-sm text-gray-500">{orders.length} הזמנות מהמשתלות</p>
         </div>
-        <Link
-          href="/admin/print-templates"
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-        >
+        <Link href="/admin/print-templates" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
           ניהול מוצרי דפוס ({productCount})
         </Link>
       </div>
@@ -107,7 +114,7 @@ export default async function PrintOrdersPage() {
       ) : (
         <div className="space-y-3">
           {orders.map((o) => (
-            <div key={o.id} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+            <div key={o.id} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm" data-testid="print-order-card">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-medium text-gray-900">{o.nursery.name}</p>
@@ -115,13 +122,20 @@ export default async function PrintOrdersPage() {
                     {o.createdAt.toLocaleString('he-IL')}
                     {o.orderedBy?.email ? ` · ${o.orderedBy.email}` : ''}
                   </p>
+                  {o.status === 'CANCELLED' && o.cancelledBy && (
+                    <p
+                      className="mt-1 inline-block rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700"
+                      data-testid="cancelled-by-nursery"
+                    >
+                      בוטלה ע&quot;י המשתלה{o.cancelledAt ? ` · ${o.cancelledAt.toLocaleString('he-IL')}` : ''}
+                    </p>
+                  )}
                 </div>
                 <div className="text-left">
-                  <p className="text-lg font-bold text-gray-900">
-                    {formatPrice(o.totalAmount.toString())}
-                  </p>
-                  <div className="mt-1">
-                    {o.status !== 'QUOTE_REQUESTED' && <PrintStatusSelect id={o.id} status={o.status} />}
+                  <p className="text-lg font-bold text-gray-900">{formatPrice(o.totalAmount.toString())}</p>
+                  <div className="mt-1">{o.status !== 'QUOTE_REQUESTED' && <PrintStatusSelect id={o.id} status={o.status} />}</div>
+                  <div className="mt-2">
+                    <DeletePrintOrderButton id={o.id} />
                   </div>
                 </div>
               </div>
@@ -173,12 +187,7 @@ export default async function PrintOrdersPage() {
                 <div className="mt-2 space-y-1 text-sm">
                   {o.notes && <p className="text-gray-500">הערות: {o.notes}</p>}
                   {o.artworkUrl && (
-                    <a
-                      href={o.artworkUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-brand-700 hover:underline"
-                    >
+                    <a href={o.artworkUrl} target="_blank" rel="noopener noreferrer" className="text-brand-700 hover:underline">
                       קובץ גרפי מצורף ↗
                     </a>
                   )}
@@ -188,7 +197,6 @@ export default async function PrintOrdersPage() {
           ))}
         </div>
       )}
-
     </div>
   );
 }

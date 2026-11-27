@@ -1,10 +1,11 @@
 'use client';
 
-import { useActionState, useRef } from 'react';
+import { useActionState, useRef, useState, useTransition } from 'react';
 import { useKeepFormValues } from '@/components/admin/use-keep-form-values';
 import { useFormStatus } from 'react-dom';
 import {
   updatePrintOrderStatus,
+  deletePrintOrderAction,
   quoteAction,
   type QuoteState,
   savePrintOption,
@@ -57,11 +58,7 @@ function SaveButton({ label }: { label: string }) {
 }
 
 /** שורת עריכה / הוספה של אפשרות גימור גלובלית. */
-export function PrintOptionForm({
-  option,
-}: {
-  option?: { id: string; optionName: string; extraPrice: string };
-}) {
+export function PrintOptionForm({ option }: { option?: { id: string; optionName: string; extraPrice: string } }) {
   const [state, action] = useActionState(savePrintOption, initial);
   const keep = useKeepFormValues(state);
   return (
@@ -121,11 +118,18 @@ export function QuotePanel({ q }: { q: QuoteVM }) {
   const keep = useKeepFormValues(state);
   const status = q.status ?? 'NEW';
   return (
-    <form ref={keep} action={action} className="space-y-2 rounded-lg border border-amber-100 bg-amber-50 p-3 text-sm" data-testid="quote-panel">
+    <form
+      ref={keep}
+      action={action}
+      className="space-y-2 rounded-lg border border-amber-100 bg-amber-50 p-3 text-sm"
+      data-testid="quote-panel"
+    >
       <input type="hidden" name="id" value={q.id} />
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium">בקשת הצעת מחיר</span>
-        <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-amber-900">{q.expired && status === 'SENT' ? 'פג תוקף' : QUOTE_LABEL[status]}</span>
+        <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-amber-900">
+          {q.expired && status === 'SENT' ? 'פג תוקף' : QUOTE_LABEL[status]}
+        </span>
         {q.needsDesign && <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-sky-800">נדרש עיצוב</span>}
       </div>
       {q.reasons.length > 0 && (
@@ -138,25 +142,99 @@ export function QuotePanel({ q }: { q: QuoteVM }) {
       <div className="flex flex-wrap items-end gap-2">
         <label className="text-xs">
           <span className="mb-0.5 block text-gray-700">מחיר סופי (₪)</span>
-          <input name="total" type="number" step="0.01" min="0" defaultValue={q.total > 0 ? q.total : ''} aria-label="מחיר כולל להצעה" className="w-28 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm" />
+          <input
+            name="total"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={q.total > 0 ? q.total : ''}
+            aria-label="מחיר כולל להצעה"
+            className="w-28 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm"
+          />
         </label>
         <label className="text-xs">
           <span className="mb-0.5 block text-gray-700">בתוקף עד</span>
-          <input name="validUntil" type="date" defaultValue={q.validUntil ?? ''} aria-label="תוקף ההצעה" className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm" />
+          <input
+            name="validUntil"
+            type="date"
+            defaultValue={q.validUntil ?? ''}
+            aria-label="תוקף ההצעה"
+            className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm"
+          />
         </label>
         <label className="min-w-40 flex-1 text-xs">
           <span className="mb-0.5 block text-gray-700">הערות פנימיות (לא מוצגות למשתלה)</span>
-          <input name="adminNotes" defaultValue={q.adminNotes ?? ''} aria-label="הערות פנימיות" className="w-full rounded-md border border-gray-200 bg-white px-2 py-1 text-sm" />
+          <input
+            name="adminNotes"
+            defaultValue={q.adminNotes ?? ''}
+            aria-label="הערות פנימיות"
+            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1 text-sm"
+          />
         </label>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <button name="intent" value="send" className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700">שליחת הצעה למשתלה</button>
-        <button name="intent" value="progress" className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-800">סימון בטיפול</button>
-        <button name="intent" value="notes" className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-800">שמירת הערות</button>
-        <button name="intent" value="reject" className="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-sm font-medium text-rose-700">דחיית הבקשה</button>
+        <button
+          name="intent"
+          value="send"
+          className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+        >
+          שליחת הצעה למשתלה
+        </button>
+        <button
+          name="intent"
+          value="progress"
+          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-800"
+        >
+          סימון בטיפול
+        </button>
+        <button
+          name="intent"
+          value="notes"
+          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-800"
+        >
+          שמירת הערות
+        </button>
+        <button
+          name="intent"
+          value="reject"
+          className="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-sm font-medium text-rose-700"
+        >
+          דחיית הבקשה
+        </button>
         {state.ok && <span className="text-xs text-green-700">נשמר ✓</span>}
         {state.error && <span className="text-xs text-red-600">{state.error}</span>}
       </div>
     </form>
+  );
+}
+
+/** מחיקה לצמיתות של הזמנה (אחרי אישור) */
+export function DeletePrintOrderButton({ id }: { id: string }) {
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          if (!window.confirm('למחוק לצמיתות? ההזמנה, הקבצים והשלטים יימחקו גם אצל המשתלה.')) return;
+          setError(null);
+          start(async () => {
+            const r = await deletePrintOrderAction(id);
+            if (!r.ok) setError(r.error ?? 'המחיקה נכשלה');
+          });
+        }}
+        className="text-xs text-red-700 underline hover:text-red-900 disabled:opacity-60"
+        data-testid="delete-print-order"
+      >
+        {pending ? 'מוחק…' : 'מחיקת ההזמנה'}
+      </button>
+      {error && (
+        <span role="alert" className="block text-xs text-red-700">
+          {error}
+        </span>
+      )}
+    </>
   );
 }
