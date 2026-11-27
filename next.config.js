@@ -44,7 +44,7 @@ const nextConfig = {
   // והגופנים של השלט נכללים בפונקציה (הם נקראים מהדיסק ומוטמעים ב-PDF)
   serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
   outputFileTracingIncludes: {
-    '/api/print/plant-signs/[orderId]': ['./public/fonts/sign/**/*', './node_modules/@sparticuz/chromium/bin/**/*'],
+    '/api/print/plant-signs/*': ['./public/fonts/sign/**/*', './node_modules/@sparticuz/chromium/bin/**/*'],
   },
   experimental: {
     serverActions: {
