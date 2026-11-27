@@ -54,6 +54,8 @@ model Nursery {
   subdomain             String                 @unique
   customDomain          String?                @unique @map("custom_domain")
   logoUrl               String?                @map("logo_url")
+  /// אייקון לשונית הדפדפן (favicon) בעמודי החנות; ריק = אייקון ברירת המחדל של הפלטפורמה
+  faviconUrl            String?                @map("favicon_url")
   primaryColor          String?                @default("#16a34a") @map("primary_color")
   phoneNumber           String?                @map("phone_number")
   ownerEmail            String                 @map("owner_email")

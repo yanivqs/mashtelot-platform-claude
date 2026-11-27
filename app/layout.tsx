@@ -10,6 +10,8 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "פלטפורמת משתלות SaaS",
   description: "מערכת ניהול וחנויות מקוונות למשתלות",
+  // ברירת מחדל; חנות של משתלה יכולה להחליף באייקון משלה (Nursery.faviconUrl, app/[tenant]/layout.tsx)
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({

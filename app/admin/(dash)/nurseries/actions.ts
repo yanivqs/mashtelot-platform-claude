@@ -14,6 +14,7 @@ import { isEmailTaken } from '@/lib/account';
 import { isNurseryStatus } from '@/lib/nursery-lifecycle';
 import { recordAudit } from '@/lib/audit';
 import { auditAsCurrentUser } from '@/lib/audit-actor';
+import { isSafeImageUrl } from '@/lib/page-blocks';
 
 export interface NurseryFormState {
   ok?: boolean;
@@ -170,9 +171,13 @@ export async function updateNursery(
     }
   }
 
+  const faviconUrl = s(formData, 'faviconUrl');
+  if (faviconUrl && !isSafeImageUrl(faviconUrl)) return { error: 'כתובת האייקון לא תקינה' };
+
   const data: Prisma.NurseryUpdateInput = {
     name,
     logoUrl: s(formData, 'logoUrl'),
+    faviconUrl,
     phoneNumber: s(formData, 'phoneNumber'),
     contactEmail: s(formData, 'contactEmail'),
     aboutText: s(formData, 'aboutText'),

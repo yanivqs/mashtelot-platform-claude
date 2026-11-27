@@ -57,7 +57,7 @@ export default async function EditPlantPage(
           </p>
           <p className="mt-1">
             {plant.submittedAt
-              ? `המשתלה הציעה אותו לקטלוג ב-${plant.submittedAt.toLocaleDateString('he-IL')}. אפשר לתקן את הפרטים ולשייך קטגוריות למטה (שמירה), ואז להוסיף לקטלוג.`
+              ? `המשתלה הציעה אותו לקטלוג ב-${plant.submittedAt.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })}. אפשר לתקן את הפרטים ולשייך קטגוריות למטה (שמירה), ואז להוסיף לקטלוג.`
               : 'המשתלה לא הציעה אותו לקטלוג (או שההצעה נדחתה).'}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">

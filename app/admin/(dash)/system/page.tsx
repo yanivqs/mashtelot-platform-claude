@@ -170,7 +170,7 @@ export default async function SystemPage() {
               return (
                 <div key={e.id} className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
                   <p className="mb-1 text-xs text-gray-400">
-                    {e.createdAt.toLocaleString('he-IL')} ·{' '}
+                    {e.createdAt.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })} ·{' '}
                     {e.action === 'email.test'
                       ? 'מייל בדיקה'
                       : `הזמנה ${e.entityId?.slice(0, 8)}${e.nursery ? ` · ${e.nursery.name}` : ''}`}

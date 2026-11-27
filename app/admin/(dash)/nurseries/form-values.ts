@@ -12,6 +12,7 @@ export function nurseryToFormValues(n: Nursery): NurseryFormValues {
     customDomain: n.customDomain,
     ownerEmail: n.ownerEmail,
     logoUrl: n.logoUrl,
+    faviconUrl: n.faviconUrl,
     phoneNumber: n.phoneNumber,
     contactEmail: n.contactEmail,
     aboutText: n.aboutText,

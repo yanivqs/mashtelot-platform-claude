@@ -39,7 +39,7 @@ export default async function ImportReportPage(props: { params: Promise<{ jobId:
       {payload.alreadyImportedAt && (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
           שימו לב: קובץ זהה (אותו hash) כבר יובא בעבר ב-
-          {new Date(payload.alreadyImportedAt).toLocaleString('he-IL')}.
+          {new Date(payload.alreadyImportedAt).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}.
         </p>
       )}
 

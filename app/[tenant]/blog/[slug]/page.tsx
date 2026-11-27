@@ -70,7 +70,7 @@ export default async function BlogPostView(
       <Breadcrumbs nursery={nursery} items={[{ label: 'בלוג', href: '/blog' }, { label: post.title }]} className="mb-4" />
       <h1 className="text-3xl font-bold tracking-tight text-gray-900">{post.title}</h1>
       {post.publishedAt && (
-        <p className="mt-2 text-sm text-gray-600">{post.publishedAt.toLocaleDateString('he-IL')}</p>
+        <p className="mt-2 text-sm text-gray-600">{post.publishedAt.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })}</p>
       )}
       {post.coverImageUrl && (
         // eslint-disable-next-line @next/next/no-img-element

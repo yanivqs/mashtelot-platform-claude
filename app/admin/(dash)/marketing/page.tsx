@@ -51,9 +51,9 @@ export default async function MarketingPage() {
                 <span className="text-sm text-gray-500">{Number(c.discountPct)}% הנחה</span>
                 {(c.startsAt || c.endsAt) && (
                   <span className="text-xs text-gray-400">
-                    {c.startsAt ? c.startsAt.toLocaleDateString('he-IL') : '—'}
+                    {c.startsAt ? c.startsAt.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' }) : '—'}
                     {' עד '}
-                    {c.endsAt ? c.endsAt.toLocaleDateString('he-IL') : '—'}
+                    {c.endsAt ? c.endsAt.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' }) : '—'}
                   </span>
                 )}
                 {c.usageLimit !== null && (
