@@ -44,7 +44,7 @@ export default async function ImportPage() {
                 className="flex items-center gap-4 border-b border-gray-50 px-4 py-3 text-sm last:border-0"
               >
                 <span className="min-w-0 flex-1 truncate text-gray-900">{j.originalFilename}</span>
-                <span className="text-xs text-gray-400">{j.createdAt.toLocaleString('he-IL')}</span>
+                <span className="text-xs text-gray-400">{j.createdAt.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}</span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                     j.status === 'COMMITTED'

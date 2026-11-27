@@ -13,7 +13,7 @@ function StockBadge({ state, expiresAt }: { state: string; expiresAt: Date | nul
     return (
       <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-800">
         {expiresAt
-          ? `מלאי שמור עד ${expiresAt.toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}`
+          ? `מלאי שמור עד ${expiresAt.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem', dateStyle: 'short', timeStyle: 'short' })}`
           : 'מלאי שמור'}
       </span>
     );
@@ -112,7 +112,7 @@ export default async function AdminOrdersPage() {
                     </p>
                   )}
                   <p className="mt-1 text-xs text-gray-400">
-                    {o.createdAt.toLocaleString('he-IL')}
+                    {o.createdAt.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}
                   </p>
                 </div>
                 <div className="text-left">

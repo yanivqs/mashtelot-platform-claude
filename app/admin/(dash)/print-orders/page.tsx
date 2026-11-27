@@ -119,7 +119,7 @@ export default async function PrintOrdersPage() {
                 <div>
                   <p className="font-medium text-gray-900">{o.nursery.name}</p>
                   <p className="text-xs text-gray-400">
-                    {o.createdAt.toLocaleString('he-IL')}
+                    {o.createdAt.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}
                     {o.orderedBy?.email ? ` · ${o.orderedBy.email}` : ''}
                   </p>
                   {o.status === 'CANCELLED' && o.cancelledBy && (
@@ -127,7 +127,7 @@ export default async function PrintOrdersPage() {
                       className="mt-1 inline-block rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700"
                       data-testid="cancelled-by-nursery"
                     >
-                      בוטלה ע&quot;י המשתלה{o.cancelledAt ? ` · ${o.cancelledAt.toLocaleString('he-IL')}` : ''}
+                      בוטלה ע&quot;י המשתלה{o.cancelledAt ? ` · ${o.cancelledAt.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}` : ''}
                     </p>
                   )}
                 </div>

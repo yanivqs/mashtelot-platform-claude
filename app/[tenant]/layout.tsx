@@ -46,6 +46,10 @@ export async function generateMetadata(props: LayoutProps): Promise<Metadata> {
     },
     description: `קטלוג הצמחים והציוד של ${nursery.name}. הזמנה אונליין, איסוף עצמי ומשלוחים.`,
     alternates: { canonical: '/' },
+    // אייקון לשונית הדפדפן של המשתלה (אם הועלה); אחרת — ברירת המחדל מה-layout הראשי
+    ...(nursery.faviconUrl
+      ? { icons: { icon: [{ url: nursery.faviconUrl }], shortcut: [{ url: nursery.faviconUrl }], apple: [{ url: nursery.faviconUrl }] } }
+      : {}),
     openGraph: {
       type: 'website',
       siteName: nursery.name,

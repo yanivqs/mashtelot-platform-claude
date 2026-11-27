@@ -66,7 +66,7 @@ export default async function BlogIndex(props: { params: Promise<{ tenant: strin
                 {p.excerpt && <p className="mt-2 line-clamp-3 text-sm text-gray-600">{p.excerpt}</p>}
                 {p.publishedAt && (
                   <p className="mt-3 text-xs text-gray-600">
-                    {p.publishedAt.toLocaleDateString('he-IL')}
+                    {p.publishedAt.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' })}
                   </p>
                 )}
               </div>

@@ -19,6 +19,7 @@ export interface NurseryFormValues {
   customDomain: string | null;
   ownerEmail: string;
   logoUrl: string | null;
+  faviconUrl: string | null;
   phoneNumber: string | null;
   contactEmail: string | null;
   aboutText: string | null;
@@ -149,6 +150,15 @@ export function NurseryProfileForm({
         </label>
         <div className="sm:col-span-2">
           <ImageUpload name="logoUrl" defaultValue={nursery.logoUrl} label="לוגו" folder="logos" />
+        </div>
+        <div className="sm:col-span-2">
+          <ImageUpload
+            name="faviconUrl"
+            defaultValue={nursery.faviconUrl}
+            label="אייקון לשונית הדפדפן (favicon)"
+            folder="logos"
+            hint="מוצג בלשונית הדפדפן ובסימניות בעמודי החנות. תמונה ריבועית, לפחות 64×64 (מומלץ 512×512). בלי אייקון — מוצג אייקון ברירת המחדל"
+          />
         </div>
       </Section>
 
