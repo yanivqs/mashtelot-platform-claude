@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { canNurseryCancel } from '@/lib/print-cancel';
 import { ArrowRight } from 'lucide-react';
 import { itemDisplay } from '@/lib/print-templates-admin';
 import { prisma } from '@/lib/prisma';
@@ -44,7 +45,8 @@ export default async function PrintJobsPage() {
       },
     }),
     prisma.printOrderItem.findMany({
-      where: { printOrder: { nurseryId } },
+      // הזמנות שהמשתלה ביטלה לא מוצגות לה
+      where: { printOrder: { nurseryId, NOT: { status: 'CANCELLED', cancelledBy: { not: null } } } },
       include: {
         printOrder: true,
         printProduct: { select: { title: true, imageUrl: true } },
@@ -62,7 +64,9 @@ export default async function PrintJobsPage() {
 
   // בלי לטעון את תוכן התמונות: רק אילו קבצים יש להם תמונה
   const fileIds = jobs.flatMap((j) => j.artworks[0]?.versions.map((v) => v.fileId) ?? []);
-  const withThumb = new Set((await prisma.printFileThumbnail.findMany({ where: { fileId: { in: fileIds } }, select: { fileId: true } })).map((t) => t.fileId));
+  const withThumb = new Set(
+    (await prisma.printFileThumbnail.findMany({ where: { fileId: { in: fileIds } }, select: { fileId: true } })).map((t) => t.fileId),
+  );
 
   const vm: Array<JobVM & { sortAt: number }> = await Promise.all(
     jobs.map(async (j) => {
@@ -93,11 +97,20 @@ export default async function PrintJobsPage() {
         name: j.name,
         productTitle: j.template?.title ?? j.name,
         // שלטי צמחים: "הזמנה דומה" פותחת את עמוד השלטים עם אותם צמחים
-        productHref: plantSigns ? '/admin/print-shop/plant-signs' : j.template ? `/admin/print-shop/${j.template.slug ?? j.template.id}` : '',
+        productHref: plantSigns
+          ? '/admin/print-shop/plant-signs'
+          : j.template
+            ? `/admin/print-shop/${j.template.slug ?? j.template.id}`
+            : '',
         imported: Boolean(j.importedAt),
         freeReorder,
         canOrderSimilar: Boolean(pub),
-        image: latest && withThumb.has(latest.fileId) ? `/api/print-files/${latest.fileId}/thumbnail` : latest ? null : (j.template?.imageUrl ?? null),
+        image:
+          latest && withThumb.has(latest.fileId)
+            ? `/api/print-files/${latest.fileId}/thumbnail`
+            : latest
+              ? null
+              : (j.template?.imageUrl ?? null),
         fileName: latest?.file.originalName ?? null,
         fileType: latest ? latest.file.mimeType.split('/').pop()!.toUpperCase() : null,
         description: [...(j.description ? [j.description] : []), ...(stored?.display ?? []).map((d) => `${d.label}: ${d.value}`)],
@@ -105,17 +118,32 @@ export default async function PrintJobsPage() {
         lastQuantity: last?.quantity ?? null,
         lastTotal: lastOrder && Number(lastOrder.totalAmount) > 0 ? Number(lastOrder.totalAmount) : null,
         orderCount: orders.length,
-        status: lastOrder ? (expired && lastOrder.quoteStatus === 'SENT' ? 'ההצעה פגה' : lastOrder.quoteStatus === 'SENT' ? 'הצעה ממתינה לתשובתך' : STATUS_LABEL[lastOrder.status] ?? lastOrder.status) : 'טרם הוזמנה',
+        status: lastOrder
+          ? expired && lastOrder.quoteStatus === 'SENT'
+            ? 'ההצעה פגה'
+            : lastOrder.quoteStatus === 'SENT'
+              ? 'הצעה ממתינה לתשובתך'
+              : (STATUS_LABEL[lastOrder.status] ?? lastOrder.status)
+          : 'טרם הוזמנה',
         production: lastOrder ? productionLabel(lastOrder, true) : null,
         reasons: lastOrder?.status === 'QUOTE_REQUESTED' ? lastOrder.reviewReasons : [],
         needsDesign: lastOrder?.needsDesign === true && versions.length === 0,
         rejectionNote: revision?.status === 'REJECTED' ? revision.reviewNote : null,
         quote:
           lastOrder?.status === 'QUOTE_REQUESTED' && lastOrder.quoteStatus === 'SENT'
-            ? { orderId: lastOrder.id, total: Number(lastOrder.totalAmount), validUntil: lastOrder.quoteValidUntil?.toISOString() ?? null, expired }
+            ? {
+                orderId: lastOrder.id,
+                total: Number(lastOrder.totalAmount),
+                validUntil: lastOrder.quoteValidUntil?.toISOString() ?? null,
+                expired,
+              }
             : null,
         blocked,
-        reorder: !blocked && !plantSigns && fields?.ok && pricing?.ok && raw ? { fields: fields.value, pricing: pricing.value, raw, unitLabel: j.template?.unitLabel ?? null } : null,
+        cancelOrderId: lastOrder && canNurseryCancel(lastOrder) ? lastOrder.id : null,
+        reorder:
+          !blocked && !plantSigns && fields?.ok && pricing?.ok && raw
+            ? { fields: fields.value, pricing: pricing.value, raw, unitLabel: j.template?.unitLabel ?? null }
+            : null,
         artwork: await artworkVersionsVM(versions),
         sortAt: lastOrder?.createdAt.getTime() ?? j.createdAt.getTime(),
       };

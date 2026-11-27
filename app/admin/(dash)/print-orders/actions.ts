@@ -9,17 +9,12 @@ import { parsePriceTiers } from '@/lib/print-pricing';
 import { recordAudit } from '@/lib/audit';
 import { setProductionFile, approveOrderSpec, moveProduction, releaseOrder } from '@/lib/print-production';
 import { sendQuote, updateQuote } from '@/lib/print-jobs';
+import { deletePrintOrder } from '@/lib/print-cancel';
 import type { ProductionStatus } from '@/lib/print-release';
 
 const PRODUCTION_STATUSES: ProductionStatus[] = ['PENDING', 'RELEASED', 'IN_PRODUCTION', 'QC', 'COMPLETED', 'BLOCKED'];
 
-const VALID: PrintOrderStatus[] = [
-  'NEW',
-  'IN_PRODUCTION',
-  'SHIPPED',
-  'DELIVERED',
-  'CANCELLED',
-];
+const VALID: PrintOrderStatus[] = ['NEW', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 
 function revalidatePrint() {
   revalidatePath('/admin/print-orders');
@@ -34,11 +29,33 @@ export async function updatePrintOrderStatus(formData: FormData): Promise<void> 
   if (!id || !VALID.includes(status)) return;
   // PT-06: הזמנה מתבנית לא עוברת ל"בהפקה" בלי שחרור דרך השער
   if (status === 'IN_PRODUCTION') {
-    const o = await prisma.printOrder.findUnique({ where: { id }, select: { releasedAt: true, items: { select: { templateVersionId: true } } } });
+    const o = await prisma.printOrder.findUnique({
+      where: { id },
+      select: { releasedAt: true, items: { select: { templateVersionId: true } } },
+    });
     if (o && !o.releasedAt && o.items.some((i) => i.templateVersionId)) return;
   }
   await prisma.printOrder.update({ where: { id }, data: { status } });
   revalidatePath('/admin/print-orders');
+}
+
+/** מחיקה לצמיתות בידי בית הדפוס: ההזמנה, הפריטים, השלטים והקבצים — גם אצל המשתלה */
+export async function deletePrintOrderAction(id: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser(['SUPER_ADMIN']);
+  if (!id) return { ok: false, error: 'ההזמנה לא נמצאה' };
+  const r = await deletePrintOrder(prisma, id);
+  if (!r.ok) return { ok: false, error: r.error };
+  await recordAudit({
+    nurseryId: r.summary.nurseryId,
+    actorEmail: user.email,
+    action: 'print.order_deleted',
+    entityType: 'PrintOrder',
+    entityId: id,
+    metadata: { ...r.summary },
+  });
+  revalidatePrint();
+  revalidatePath('/admin/print-shop/jobs');
+  return { ok: true };
 }
 
 // ---------- מוצרי דפוס ----------
@@ -54,10 +71,7 @@ function str(formData: FormData, key: string): string | null {
 }
 
 /** יצירה / עדכון של מוצר דפוס (id = 'new' ליצירה). */
-export async function savePrintProduct(
-  _prev: PrintProductState,
-  formData: FormData,
-): Promise<PrintProductState> {
+export async function savePrintProduct(_prev: PrintProductState, formData: FormData): Promise<PrintProductState> {
   await requireUser(['SUPER_ADMIN']);
   const id = String(formData.get('id') || 'new');
 
@@ -154,10 +168,7 @@ export async function deletePrintProduct(formData: FormData): Promise<void> {
 
 // ---------- אפשרויות גימור גלובליות ----------
 
-export async function savePrintOption(
-  _prev: PrintProductState,
-  formData: FormData,
-): Promise<PrintProductState> {
+export async function savePrintOption(_prev: PrintProductState, formData: FormData): Promise<PrintProductState> {
   await requireUser(['SUPER_ADMIN']);
   const id = String(formData.get('id') || '');
   const optionName = str(formData, 'optionName');

@@ -72,6 +72,9 @@ export const E2E_SIGNS_OWNER = { email: 'signs-owner@e2e.invalid', password: 'e2
 export const E2E_SUPER11 = { email: 'super11@e2e.invalid', password: 'e2e-super11-pass-123' };
 export const E2E_SIGNS_TEMPLATE = 'שלטי צמחים E2E';
 export const E2E_SIGN_PLANTS = [`${'צמח E2E'} שלט לבנדר`, `${'צמח E2E'} שלט רוזמרין`];
+export const E2E_CANCEL_OWNER = { email: 'cancel-owner@e2e.invalid', password: 'e2e-cancel-pass-123' };
+export const E2E_SUPER12 = { email: 'super12@e2e.invalid', password: 'e2e-super12-pass-123' };
+export const E2E_CANCEL_JOBS = { cancel: 'עבודת ביטול E2E', remove: 'עבודת מחיקה E2E' };
 export const E2E_CARDS_CATEGORIES = { parent: 'e2e-cards', child: 'e2e-cards-small' };
 
 export default async function globalSetup() {
@@ -138,6 +141,12 @@ export default async function globalSetup() {
       await db.nursery.delete({ where: { id: oldSigns.id } });
     }
     await db.user.deleteMany({ where: { email: E2E_SUPER11.email } });
+    const oldCancel = await db.nursery.findUnique({ where: { subdomain: 'e2ecancel' } });
+    if (oldCancel) {
+      await db.user.deleteMany({ where: { nurseryId: oldCancel.id } });
+      await db.nursery.delete({ where: { id: oldCancel.id } });
+    }
+    await db.user.deleteMany({ where: { email: E2E_SUPER12.email } });
     await db.printTemplate.deleteMany({ where: { title: E2E_SIGNS_TEMPLATE } });
     await db.masterSupply.deleteMany({ where: { manufacturer: { name: { startsWith: E2E_MFR_PREFIX } } } });
     await db.manufacturer.deleteMany({ where: { name: { startsWith: E2E_MFR_PREFIX } } });
@@ -147,11 +156,45 @@ export default async function globalSetup() {
       await db.user.deleteMany({ where: { nurseryId: old.id } });
       await db.nursery.delete({ where: { id: old.id } });
     }
-    await db.user.deleteMany({ where: { email: { in: [E2E_OWNER.email, E2E_SUPER.email, E2E_OWNER2.email, E2E_SUPER2.email, E2E_OWNER3.email, E2E_OWNER4.email, E2E_SUPER3.email, E2E_OWNER5.email, E2E_SUPER4.email, E2E_SUPER5.email, E2E_OWNER6.email, E2E_OWNER7.email, E2E_LIFE_OWNER.email, E2E_SUPER6.email, E2E_OWNER8.email, E2E_OWNER9.email, E2E_FLOAT_OWNER.email, E2E_GRID_OWNER.email, E2E_FIX_OWNER.email, E2E_FOLDER_OWNER.email, E2E_SUPER7.email, E2E_CARDS_OWNER.email, E2E_SUPER9.email, 'staff@e2e.invalid', 'writer@e2e.invalid'] } } });
+    await db.user.deleteMany({
+      where: {
+        email: {
+          in: [
+            E2E_OWNER.email,
+            E2E_SUPER.email,
+            E2E_OWNER2.email,
+            E2E_SUPER2.email,
+            E2E_OWNER3.email,
+            E2E_OWNER4.email,
+            E2E_SUPER3.email,
+            E2E_OWNER5.email,
+            E2E_SUPER4.email,
+            E2E_SUPER5.email,
+            E2E_OWNER6.email,
+            E2E_OWNER7.email,
+            E2E_LIFE_OWNER.email,
+            E2E_SUPER6.email,
+            E2E_OWNER8.email,
+            E2E_OWNER9.email,
+            E2E_FLOAT_OWNER.email,
+            E2E_GRID_OWNER.email,
+            E2E_FIX_OWNER.email,
+            E2E_FOLDER_OWNER.email,
+            E2E_SUPER7.email,
+            E2E_CARDS_OWNER.email,
+            E2E_SUPER9.email,
+            'staff@e2e.invalid',
+            'writer@e2e.invalid',
+          ],
+        },
+      },
+    });
     // המוצרים נמחקו עם המשתלה; הצמח המרכזי (והגרסאות שלו) נמחק כאן
     await db.plant.deleteMany({ where: { hebrewName: E2E_PLANT } });
     // תבנית הדפוס שבדיקת PT יוצרת (ההזמנות שלה נמחקו עם המשתלה)
-    await db.printTemplate.deleteMany({ where: { title: { in: [E2E_PRINT_TEMPLATE, E2E_SAVED_TEMPLATE, E2E_PREFLIGHT_TEMPLATE, E2E_CARDS_TEMPLATE] } } });
+    await db.printTemplate.deleteMany({
+      where: { title: { in: [E2E_PRINT_TEMPLATE, E2E_SAVED_TEMPLATE, E2E_PREFLIGHT_TEMPLATE, E2E_CARDS_TEMPLATE] } },
+    });
     await db.printCategory.deleteMany({ where: { slug: E2E_CARDS_CATEGORIES.child } });
     await db.printCategory.deleteMany({ where: { slug: E2E_CARDS_CATEGORIES.parent } });
     await db.searchSynonymGroup.deleteMany({ where: { terms: { has: 'אוליבה' } } });
@@ -272,12 +315,30 @@ export default async function globalSetup() {
         themeConfig: {
           colors: { primary: '#1F3D2B', accent: '#E07B39', background: '#F3EAD8' },
           headerStyle: 'float',
-          announcement: { enabled: true, text: 'פרחי העונה הגיעו', linkText: 'לפרחים', href: '/catalog?category=e2e-flowers', tone: 'brand' },
+          announcement: {
+            enabled: true,
+            text: 'פרחי העונה הגיעו',
+            linkText: 'לפרחים',
+            href: '/catalog?category=e2e-flowers',
+            tone: 'brand',
+          },
         },
       },
     });
     await db.nurseryModule.createMany({
-      data: ['plant_catalog', 'supplies', 'sales', 'orders', 'announcement', 'coupons', 'popups', 'payment_options', 'delivery_options', 'team', 'page_builder'].map((moduleKey) => ({
+      data: [
+        'plant_catalog',
+        'supplies',
+        'sales',
+        'orders',
+        'announcement',
+        'coupons',
+        'popups',
+        'payment_options',
+        'delivery_options',
+        'team',
+        'page_builder',
+      ].map((moduleKey) => ({
         nurseryId: fl.id,
         moduleKey,
         isEnabled: true,
@@ -308,16 +369,45 @@ export default async function globalSetup() {
       data: { name: 'קטן / כתום', option1: 'קטן', option2: 'כתום', colorHex: '#E07B39', stockQuantity: 5 },
     });
     await db.productVariant.create({
-      data: { nurseryId: fl.id, nurseryProductId: pot.id, name: "קטן / בז'", option1: 'קטן', option2: "בז'", colorHex: '#E8DCC4', stockQuantity: 5, sortOrder: 1 },
+      data: {
+        nurseryId: fl.id,
+        nurseryProductId: pot.id,
+        name: "קטן / בז'",
+        option1: 'קטן',
+        option2: "בז'",
+        colorHex: '#E8DCC4',
+        stockQuantity: 5,
+        sortOrder: 1,
+      },
     });
     await db.productVariant.create({
-      data: { nurseryId: fl.id, nurseryProductId: pot.id, name: 'גדול / כתום', option1: 'גדול', option2: 'כתום', colorHex: '#E07B39', price: '89.00', stockQuantity: 3, sortOrder: 2 },
+      data: {
+        nurseryId: fl.id,
+        nurseryProductId: pot.id,
+        name: 'גדול / כתום',
+        option1: 'גדול',
+        option2: 'כתום',
+        colorHex: '#E07B39',
+        price: '89.00',
+        stockQuantity: 3,
+        sortOrder: 2,
+      },
     });
     await db.user.create({
-      data: { email: E2E_FLOAT_OWNER.email, role: 'NURSERY_OWNER', nurseryId: fl.id, passwordHash: await bcrypt.hash(E2E_FLOAT_OWNER.password, 4) },
+      data: {
+        email: E2E_FLOAT_OWNER.email,
+        role: 'NURSERY_OWNER',
+        nurseryId: fl.id,
+        passwordHash: await bcrypt.hash(E2E_FLOAT_OWNER.password, 4),
+      },
     });
     await db.user.create({
-      data: { email: E2E_GRID_OWNER.email, role: 'NURSERY_OWNER', nurseryId: fl.id, passwordHash: await bcrypt.hash(E2E_GRID_OWNER.password, 4) },
+      data: {
+        email: E2E_GRID_OWNER.email,
+        role: 'NURSERY_OWNER',
+        nurseryId: fl.id,
+        passwordHash: await bcrypt.hash(E2E_GRID_OWNER.password, 4),
+      },
     });
 
     const fix = await db.nursery.create({
@@ -332,20 +422,32 @@ export default async function globalSetup() {
       },
     });
     await db.nurseryModule.createMany({
-      data: ['plant_catalog', 'supplies', 'sales', 'orders', 'announcement', 'payment_options', 'delivery_options', 'team'].map((moduleKey) => ({
-        nurseryId: fix.id,
-        moduleKey,
-        isEnabled: true,
-        ...(moduleKey === 'sales' ? { config: { mode: 'ONLINE' } } : {}),
-      })),
+      data: ['plant_catalog', 'supplies', 'sales', 'orders', 'announcement', 'payment_options', 'delivery_options', 'team'].map(
+        (moduleKey) => ({
+          nurseryId: fix.id,
+          moduleKey,
+          isEnabled: true,
+          ...(moduleKey === 'sales' ? { config: { mode: 'ONLINE' } } : {}),
+        }),
+      ),
     });
     const fixPlants = await db.nurseryCategory.create({ data: { nurseryId: fix.id, name: 'צמחים', slug: 'fix-plants' } });
-    const fixHerbs = await db.nurseryCategory.create({ data: { nurseryId: fix.id, name: 'תבלינים', slug: 'fix-herbs', parentId: fixPlants.id } });
+    const fixHerbs = await db.nurseryCategory.create({
+      data: { nurseryId: fix.id, name: 'תבלינים', slug: 'fix-herbs', parentId: fixPlants.id },
+    });
     const basil = await db.nurseryProduct.create({
-      data: { nurseryId: fix.id, customTitle: 'בזיליקום', price: '15.00', stockQuantity: 30, categories: { create: [{ nurseryCategoryId: fixHerbs.id }] } },
+      data: {
+        nurseryId: fix.id,
+        customTitle: 'בזיליקום',
+        price: '15.00',
+        stockQuantity: 30,
+        categories: { create: [{ nurseryCategoryId: fixHerbs.id }] },
+      },
     });
     await db.nurseryProduct.create({ data: { nurseryId: fix.id, customTitle: 'פיקוס כינורי', price: '120.00', stockQuantity: 2 } });
-    await db.nurseryProduct.create({ data: { nurseryId: fix.id, customTitle: 'מלכודת זבובים', price: '45.00', stockQuantity: 9, isActive: false } });
+    await db.nurseryProduct.create({
+      data: { nurseryId: fix.id, customTitle: 'מלכודת זבובים', price: '45.00', stockQuantity: 9, isActive: false },
+    });
     await db.order.create({
       data: {
         nurseryId: fix.id,
@@ -358,15 +460,32 @@ export default async function globalSetup() {
       },
     });
     await db.user.create({
-      data: { email: E2E_FIX_OWNER.email, role: 'NURSERY_OWNER', nurseryId: fix.id, passwordHash: await bcrypt.hash(E2E_FIX_OWNER.password, 4) },
+      data: {
+        email: E2E_FIX_OWNER.email,
+        role: 'NURSERY_OWNER',
+        nurseryId: fix.id,
+        passwordHash: await bcrypt.hash(E2E_FIX_OWNER.password, 4),
+      },
     });
     await db.user.create({
-      data: { email: E2E_FOLDER_OWNER.email, role: 'NURSERY_OWNER', nurseryId: fix.id, passwordHash: await bcrypt.hash(E2E_FOLDER_OWNER.password, 4) },
+      data: {
+        email: E2E_FOLDER_OWNER.email,
+        role: 'NURSERY_OWNER',
+        nurseryId: fix.id,
+        passwordHash: await bcrypt.hash(E2E_FOLDER_OWNER.password, 4),
+      },
     });
 
-    const life = await db.nursery.create({ data: { name: 'משתלת מחזור חיים', subdomain: 'e2elife', ownerEmail: E2E_LIFE_OWNER.email, phoneNumber: '03-5551234', city: 'חולון' } });
+    const life = await db.nursery.create({
+      data: { name: 'משתלת מחזור חיים', subdomain: 'e2elife', ownerEmail: E2E_LIFE_OWNER.email, phoneNumber: '03-5551234', city: 'חולון' },
+    });
     await db.user.create({
-      data: { email: E2E_LIFE_OWNER.email, role: 'NURSERY_OWNER', nurseryId: life.id, passwordHash: await bcrypt.hash(E2E_LIFE_OWNER.password, 4) },
+      data: {
+        email: E2E_LIFE_OWNER.email,
+        role: 'NURSERY_OWNER',
+        nurseryId: life.id,
+        passwordHash: await bcrypt.hash(E2E_LIFE_OWNER.password, 4),
+      },
     });
     await db.user.create({
       data: { email: E2E_SUPER6.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER6.password, 4) },
@@ -405,18 +524,37 @@ export default async function globalSetup() {
     await db.promotion.create({ data: { nurseryId: a11y.id, title: 'מבצע נגיש', popupText: '10% הנחה השבוע', isActive: true } });
     const a11yCategory = await db.nurseryCategory.create({ data: { nurseryId: a11y.id, name: 'תבלינים', slug: 'a11y-herbs' } });
     // תת-קטגוריה: הופכת את תפריט הקטגוריות בכותרת לפאנל הרחב
-    const a11yChild = await db.nurseryCategory.create({ data: { nurseryId: a11y.id, name: 'עלים', slug: 'a11y-leaves', parentId: a11yCategory.id } });
+    const a11yChild = await db.nurseryCategory.create({
+      data: { nurseryId: a11y.id, name: 'עלים', slug: 'a11y-leaves', parentId: a11yCategory.id },
+    });
     await db.nurseryProduct.create({
-      data: { nurseryId: a11y.id, customTitle: 'בזיליקום', slug: 'basil', price: '15.00', stockQuantity: 30, categories: { create: [{ nurseryCategoryId: a11yCategory.id }, { nurseryCategoryId: a11yChild.id }] } },
+      data: {
+        nurseryId: a11y.id,
+        customTitle: 'בזיליקום',
+        slug: 'basil',
+        price: '15.00',
+        stockQuantity: 30,
+        categories: { create: [{ nurseryCategoryId: a11yCategory.id }, { nurseryCategoryId: a11yChild.id }] },
+      },
     });
     await db.nurseryProduct.create({ data: { nurseryId: a11y.id, customTitle: 'פיקוס כינורי', price: '120.00', stockQuantity: 2 } });
     await db.user.create({
-      data: { email: E2E_A11Y_OWNER.email, role: 'NURSERY_OWNER', nurseryId: a11y.id, passwordHash: await bcrypt.hash(E2E_A11Y_OWNER.password, 4) },
+      data: {
+        email: E2E_A11Y_OWNER.email,
+        role: 'NURSERY_OWNER',
+        nurseryId: a11y.id,
+        passwordHash: await bcrypt.hash(E2E_A11Y_OWNER.password, 4),
+      },
     });
     const round3 = await db.nursery.create({ data: { name: 'משתלת סבב 3', subdomain: 'e2eround3', ownerEmail: E2E_ROUND3_OWNER.email } });
     await db.nurseryModule.create({ data: { nurseryId: round3.id, moduleKey: 'newsletter', isEnabled: true } });
     await db.user.create({
-      data: { email: E2E_ROUND3_OWNER.email, role: 'NURSERY_OWNER', nurseryId: round3.id, passwordHash: await bcrypt.hash(E2E_ROUND3_OWNER.password, 4) },
+      data: {
+        email: E2E_ROUND3_OWNER.email,
+        role: 'NURSERY_OWNER',
+        nurseryId: round3.id,
+        passwordHash: await bcrypt.hash(E2E_ROUND3_OWNER.password, 4),
+      },
     });
     await db.user.create({
       data: { email: E2E_SUPER8.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER8.password, 4) },
@@ -433,10 +571,16 @@ export default async function globalSetup() {
             publishedAt: new Date(),
             fields: [
               { key: 'text', label: 'טקסט', type: 'text', required: true, maxLength: 30 },
-              { key: 'size', label: 'גודל', type: 'select', required: true, options: [
-                { value: 's', label: 'קטן', priceDelta: 0 },
-                { value: 'l', label: 'גדול', priceDelta: 1 },
-              ] },
+              {
+                key: 'size',
+                label: 'גודל',
+                type: 'select',
+                required: true,
+                options: [
+                  { value: 's', label: 'קטן', priceDelta: 0 },
+                  { value: 'l', label: 'גדול', priceDelta: 1 },
+                ],
+              },
             ],
             pricing: { basePrice: 2, tiers: [], setupFee: 0, minQuantity: 10, quoteOnly: false },
           },
@@ -445,7 +589,9 @@ export default async function globalSetup() {
     });
     // כרטיסי ברכה: קטגוריה ותת-קטגוריה, מוצר עם מאגר של 17 דוגמאות (כפולות של 8: 400 / 200 מכל דוגמא)
     const cardsParent = await db.printCategory.create({ data: { name: 'כרטיסי ברכה E2E', slug: E2E_CARDS_CATEGORIES.parent } });
-    const cardsChild = await db.printCategory.create({ data: { name: 'כרטיסים קטנים E2E', slug: E2E_CARDS_CATEGORIES.child, parentId: cardsParent.id } });
+    const cardsChild = await db.printCategory.create({
+      data: { name: 'כרטיסים קטנים E2E', slug: E2E_CARDS_CATEGORIES.child, parentId: cardsParent.id },
+    });
     await db.printTemplate.create({
       data: {
         title: E2E_CARDS_TEMPLATE,
@@ -469,7 +615,15 @@ export default async function globalSetup() {
             status: 'PUBLISHED',
             publishedAt: new Date(),
             fields: [{ key: 'business_details', label: 'פרטי העסק להדפסה על הכרטיס', type: 'textarea', required: true, maxLength: 500 }],
-            pricing: { basePrice: 0.4, tiers: [], setupFee: 0, minQuantity: 1, quoteOnly: false, quantityOptions: [], allowCustomQuantity: true },
+            pricing: {
+              basePrice: 0.4,
+              tiers: [],
+              setupFee: 0,
+              minQuantity: 1,
+              quoteOnly: false,
+              quantityOptions: [],
+              allowCustomQuantity: true,
+            },
           },
         },
       },
@@ -477,12 +631,33 @@ export default async function globalSetup() {
     const cardsTemplate = await db.printTemplate.findFirstOrThrow({ where: { title: E2E_CARDS_TEMPLATE } });
     await db.printDesign.createMany({
       data: [
-        { templateId: cardsTemplate.id, code: 'SC9100', title: 'כרטיס משתלת E2E', imageUrl: '/file.svg', tags: [], nurseryId: n.id, sortOrder: 500 },
-        { templateId: cardsTemplate.id, code: 'SC9200', title: 'כרטיס של משתלה אחרת', imageUrl: '/file.svg', tags: [], nurseryId: fl.id, sortOrder: 510 },
+        {
+          templateId: cardsTemplate.id,
+          code: 'SC9100',
+          title: 'כרטיס משתלת E2E',
+          imageUrl: '/file.svg',
+          tags: [],
+          nurseryId: n.id,
+          sortOrder: 500,
+        },
+        {
+          templateId: cardsTemplate.id,
+          code: 'SC9200',
+          title: 'כרטיס של משתלה אחרת',
+          imageUrl: '/file.svg',
+          tags: [],
+          nurseryId: fl.id,
+          sortOrder: 510,
+        },
       ],
     });
     await db.user.create({
-      data: { email: E2E_CARDS_OWNER.email, role: 'NURSERY_OWNER', nurseryId: n.id, passwordHash: await bcrypt.hash(E2E_CARDS_OWNER.password, 4) },
+      data: {
+        email: E2E_CARDS_OWNER.email,
+        role: 'NURSERY_OWNER',
+        nurseryId: n.id,
+        passwordHash: await bcrypt.hash(E2E_CARDS_OWNER.password, 4),
+      },
     });
     await db.user.create({
       data: { email: E2E_SUPER9.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER9.password, 4) },
@@ -497,7 +672,12 @@ export default async function globalSetup() {
       })),
     });
     await db.user.create({
-      data: { email: E2E_MFR_OWNER.email, role: 'NURSERY_OWNER', nurseryId: mfr.id, passwordHash: await bcrypt.hash(E2E_MFR_OWNER.password, 4) },
+      data: {
+        email: E2E_MFR_OWNER.email,
+        role: 'NURSERY_OWNER',
+        nurseryId: mfr.id,
+        passwordHash: await bcrypt.hash(E2E_MFR_OWNER.password, 4),
+      },
     });
     await db.user.create({
       data: { email: E2E_SUPER10.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER10.password, 4) },
@@ -521,7 +701,14 @@ export default async function globalSetup() {
     });
     for (const [i, name] of E2E_SIGN_PLANTS.entries()) {
       const plant = await db.plant.create({
-        data: { hebrewName: name, latinName: i ? 'Salvia rosmarinus' : 'Lavandula angustifolia', light: 'שמש מלאה', water: i ? 'מועטה' : 'בינונית', plantType: 'שיחים', uniqueness: 'עלווה ריחנית' },
+        data: {
+          hebrewName: name,
+          latinName: i ? 'Salvia rosmarinus' : 'Lavandula angustifolia',
+          light: 'שמש מלאה',
+          water: i ? 'מועטה' : 'בינונית',
+          plantType: 'שיחים',
+          uniqueness: 'עלווה ריחנית',
+        },
       });
       await db.nurseryProduct.create({ data: { nurseryId: signs.id, plantId: plant.id, price: '25.00', isActive: true } });
     }
@@ -537,17 +724,68 @@ export default async function globalSetup() {
             version: 1,
             status: 'PUBLISHED',
             publishedAt: new Date(),
-            fields: [{ key: 'material', label: 'חומר', type: 'select', required: true, options: [{ value: 'paper', label: 'נייר מנוילן', priceDelta: 0 }, { value: 'pvc', label: 'PVC', priceDelta: 1 }] }],
-            pricing: { basePrice: 2, tiers: [], setupFee: 0, minQuantity: 1, quoteOnly: false, quantityOptions: [], allowCustomQuantity: true },
+            fields: [
+              {
+                key: 'material',
+                label: 'חומר',
+                type: 'select',
+                required: true,
+                options: [
+                  { value: 'paper', label: 'נייר מנוילן', priceDelta: 0 },
+                  { value: 'pvc', label: 'PVC', priceDelta: 1 },
+                ],
+              },
+            ],
+            pricing: {
+              basePrice: 2,
+              tiers: [],
+              setupFee: 0,
+              minQuantity: 1,
+              quoteOnly: false,
+              quantityOptions: [],
+              allowCustomQuantity: true,
+            },
           },
         },
       },
     });
     await db.user.create({
-      data: { email: E2E_SIGNS_OWNER.email, role: 'NURSERY_OWNER', nurseryId: signs.id, passwordHash: await bcrypt.hash(E2E_SIGNS_OWNER.password, 4) },
+      data: {
+        email: E2E_SIGNS_OWNER.email,
+        role: 'NURSERY_OWNER',
+        nurseryId: signs.id,
+        passwordHash: await bcrypt.hash(E2E_SIGNS_OWNER.password, 4),
+      },
     });
     await db.user.create({
       data: { email: E2E_SUPER11.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER11.password, 4) },
+    });
+
+    // ביטול ומחיקה של הזמנות דפוס: שתי עבודות, לכל אחת הזמנה חדשה
+    const cancel = await db.nursery.create({
+      data: { name: 'משתלת הביטולים', subdomain: 'e2ecancel', ownerEmail: E2E_CANCEL_OWNER.email },
+    });
+    await db.nurseryModule.create({ data: { nurseryId: cancel.id, moduleKey: 'print_shop', isEnabled: true } });
+    for (const name of Object.values(E2E_CANCEL_JOBS)) {
+      const job = await db.printSavedProduct.create({ data: { nurseryId: cancel.id, name } });
+      await db.printOrder.create({
+        data: {
+          nurseryId: cancel.id,
+          totalAmount: '40.00',
+          items: { create: [{ quantity: 20, unitPrice: '2', title: name, savedProductId: job.id }] },
+        },
+      });
+    }
+    await db.user.create({
+      data: {
+        email: E2E_CANCEL_OWNER.email,
+        role: 'NURSERY_OWNER',
+        nurseryId: cancel.id,
+        passwordHash: await bcrypt.hash(E2E_CANCEL_OWNER.password, 4),
+      },
+    });
+    await db.user.create({
+      data: { email: E2E_SUPER12.email, role: 'SUPER_ADMIN', passwordHash: await bcrypt.hash(E2E_SUPER12.password, 4) },
     });
     await db.user.create({
       data: {

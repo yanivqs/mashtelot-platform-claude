@@ -8,6 +8,7 @@ import { archiveSaved, orderSaved } from '@/lib/print-saved';
 import { createJobOrder, decideQuote, renameJob } from '@/lib/print-jobs';
 import { reorderImportedJob } from '@/lib/print-import';
 import { parseDesignItems } from '@/lib/print-jobs';
+import { cancelNurseryOrder } from '@/lib/print-cancel';
 
 // ---------- הזמנה מתבנית (PT-02/03/07) ----------
 
@@ -56,13 +57,27 @@ export async function createJobOrderAction(input: {
     action: res.quote.quoteOnly ? 'print.quote_requested' : 'print.order_created',
     entityType: 'PrintOrder',
     entityId: res.orderId,
-    metadata: { templateVersionId: input.templateVersionId, designs: Array.isArray(input.designs) ? input.designs.length : undefined, quantity: res.quote.quantity, total: res.quote.total, reasons: res.quote.reasons },
+    metadata: {
+      templateVersionId: input.templateVersionId,
+      designs: Array.isArray(input.designs) ? input.designs.length : undefined,
+      quantity: res.quote.quantity,
+      total: res.quote.total,
+      reasons: res.quote.reasons,
+    },
   });
   revalidatePath('/admin/print-shop/jobs');
   revalidatePath('/admin/print-orders');
   revalidatePath('/admin/print-specs');
   revalidatePath('/admin/print-artwork');
-  return { ok: true, orderId: res.orderId, name: res.name, quoteOnly: res.quote.quoteOnly, total: res.quote.total, perUnit: res.quote.perUnit, reasons: res.quote.reasons };
+  return {
+    ok: true,
+    orderId: res.orderId,
+    name: res.name,
+    quoteOnly: res.quote.quoteOnly,
+    total: res.quote.total,
+    perUnit: res.quote.perUnit,
+    reasons: res.quote.reasons,
+  };
 }
 
 export async function renameJobAction(input: { savedProductId: string; name: string }): Promise<{ ok: boolean }> {
@@ -81,7 +96,13 @@ export async function decideQuoteAction(input: { orderId: string; approve: boole
   const approve = input.approve === true;
   const r = await decideQuote(prisma, { orderId, nurseryId: scope.nurseryId, approve });
   if (!r.ok) return r;
-  await recordAudit({ nurseryId: scope.nurseryId, actorEmail: scope.user.email, action: approve ? 'print.quote_approved' : 'print.quote_declined', entityType: 'PrintOrder', entityId: orderId });
+  await recordAudit({
+    nurseryId: scope.nurseryId,
+    actorEmail: scope.user.email,
+    action: approve ? 'print.quote_approved' : 'print.quote_declined',
+    entityType: 'PrintOrder',
+    entityId: orderId,
+  });
   revalidatePath('/admin/print-shop/jobs');
   revalidatePath('/admin/print-orders');
   return r;
@@ -120,7 +141,11 @@ export async function reorderSavedAction(input: { savedProductId: string; quanti
 }
 
 /** הזמנה חוזרת של עבודה קודמת בלי מוצר מהקטלוג: בקשת הצעת מחיר. */
-export async function reorderImportedAction(input: { savedProductId: string; quantity: number; notes?: string }): Promise<{ ok?: boolean; error?: string }> {
+export async function reorderImportedAction(input: {
+  savedProductId: string;
+  quantity: number;
+  notes?: string;
+}): Promise<{ ok?: boolean; error?: string }> {
   const scope = await nurseryActionScope({ all: ['print_shop'] });
   if (!scope.ok) return { error: scope.error };
   const res = await reorderImportedJob(prisma, {
@@ -131,7 +156,14 @@ export async function reorderImportedAction(input: { savedProductId: string; qua
     notes: typeof input.notes === 'string' ? input.notes : null,
   });
   if (!res.ok) return { error: res.error };
-  await recordAudit({ nurseryId: scope.nurseryId, actorEmail: scope.user.email, action: 'print.quote_requested', entityType: 'PrintOrder', entityId: res.orderId, metadata: { savedProductId: input.savedProductId, quantity: input.quantity, imported: true } });
+  await recordAudit({
+    nurseryId: scope.nurseryId,
+    actorEmail: scope.user.email,
+    action: 'print.quote_requested',
+    entityType: 'PrintOrder',
+    entityId: res.orderId,
+    metadata: { savedProductId: input.savedProductId, quantity: input.quantity, imported: true },
+  });
   revalidatePath('/admin/print-shop/jobs');
   revalidatePath('/admin/print-orders');
   return { ok: true };
@@ -142,8 +174,34 @@ export async function archiveSavedAction(formData: FormData): Promise<void> {
   if (!scope.ok) return;
   const id = String(formData.get('id') || '');
   if (await archiveSaved(prisma, scope.nurseryId, id)) {
-    await recordAudit({ nurseryId: scope.nurseryId, actorEmail: scope.user.email, action: 'print.saved_archived', entityType: 'PrintSavedProduct', entityId: id });
+    await recordAudit({
+      nurseryId: scope.nurseryId,
+      actorEmail: scope.user.email,
+      action: 'print.saved_archived',
+      entityType: 'PrintSavedProduct',
+      entityId: id,
+    });
   }
   revalidatePath('/admin/print-shop');
   revalidatePath('/admin/print-shop/jobs');
+}
+
+/** המשתלה מבטלת הזמנה שעוד לא נכנסה לייצור. בבית הדפוס היא נשארת ומסומנת "בוטלה ע"י המשתלה". */
+export async function cancelPrintOrderAction(orderId: string): Promise<{ ok: boolean; error?: string }> {
+  const scope = await nurseryActionScope({ all: ['print_shop'] });
+  if (!scope.ok) return { ok: false, error: scope.error };
+  const r = await cancelNurseryOrder(prisma, { nurseryId: scope.nurseryId, orderId, actorEmail: scope.user.email });
+  if (!r.ok) return { ok: false, error: r.error };
+  await recordAudit({
+    nurseryId: scope.nurseryId,
+    actorEmail: scope.user.email,
+    action: 'print.order_cancelled_by_nursery',
+    entityType: 'PrintOrder',
+    entityId: orderId,
+    metadata: { archivedJobs: r.archivedJobs },
+  });
+  revalidatePath('/admin/print-shop');
+  revalidatePath('/admin/print-shop/jobs');
+  revalidatePath('/admin/print-orders');
+  return { ok: true };
 }

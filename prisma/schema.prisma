@@ -930,6 +930,9 @@ model PrintOrder {
   adminNotes       String?               @map("admin_notes")
   /// היסטוריה של עבודה קודמת: לא בתור ההזמנות ולא בייצור
   imported         Boolean               @default(false)
+  /// ביטול בידי המשתלה (לפני תחילת הייצור): מתי ומי. ריק — לא בוטלה בידי המשתלה
+  cancelledAt      DateTime?             @map("cancelled_at")
+  cancelledBy      String?               @map("cancelled_by")
   productionFile   PrintFile?            @relation("ProductionFile", fields: [productionFileId], references: [id], onDelete: NoAction)
   createdAt        DateTime              @default(now()) @map("created_at")
   updatedAt        DateTime              @updatedAt @map("updated_at")
